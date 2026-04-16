@@ -1,0 +1,107 @@
+package com.example.developernetworkingapp.ui.navigation
+
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.developernetworkingapp.ui.data.MockUiData
+import com.example.developernetworkingapp.ui.screens.DashboardRoute
+import com.example.developernetworkingapp.ui.screens.ChatRoute
+import com.example.developernetworkingapp.ui.screens.EventFeedRoute
+import com.example.developernetworkingapp.ui.screens.NotificationRoute
+import com.example.developernetworkingapp.ui.screens.ProfileRoute
+import com.example.developernetworkingapp.ui.screens.ProjectBoardRoute
+import com.example.developernetworkingapp.ui.screens.SearchRoute
+import com.example.developernetworkingapp.ui.screens.TaskManagementRoute
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainAppScaffold(navController: NavController) {
+    val tabs = MockUiData.bottomTabs
+    val currentRoute by navController.currentBackStackEntryAsState()
+    val route = currentRoute?.destination?.route ?: AppRoutes.DASHBOARD
+
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(screenTitle(route)) },
+                actions = {
+                    Icon(
+                        imageVector = Icons.Outlined.NotificationsNone,
+                        contentDescription = "Notifications",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(
+                        text = "LIVE",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                }
+            )
+        },
+        bottomBar = {
+            NavigationBar {
+                tabs.forEach { tab ->
+                    NavigationBarItem(
+                        selected = route == tab.route,
+                        onClick = {
+                            if (route != tab.route) navController.navigate(tab.route)
+                        },
+                        icon = { Icon(imageVector = tab.icon, contentDescription = tab.label) },
+                        label = { Text(tab.label) }
+                    )
+                }
+            }
+        },
+        floatingActionButton = {
+            FilledTonalButton(onClick = { navController.navigate(AppRoutes.PROFILE) }) {
+                Icon(imageVector = Icons.Outlined.PersonOutline, contentDescription = "Open profile")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Profile")
+            }
+        }
+    ) { padding ->
+        when (route) {
+            AppRoutes.DASHBOARD -> DashboardRoute(padding, navController)
+            AppRoutes.PROJECTS -> ProjectBoardRoute(padding)
+            AppRoutes.CHAT -> ChatRoute(padding)
+            AppRoutes.SEARCH -> SearchRoute(padding)
+            AppRoutes.NOTIFICATIONS -> NotificationRoute(padding)
+            AppRoutes.PROFILE -> ProfileRoute(padding)
+            AppRoutes.TASKS -> TaskManagementRoute(padding)
+            AppRoutes.EVENTS -> EventFeedRoute(padding)
+        }
+    }
+}
+
+private fun screenTitle(route: String): String {
+    return when (route) {
+        AppRoutes.DASHBOARD -> "Developer Command Center"
+        AppRoutes.PROJECTS -> "Project Collaboration"
+        AppRoutes.CHAT -> "Realtime Chat"
+        AppRoutes.SEARCH -> "Talent Search"
+        AppRoutes.NOTIFICATIONS -> "Notifications"
+        AppRoutes.PROFILE -> "Profile"
+        AppRoutes.TASKS -> "Task Manager"
+        AppRoutes.EVENTS -> "Hackathons & Events"
+        else -> "Developer App"
+    }
+}
