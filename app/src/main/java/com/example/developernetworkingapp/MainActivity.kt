@@ -3,45 +3,62 @@ package com.example.developernetworkingapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.developernetworkingapp.ui.navigation.AppRoutes
+import com.example.developernetworkingapp.ui.navigation.MainAppScaffold
+import com.example.developernetworkingapp.ui.screens.AdvancedLoginScreen
+import com.example.developernetworkingapp.ui.screens.AdvancedSignupScreen
 import com.example.developernetworkingapp.ui.theme.DeveloperNetworkingAppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             DeveloperNetworkingAppTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                val navController = rememberNavController()
+
+                NavHost(navController = navController, startDestination = AppRoutes.DASHBOARD) {
+                    composable(AppRoutes.LOGIN) { AdvancedLoginScreen(navController) }
+                    composable(AppRoutes.SIGNUP) { AdvancedSignupScreen(navController) }
+                    composable(AppRoutes.DASHBOARD) { MainAppScaffold(navController) }
+                    composable(AppRoutes.PROJECTS) { MainAppScaffold(navController) }
+                    composable(AppRoutes.CHAT) { MainAppScaffold(navController) }
+                    composable(AppRoutes.SEARCH) { MainAppScaffold(navController) }
+                    composable(AppRoutes.NOTIFICATIONS) { MainAppScaffold(navController) }
+                    composable(AppRoutes.PROFILE) { MainAppScaffold(navController) }
+                    composable(AppRoutes.TASKS) { MainAppScaffold(navController) }
+                    composable(AppRoutes.EVENTS) { MainAppScaffold(navController) }
                 }
             }
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun DashboardPreview() {
     DeveloperNetworkingAppTheme {
-        Greeting("Android")
+        AppEntry()
+    }
+}
+
+@Composable
+private fun AppEntry() {
+    val navController = rememberNavController()
+    NavHost(navController = navController, startDestination = AppRoutes.DASHBOARD) {
+        composable(AppRoutes.LOGIN) { AdvancedLoginScreen(navController) }
+        composable(AppRoutes.SIGNUP) { AdvancedSignupScreen(navController) }
+        composable(AppRoutes.DASHBOARD) { MainAppScaffold(navController) }
+        composable(AppRoutes.PROJECTS) { MainAppScaffold(navController) }
+        composable(AppRoutes.CHAT) { MainAppScaffold(navController) }
+        composable(AppRoutes.SEARCH) { MainAppScaffold(navController) }
+        composable(AppRoutes.NOTIFICATIONS) { MainAppScaffold(navController) }
+        composable(AppRoutes.PROFILE) { MainAppScaffold(navController) }
+        composable(AppRoutes.TASKS) { MainAppScaffold(navController) }
+        composable(AppRoutes.EVENTS) { MainAppScaffold(navController) }
     }
 }
