@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.ui.components.EnhancedCard
 import com.example.developernetworkingapp.ui.components.InteractiveButton
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
@@ -191,7 +192,18 @@ fun ProfileScreen(padding: PaddingValues, state: ProfileUiState, navController: 
                         }
                     }
                     Text(content?.bio ?: "Passionate developer building amazing apps and connecting with fellow creators.", style = MaterialTheme.typography.bodyMedium)
-                    Button(onClick = { showEditProfileDialog = true }) { Text("Edit Profile") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(onClick = { showEditProfileDialog = true }) { Text("Edit Profile") }
+                        TextButton(
+                            onClick = {
+                                AuthRepository.logout()
+                                navController.navigate(AppRoutes.LOGIN) {
+                                    popUpTo(navController.graph.id) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        ) { Text("Log out") }
+                    }
                 }
             }
         }
@@ -307,6 +319,38 @@ fun ProfileScreen(padding: PaddingValues, state: ProfileUiState, navController: 
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Joined project: Mobile App Redesign", style = MaterialTheme.typography.bodyMedium)
                     Text("2 hours ago", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+
+        item { SectionTitle("Account") }
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = AppDesignTokens.cardShape,
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+            ) {
+                Column(
+                    modifier = Modifier.padding(AppDesignTokens.cardInnerPadding),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Sign out from this device", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "You can log back in anytime with your credentials.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Button(
+                        onClick = {
+                            AuthRepository.logout()
+                            navController.navigate(AppRoutes.LOGIN) {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Log out")
+                    }
                 }
             }
         }

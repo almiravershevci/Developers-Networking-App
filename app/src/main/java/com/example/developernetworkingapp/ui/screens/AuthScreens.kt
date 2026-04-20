@@ -18,9 +18,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +32,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -57,13 +62,69 @@ fun AdvancedLoginScreen(navController: NavController) {
         onSignupNameChange = signupViewModel::updateName,
         onSignupUsernameChange = signupViewModel::updateUsername,
         onSignupEmailChange = signupViewModel::updateEmail,
-        onSignupPasswordChange = signupViewModel::updatePassword
+        onSignupPasswordChange = signupViewModel::updatePassword,
+        onSignupConfirmPasswordChange = signupViewModel::updateConfirmPassword,
+        onLoginRememberMeChange = viewModel::updateRememberMe,
+        onSignupRememberMeChange = signupViewModel::updateRememberMe,
+        onForgotPassword = viewModel::requestPasswordReset,
+        onLoginSubmit = {
+            viewModel.login {
+                navController.navigate(AppRoutes.DASHBOARD) {
+                    popUpTo(AppRoutes.LOGIN) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        },
+        onSignupSubmit = {
+            signupViewModel.signup {
+                navController.navigate(AppRoutes.DASHBOARD) {
+                    popUpTo(AppRoutes.LOGIN) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        }
     )
 }
 
 @Composable
 fun AdvancedSignupScreen(navController: NavController) {
-    AdvancedLoginScreen(navController)
+    val loginViewModel: LoginViewModel = viewModel()
+    val signupViewModel: SignupViewModel = viewModel()
+    val loginState = loginViewModel.uiState.collectAsStateWithLifecycle().value
+    val signupState = signupViewModel.uiState.collectAsStateWithLifecycle().value
+
+    UnifiedAuthScreen(
+        navController = navController,
+        loginState = loginState,
+        signupState = signupState,
+        startInSignup = true,
+        onLoginEmailChange = loginViewModel::updateEmail,
+        onLoginPasswordChange = loginViewModel::updatePassword,
+        onSignupNameChange = signupViewModel::updateName,
+        onSignupUsernameChange = signupViewModel::updateUsername,
+        onSignupEmailChange = signupViewModel::updateEmail,
+        onSignupPasswordChange = signupViewModel::updatePassword,
+        onSignupConfirmPasswordChange = signupViewModel::updateConfirmPassword,
+        onLoginRememberMeChange = loginViewModel::updateRememberMe,
+        onSignupRememberMeChange = signupViewModel::updateRememberMe,
+        onForgotPassword = loginViewModel::requestPasswordReset,
+        onLoginSubmit = {
+            loginViewModel.login {
+                navController.navigate(AppRoutes.DASHBOARD) {
+                    popUpTo(AppRoutes.LOGIN) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        },
+        onSignupSubmit = {
+            signupViewModel.signup {
+                navController.navigate(AppRoutes.DASHBOARD) {
+                    popUpTo(AppRoutes.LOGIN) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        }
+    )
 }
 
 @Composable
@@ -77,9 +138,18 @@ private fun UnifiedAuthScreen(
     onSignupNameChange: (String) -> Unit,
     onSignupUsernameChange: (String) -> Unit,
     onSignupEmailChange: (String) -> Unit,
-    onSignupPasswordChange: (String) -> Unit
+    onSignupPasswordChange: (String) -> Unit,
+    onSignupConfirmPasswordChange: (String) -> Unit,
+    onLoginRememberMeChange: (Boolean) -> Unit,
+    onSignupRememberMeChange: (Boolean) -> Unit,
+    onForgotPassword: () -> Unit,
+    onLoginSubmit: () -> Unit,
+    onSignupSubmit: () -> Unit
 ) {
     var showSignup by rememberSaveable { mutableStateOf(startInSignup) }
+    var showLoginPassword by rememberSaveable { mutableStateOf(false) }
+    var showSignupPassword by rememberSaveable { mutableStateOf(false) }
+    var showSignupConfirmPassword by rememberSaveable { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -146,26 +216,94 @@ private fun UnifiedAuthScreen(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 if (showSignup) {
-                    OutlinedTextField(value = signupState.form.name, onValueChange = onSignupNameChange, label = { Text("Full name") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = signupState.form.name, onValueChange = onSignupNameChange, label = { Text("Full name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(value = signupState.form.username, onValueChange = onSignupUsernameChange, label = { Text("Username") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = signupState.form.username, onValueChange = onSignupUsernameChange, label = { Text("Username") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(value = signupState.form.email, onValueChange = onSignupEmailChange, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = signupState.form.email, onValueChange = onSignupEmailChange, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(value = signupState.form.password, onValueChange = onSignupPasswordChange, label = { Text("Password") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = signupState.form.password,
+                        onValueChange = onSignupPasswordChange,
+                        label = { Text("Password") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = if (showSignupPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        supportingText = { Text("8+ chars, include upper/lowercase, number, symbol") }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = signupState.form.confirmPassword,
+                        onValueChange = onSignupConfirmPasswordChange,
+                        label = { Text("Confirm password") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = if (showSignupConfirmPassword) VisualTransformation.None else PasswordVisualTransformation()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { showSignupPassword = !showSignupPassword }) {
+                            Text(if (showSignupPassword) "Hide password" else "Show password")
+                        }
+                        TextButton(onClick = { showSignupConfirmPassword = !showSignupConfirmPassword }) {
+                            Text(if (showSignupConfirmPassword) "Hide confirm" else "Show confirm")
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = signupState.rememberMe, onCheckedChange = onSignupRememberMeChange)
+                        Text("Remember me on this device", style = MaterialTheme.typography.bodyMedium)
+                    }
                 } else {
-                    OutlinedTextField(value = loginState.form.email, onValueChange = onLoginEmailChange, label = { Text("Email or username") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = loginState.form.email, onValueChange = onLoginEmailChange, label = { Text("Email or username") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(value = loginState.form.password, onValueChange = onLoginPasswordChange, label = { Text("Password") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = loginState.form.password,
+                        onValueChange = onLoginPasswordChange,
+                        label = { Text("Password") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = if (showLoginPassword) VisualTransformation.None else PasswordVisualTransformation()
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Forgot password?", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { })
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Forgot password?", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { onForgotPassword() })
+                        TextButton(onClick = { showLoginPassword = !showLoginPassword }) {
+                            Text(if (showLoginPassword) "Hide password" else "Show password")
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = loginState.rememberMe, onCheckedChange = onLoginRememberMeChange)
+                        Text("Remember me on this device", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                val errorMessage = if (showSignup) signupState.errorMessage else loginState.errorMessage
+                val successMessage = if (showSignup) signupState.successMessage else null
+                val infoMessage = if (showSignup) null else loginState.infoMessage
+                if (errorMessage != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                }
+                if (successMessage != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(successMessage, color = Color(0xFF1B8A3A), style = MaterialTheme.typography.bodyMedium)
+                }
+                if (infoMessage != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(infoMessage, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { navController.navigate(AppRoutes.DASHBOARD) },
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = { if (showSignup) onSignupSubmit() else onLoginSubmit() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = if (showSignup) !signupState.isLoading else !loginState.isLoading
                 ) {
-                    Text(if (showSignup) "Create account" else "Login")
+                    val loading = if (showSignup) signupState.isLoading else loginState.isLoading
+                    Text(
+                        if (loading) {
+                            if (showSignup) "Creating account..." else "Logging in..."
+                        } else {
+                            if (showSignup) "Create account" else "Login"
+                        }
+                    )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider()

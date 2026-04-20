@@ -4,12 +4,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.navigation.MainAppScaffold
 import com.example.developernetworkingapp.ui.screens.AdvancedLoginScreen
@@ -23,9 +29,30 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             DeveloperNetworkingAppTheme {
+                val context = LocalContext.current
+                AuthRepository.initialize(context)
                 val navController = rememberNavController()
+                val currentUser by AuthRepository.currentUser.collectAsState()
+                val backStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = backStackEntry?.destination?.route
+                val unauthenticatedRoutes = setOf(AppRoutes.LOGIN, AppRoutes.SIGNUP)
 
-                NavHost(navController = navController, startDestination = AppRoutes.DASHBOARD) {
+                LaunchedEffect(currentUser, currentRoute) {
+                    if (currentUser == null && currentRoute != null && currentRoute !in unauthenticatedRoutes) {
+                        navController.navigate(AppRoutes.LOGIN) {
+                            popUpTo(navController.graph.id) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                    if (currentUser != null && currentRoute != null && currentRoute in unauthenticatedRoutes) {
+                        navController.navigate(AppRoutes.DASHBOARD) {
+                            popUpTo(AppRoutes.LOGIN) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                }
+
+                NavHost(navController = navController, startDestination = AppRoutes.LOGIN) {
                     composable(AppRoutes.LOGIN) { AdvancedLoginScreen(navController) }
                     composable(AppRoutes.SIGNUP) { AdvancedSignupScreen(navController) }
                     composable(AppRoutes.DASHBOARD) { MainAppScaffold(navController) }
@@ -87,7 +114,7 @@ fun DashboardPreview() {
 @Composable
 private fun AppEntry() {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = AppRoutes.DASHBOARD) {
+    NavHost(navController = navController, startDestination = AppRoutes.LOGIN) {
         composable(AppRoutes.LOGIN) { AdvancedLoginScreen(navController) }
         composable(AppRoutes.SIGNUP) { AdvancedSignupScreen(navController) }
         composable(AppRoutes.DASHBOARD) { MainAppScaffold(navController) }
