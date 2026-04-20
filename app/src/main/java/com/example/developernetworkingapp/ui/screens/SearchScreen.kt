@@ -31,20 +31,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.developernetworkingapp.domain.model.SearchResult
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.SearchUiState
+import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.SearchViewModel
 
 @Composable
-fun SearchRoute(padding: PaddingValues) {
+fun SearchRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: SearchViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SearchScreen(padding, state, viewModel::updateQuery)
+    SearchScreen(padding, state, viewModel::updateQuery, navController)
 }
 
 @Composable
-fun SearchScreen(padding: PaddingValues, state: SearchUiState, onQueryChange: (String) -> Unit) {
+fun SearchScreen(
+    padding: PaddingValues,
+    state: SearchUiState,
+    onQueryChange: (String) -> Unit,
+    navController: NavController
+) {
     var selectedResult by remember { mutableStateOf<SearchResult?>(null) }
 
     selectedResult?.let { result ->
@@ -54,20 +62,35 @@ fun SearchScreen(padding: PaddingValues, state: SearchUiState, onQueryChange: (S
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(result.subtitle, style = MaterialTheme.typography.bodyMedium)
-                    Text("Owner: ${result.owner}", style = MaterialTheme.typography.bodySmall)
-                    Text("Location: ${result.location}", style = MaterialTheme.typography.bodySmall)
-                    Text("Stack: ${result.stack}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                    Text("Team size: ${result.membersCount} developers", style = MaterialTheme.typography.bodySmall)
-                    Text(result.description, style = MaterialTheme.typography.bodySmall)
+                    Text("Owner: ${result.owner}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Location: ${result.location}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Stack: ${result.stack}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                    Text("Team size: ${result.membersCount} developers", style = MaterialTheme.typography.bodyMedium)
+                    Text(result.description, style = MaterialTheme.typography.bodyMedium)
                     Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         result.rolesNeeded.forEach { role ->
-                            AssistChip(onClick = {}, label = { Text(role) })
+                            AssistChip(
+                                onClick = {
+                                    navController.navigate(
+                                        AppRoutes.detailRoute(
+                                            title = role,
+                                            subtitle = "Role requirement",
+                                            description = "Role needed in ${result.title} by ${result.owner}. Review expectations, tools, and availability before joining.",
+                                            sourceRoute = AppRoutes.SEARCH
+                                        )
+                                    )
+                                },
+                                label = { Text(role) }
+                            )
                         }
                     }
                 }
             },
             confirmButton = {
-                Button(onClick = { selectedResult = null }) { Text("Join the stack") }
+                Button(onClick = {
+                    selectedResult = null
+                    navController.navigate(AppRoutes.CHAT)
+                }) { Text("Join the stack") }
             },
             dismissButton = {
                 TextButton(onClick = { selectedResult = null }) { Text("Close") }
@@ -76,9 +99,12 @@ fun SearchScreen(padding: PaddingValues, state: SearchUiState, onQueryChange: (S
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .padding(horizontal = AppDesignTokens.screenHorizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(AppDesignTokens.screenVerticalSpacing),
+        contentPadding = AppDesignTokens.screenContentPadding
     ) {
         item {
             OutlinedTextField(
@@ -93,7 +119,16 @@ fun SearchScreen(padding: PaddingValues, state: SearchUiState, onQueryChange: (S
             Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 (state.content?.filters ?: emptyList()).forEach { label ->
                     AssistChip(
-                        onClick = {},
+                        onClick = {
+                            navController.navigate(
+                                AppRoutes.detailRoute(
+                                    title = "Search Filter",
+                                    subtitle = label,
+                                    description = "Browse developers and teams filtered by $label to find relevant collaboration opportunities.",
+                                    sourceRoute = AppRoutes.SEARCH
+                                )
+                            )
+                        },
                         label = { Text(label) },
                         colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     )
@@ -104,21 +139,53 @@ fun SearchScreen(padding: PaddingValues, state: SearchUiState, onQueryChange: (S
         items(state.content?.results ?: emptyList()) { result ->
             ElevatedCard(
                 onClick = { selectedResult = result },
-                shape = RoundedCornerShape(22.dp),
+                shape = AppDesignTokens.cardLargeShape,
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.padding(AppDesignTokens.cardInnerPadding),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Text(result.title, style = MaterialTheme.typography.titleMedium)
-                    Text(result.subtitle, style = MaterialTheme.typography.bodySmall)
-                    Text(result.stack, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text(result.subtitle, style = MaterialTheme.typography.bodyMedium)
+                    Text(result.stack, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                     Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         result.rolesNeeded.forEach { role ->
-                            AssistChip(onClick = {}, label = { Text(role) })
+                            AssistChip(
+                                onClick = {
+                                    navController.navigate(
+                                        AppRoutes.detailRoute(
+                                            title = result.title,
+                                            subtitle = "Role: $role",
+                                            description = "${result.subtitle}\n\nOwner: ${result.owner}\nLocation: ${result.location}\nStack: ${result.stack}",
+                                            sourceRoute = AppRoutes.SEARCH
+                                        )
+                                    )
+                                },
+                                label = { Text(role) }
+                            )
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Button(onClick = { selectedResult = result }) { Text("View details") }
-                        TextButton(onClick = { selectedResult = result }) { Text("Join stack") }
+                        Button(onClick = {
+                            navController.navigate(
+                                AppRoutes.detailRoute(
+                                    title = result.title,
+                                    subtitle = result.subtitle,
+                                    description = "Owner: ${result.owner}\nLocation: ${result.location}\nStack: ${result.stack}\nTeam size: ${result.membersCount}\n\n${result.description}",
+                                    sourceRoute = AppRoutes.PROJECTS
+                                )
+                            )
+                        }) { Text("View details") }
+                        TextButton(onClick = {
+                            navController.navigate(
+                                AppRoutes.collaboratorProfileRoute(
+                                    name = result.owner,
+                                    stack = result.stack,
+                                    score = (result.membersCount * 7).coerceAtMost(99)
+                                )
+                            )
+                        }) { Text("View owner") }
                     }
                 }
             }

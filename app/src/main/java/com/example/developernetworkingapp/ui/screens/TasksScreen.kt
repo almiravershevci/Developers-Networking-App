@@ -28,19 +28,22 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.TasksUiState
+import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.TasksViewModel
 
 @Composable
-fun TaskManagementRoute(padding: PaddingValues) {
+fun TaskManagementRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: TasksViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    TaskManagementScreen(padding, state)
+    TaskManagementScreen(padding, state, navController)
 }
 
 @Composable
-fun TaskManagementScreen(padding: PaddingValues, state: TasksUiState) {
+fun TaskManagementScreen(padding: PaddingValues, state: TasksUiState, navController: NavController) {
     var selectedTask by remember { mutableStateOf<String?>(null) }
 
     selectedTask?.let { task ->
@@ -50,10 +53,15 @@ fun TaskManagementScreen(padding: PaddingValues, state: TasksUiState) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(task, style = MaterialTheme.typography.bodyMedium)
-                    Text("Includes assignee, due date, and linked project context.", style = MaterialTheme.typography.bodySmall)
+                    Text("Includes assignee, due date, and linked project context.", style = MaterialTheme.typography.bodyMedium)
                 }
             },
-            confirmButton = { Button(onClick = { selectedTask = null }) { Text("Open Task") } },
+            confirmButton = {
+                Button(onClick = {
+                    selectedTask = null
+                    navController.navigate(AppRoutes.PROJECTS)
+                }) { Text("Open Task") }
+            },
             dismissButton = { TextButton(onClick = { selectedTask = null }) { Text("Close") } }
         )
     }
@@ -70,26 +78,35 @@ fun TaskManagementScreen(padding: PaddingValues, state: TasksUiState) {
                 )
             )
             .padding(padding)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
+            .padding(horizontal = AppDesignTokens.screenHorizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(AppDesignTokens.screenVerticalSpacing),
+        contentPadding = AppDesignTokens.screenContentPadding
     ) {
         item { SectionTitle("Task Management") }
         items(state.content?.items ?: emptyList()) { task ->
             ElevatedCard(
                 onClick = { selectedTask = task },
-                shape = RoundedCornerShape(20.dp),
+                shape = AppDesignTokens.cardShape,
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.padding(AppDesignTokens.cardInnerPadding), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(task, style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = {}, label = { Text("In Progress") })
-                        AssistChip(onClick = {}, label = { Text("Priority") })
+                        AssistChip(onClick = { navController.navigate(AppRoutes.PROJECTS) }, label = { Text("In Progress") })
+                        AssistChip(onClick = { navController.navigate(AppRoutes.NOTIFICATIONS) }, label = { Text("Priority") })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { selectedTask = task }) { Text("View details") }
-                        TextButton(onClick = {}) { Text("Update status") }
+                        TextButton(onClick = {
+                            navController.navigate(
+                                AppRoutes.detailRoute(
+                                    title = task,
+                                    subtitle = "Task status update",
+                                    description = "Update task stage, assignee, blockers, and ETA. Status changes sync with project board and notifications.",
+                                    sourceRoute = AppRoutes.TASKS
+                                )
+                            )
+                        }) { Text("Update status") }
                     }
                 }
             }
