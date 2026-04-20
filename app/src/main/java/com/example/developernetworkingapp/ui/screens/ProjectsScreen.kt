@@ -31,21 +31,24 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
 import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.components.TaskColumn
+import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.ProjectsUiState
+import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.ProjectsViewModel
 
 @Composable
-fun ProjectBoardRoute(padding: PaddingValues) {
+fun ProjectBoardRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: ProjectsViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ProjectBoardScreen(padding, state)
+    ProjectBoardScreen(padding, state, navController)
 }
 
 @Composable
-fun ProjectBoardScreen(padding: PaddingValues, state: ProjectsUiState) {
+fun ProjectBoardScreen(padding: PaddingValues, state: ProjectsUiState, navController: NavController) {
     val content = state.content
     var selectedTask by remember { mutableStateOf<String?>(null) }
 
@@ -58,12 +61,26 @@ fun ProjectBoardScreen(padding: PaddingValues, state: ProjectsUiState) {
                     Text(task, style = MaterialTheme.typography.titleMedium)
                     Text("Status, assignee, dependencies, and sprint estimate are tracked in this task.")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = {}, label = { Text("In Sprint") })
-                        AssistChip(onClick = {}, label = { Text("Priority High") })
+                        AssistChip(onClick = { navController.navigate(AppRoutes.TASKS) }, label = { Text("In Sprint") })
+                        AssistChip(onClick = {
+                            navController.navigate(
+                                AppRoutes.detailRoute(
+                                    title = task,
+                                    subtitle = "Priority",
+                                    description = "This task is marked high priority. Track blockers, reviewer status, and delivery deadline from the task board.",
+                                    sourceRoute = AppRoutes.PROJECTS
+                                )
+                            )
+                        }, label = { Text("Priority High") })
                     }
                 }
             },
-            confirmButton = { Button(onClick = { selectedTask = null }) { Text("Open board") } },
+            confirmButton = {
+                Button(onClick = {
+                    selectedTask = null
+                    navController.navigate(AppRoutes.TASKS)
+                }) { Text("Open board") }
+            },
             dismissButton = { TextButton(onClick = { selectedTask = null }) { Text("Close") } }
         )
     }
@@ -80,27 +97,27 @@ fun ProjectBoardScreen(padding: PaddingValues, state: ProjectsUiState) {
                 )
             )
             .padding(padding)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
+            .padding(horizontal = AppDesignTokens.screenHorizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(AppDesignTokens.screenVerticalSpacing),
+        contentPadding = AppDesignTokens.screenContentPadding
     ) {
         item { SectionTitle("Project Workspace") }
         item {
             ElevatedCard(
-                shape = RoundedCornerShape(24.dp),
+                shape = AppDesignTokens.cardLargeShape,
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.padding(AppDesignTokens.cardInnerPadding), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(content?.teamName ?: "Loading team...", style = MaterialTheme.typography.titleLarge)
                     Text(content?.teamMeta ?: "Preparing board data", style = MaterialTheme.typography.bodyMedium)
                     Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = {}, label = { Text("Roadmap") }, colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)))
-                        AssistChip(onClick = {}, label = { Text("Members") })
-                        AssistChip(onClick = {}, label = { Text("Milestones") })
+                        AssistChip(onClick = { navController.navigate(AppRoutes.TASKS) }, label = { Text("Roadmap") }, colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)))
+                        AssistChip(onClick = { navController.navigate(AppRoutes.SEARCH) }, label = { Text("Members") })
+                        AssistChip(onClick = { navController.navigate(AppRoutes.NOTIFICATIONS) }, label = { Text("Milestones") })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Button(onClick = { }) { Text("Open Project") }
-                        TextButton(onClick = { }) { Text("Invite dev") }
+                        Button(onClick = { navController.navigate(AppRoutes.TASKS) }) { Text("Open Project") }
+                        TextButton(onClick = { navController.navigate(AppRoutes.SEARCH) }) { Text("Invite dev") }
                     }
                 }
             }
@@ -132,10 +149,10 @@ private fun ClickableTaskColumn(
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = AppDesignTokens.cardShape,
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             tasks.forEach { task ->
                 ElevatedCard(
@@ -145,7 +162,7 @@ private fun ClickableTaskColumn(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(10.dp),
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(task, style = MaterialTheme.typography.bodyMedium)

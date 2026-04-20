@@ -28,19 +28,22 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.EventsUiState
+import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.EventsViewModel
 
 @Composable
-fun EventFeedRoute(padding: PaddingValues) {
+fun EventFeedRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: EventsViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    EventFeedScreen(padding, state)
+    EventFeedScreen(padding, state, navController)
 }
 
 @Composable
-fun EventFeedScreen(padding: PaddingValues, state: EventsUiState) {
+fun EventFeedScreen(padding: PaddingValues, state: EventsUiState, navController: NavController) {
     var selectedEvent by remember { mutableStateOf<String?>(null) }
 
     selectedEvent?.let { event ->
@@ -52,12 +55,35 @@ fun EventFeedScreen(padding: PaddingValues, state: EventsUiState) {
                     Text(event, style = MaterialTheme.typography.titleMedium)
                     Text("Team matching, challenges, leaderboard, and mentorship channels included.")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = {}, label = { Text("Leaderboard") })
-                        AssistChip(onClick = {}, label = { Text("Challenges") })
+                        AssistChip(onClick = {
+                            navController.navigate(
+                                AppRoutes.detailRoute(
+                                    title = "$event Leaderboard",
+                                    subtitle = "Rankings",
+                                    description = "Live team rankings, score updates, and challenge completion metrics for this event.",
+                                    sourceRoute = AppRoutes.EVENTS
+                                )
+                            )
+                        }, label = { Text("Leaderboard") })
+                        AssistChip(onClick = {
+                            navController.navigate(
+                                AppRoutes.detailRoute(
+                                    title = "$event Challenges",
+                                    subtitle = "Challenge tracks",
+                                    description = "Challenge briefs, judging criteria, and submission windows for all active tracks.",
+                                    sourceRoute = AppRoutes.EVENTS
+                                )
+                            )
+                        }, label = { Text("Challenges") })
                     }
                 }
             },
-            confirmButton = { Button(onClick = { selectedEvent = null }) { Text("Join event") } },
+            confirmButton = {
+                Button(onClick = {
+                    selectedEvent = null
+                    navController.navigate(AppRoutes.CHAT)
+                }) { Text("Join event") }
+            },
             dismissButton = { TextButton(onClick = { selectedEvent = null }) { Text("Close") } }
         )
     }
@@ -74,22 +100,31 @@ fun EventFeedScreen(padding: PaddingValues, state: EventsUiState) {
                 )
             )
             .padding(padding)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
+            .padding(horizontal = AppDesignTokens.screenHorizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(AppDesignTokens.screenVerticalSpacing),
+        contentPadding = AppDesignTokens.screenContentPadding
     ) {
         item { SectionTitle("Hackathons & Events") }
         items(state.content?.items ?: emptyList()) { event ->
             ElevatedCard(
                 onClick = { selectedEvent = event },
-                shape = RoundedCornerShape(20.dp),
+                shape = AppDesignTokens.cardShape,
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.padding(AppDesignTokens.cardInnerPadding), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(event, style = MaterialTheme.typography.titleMedium)
-                    Text("Team matching by skills, location, and availability is active.", style = MaterialTheme.typography.bodySmall)
+                    Text("Team matching by skills, location, and availability is active.", style = MaterialTheme.typography.bodyMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { selectedEvent = event }) { Text("View details") }
+                        Button(onClick = {
+                            navController.navigate(
+                                AppRoutes.detailRoute(
+                                    title = event,
+                                    subtitle = "Event Overview",
+                                    description = "See timeline, challenges, mentors, participant feed, and leaderboard updates for this event.",
+                                    sourceRoute = AppRoutes.EVENTS
+                                )
+                            )
+                        }) { Text("View details") }
                         TextButton(onClick = { selectedEvent = event }) { Text("Join now") }
                     }
                 }
