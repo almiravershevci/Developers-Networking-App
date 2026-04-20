@@ -16,3 +16,11 @@ val LightBackground = Color(0xFFF4F7FF)
 val LightSurface = Color(0xFFFFFFFF)
 val LightSurfaceHigh = Color(0xFFECF1FF)
 val LightOnSurface = Color(0xFF0F172A)
+
+// Additional vibrant colors for enhanced UI
+val VibrantOrange = Color(0xFFFF6B35)
+val BrightPink = Color(0xFFFF0080)
+val ElectricGreen = Color(0xFF00FF88)
+val DeepPurple = Color(0xFF6A0DAD)
+val SunsetRed = Color(0xFFFF4500)
+val OceanBlue = Color(0xFF0077BE)

@@ -9,6 +9,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -42,11 +43,13 @@ fun MainAppScaffold(navController: NavController) {
             CenterAlignedTopAppBar(
                 title = { Text(screenTitle(route)) },
                 actions = {
-                    Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
-                        contentDescription = "Notifications",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    IconButton(onClick = { navController.navigate(AppRoutes.NOTIFICATIONS) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.NotificationsNone,
+                            contentDescription = "Notifications",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     Spacer(modifier = Modifier.width(14.dp))
                     Text(
                         text = "LIVE",
@@ -81,13 +84,13 @@ fun MainAppScaffold(navController: NavController) {
     ) { padding ->
         when (route) {
             AppRoutes.DASHBOARD -> DashboardRoute(padding, navController)
-            AppRoutes.PROJECTS -> ProjectBoardRoute(padding)
-            AppRoutes.CHAT -> ChatRoute(padding)
-            AppRoutes.SEARCH -> SearchRoute(padding)
-            AppRoutes.NOTIFICATIONS -> NotificationRoute(padding)
-            AppRoutes.PROFILE -> ProfileRoute(padding)
-            AppRoutes.TASKS -> TaskManagementRoute(padding)
-            AppRoutes.EVENTS -> EventFeedRoute(padding)
+            AppRoutes.PROJECTS -> ProjectBoardRoute(padding, navController)
+            AppRoutes.CHAT -> ChatRoute(padding, navController)
+            AppRoutes.SEARCH -> SearchRoute(padding, navController)
+            AppRoutes.NOTIFICATIONS -> NotificationRoute(padding, navController)
+            AppRoutes.PROFILE -> ProfileRoute(padding, navController)
+            AppRoutes.TASKS -> TaskManagementRoute(padding, navController)
+            AppRoutes.EVENTS -> EventFeedRoute(padding, navController)
         }
     }
 }
