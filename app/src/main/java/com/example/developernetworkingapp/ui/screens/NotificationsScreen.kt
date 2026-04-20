@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -31,18 +32,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.NotificationsUiState
+import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.NotificationsViewModel
 
 @Composable
-fun NotificationRoute(padding: PaddingValues) {
+fun NotificationRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: NotificationsViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    NotificationScreen(padding, state)
+    NotificationScreen(padding, state, navController)
 }
 
 @Composable
-fun NotificationScreen(padding: PaddingValues, state: NotificationsUiState) {
+fun NotificationScreen(padding: PaddingValues, state: NotificationsUiState, navController: NavController) {
     var selectedAlert by remember { mutableStateOf<String?>(null) }
 
     selectedAlert?.let { alert ->
@@ -53,12 +56,28 @@ fun NotificationScreen(padding: PaddingValues, state: NotificationsUiState) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(alert, style = MaterialTheme.typography.bodyMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = {}, label = { Text("Project") })
-                        AssistChip(onClick = {}, label = { Text("Unread") })
+                        AssistChip(onClick = {
+                            navController.navigate(AppRoutes.PROJECTS)
+                        }, label = { Text("Project") })
+                        AssistChip(onClick = {
+                            navController.navigate(
+                                AppRoutes.detailRoute(
+                                    title = "Unread alert",
+                                    subtitle = "Notification state",
+                                    description = "Unread alerts require your attention. Open linked thread or mark read from the alerts feed.",
+                                    sourceRoute = AppRoutes.NOTIFICATIONS
+                                )
+                            )
+                        }, label = { Text("Unread") })
                     }
                 }
             },
-            confirmButton = { Button(onClick = { selectedAlert = null }) { Text("Open item") } },
+            confirmButton = {
+                Button(onClick = {
+                    selectedAlert = null
+                    navController.navigate(AppRoutes.PROJECTS)
+                }) { Text("Open item") }
+            },
             dismissButton = { TextButton(onClick = { selectedAlert = null }) { Text("Dismiss") } }
         )
     }
@@ -75,23 +94,47 @@ fun NotificationScreen(padding: PaddingValues, state: NotificationsUiState) {
                 )
             )
             .padding(padding)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
+            .padding(horizontal = AppDesignTokens.screenHorizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(AppDesignTokens.screenVerticalSpacing),
+        contentPadding = AppDesignTokens.screenContentPadding
     ) {
         item { SectionTitle("Recent Alerts") }
         items(state.content?.items ?: emptyList()) { text ->
             ElevatedCard(
                 onClick = { selectedAlert = text },
-                shape = RoundedCornerShape(20.dp),
+                shape = AppDesignTokens.cardShape,
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.padding(AppDesignTokens.cardInnerPadding), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(text, style = MaterialTheme.typography.titleMedium)
-                    Text("Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text("Just now", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                     Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = { selectedAlert = text }, label = { Text("View details") })
-                        AssistChip(onClick = {}, label = { Text("Mark read") })
+                        AssistChip(
+                            onClick = {
+                                navController.navigate(
+                                    AppRoutes.detailRoute(
+                                        title = "Notification",
+                                        subtitle = "Recent update",
+                                        description = text,
+                                        sourceRoute = AppRoutes.NOTIFICATIONS
+                                    )
+                                )
+                            },
+                            label = { Text("View details") }
+                        )
+                        AssistChip(
+                            onClick = {
+                                navController.navigate(
+                                    AppRoutes.detailRoute(
+                                        title = "Marked as read",
+                                        subtitle = "Notification",
+                                        description = "This alert has been marked as read and moved to your notification history.",
+                                        sourceRoute = AppRoutes.NOTIFICATIONS
+                                    )
+                                )
+                            },
+                            label = { Text("Mark read") }
+                        )
                     }
                 }
             }
