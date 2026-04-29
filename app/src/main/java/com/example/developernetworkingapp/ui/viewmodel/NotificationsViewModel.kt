@@ -2,8 +2,8 @@ package com.example.developernetworkingapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.developernetworkingapp.data.repository.FakeNotificationsRepository
 import com.example.developernetworkingapp.data.repository.NotificationsRepository
+import com.example.developernetworkingapp.di.AppContainer
 import com.example.developernetworkingapp.ui.state.NotificationsUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class NotificationsViewModel(
-    private val repository: NotificationsRepository = FakeNotificationsRepository()
+    private val repository: NotificationsRepository = AppContainer.notificationsRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(NotificationsUiState())
     val uiState: StateFlow<NotificationsUiState> = _uiState.asStateFlow()

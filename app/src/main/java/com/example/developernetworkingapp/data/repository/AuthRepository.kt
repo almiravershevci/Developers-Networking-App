@@ -17,13 +17,22 @@ sealed class AuthResult {
     data class Error(val message: String) : AuthResult()
 }
 
-object AuthRepository {
-    private const val PREFS_NAME = "auth_prefs"
-    private const val KEY_REMEMBER_ME = "remember_me"
-    private const val KEY_SESSION_EMAIL = "session_email"
+interface AuthRepository {
+    val currentUser: StateFlow<AuthUser?>
+    fun login(identifier: String, password: String, rememberMe: Boolean): AuthResult
+    fun signup(name: String, username: String, email: String, password: String, rememberMe: Boolean): AuthResult
+    fun requestPasswordReset(identifier: String): AuthResult
+    fun logout()
+}
 
-    private var isInitialized = false
-    private var appContext: Context? = null
+class AuthRepositoryImpl(
+    context: Context
+) : AuthRepository {
+    private val prefsName = "auth_prefs"
+    private val keyRememberMe = "remember_me"
+    private val keySessionEmail = "session_email"
+
+    private val appContext: Context = context.applicationContext
 
     private val users = mutableListOf(
         AuthUser(
@@ -35,16 +44,13 @@ object AuthRepository {
     )
 
     private val _currentUser = MutableStateFlow<AuthUser?>(null)
-    val currentUser: StateFlow<AuthUser?> = _currentUser.asStateFlow()
+    override val currentUser: StateFlow<AuthUser?> = _currentUser.asStateFlow()
 
-    fun initialize(context: Context) {
-        if (isInitialized) return
-        appContext = context.applicationContext
-        isInitialized = true
+    init {
         restoreSession()
     }
 
-    fun login(identifier: String, password: String, rememberMe: Boolean): AuthResult {
+    override fun login(identifier: String, password: String, rememberMe: Boolean): AuthResult {
         val normalized = identifier.trim().lowercase()
         val user = users.firstOrNull {
             it.email.lowercase() == normalized || it.username.lowercase() == normalized
@@ -59,7 +65,7 @@ object AuthRepository {
         }
     }
 
-    fun signup(
+    override fun signup(
         name: String,
         username: String,
         email: String,
@@ -88,7 +94,7 @@ object AuthRepository {
         return AuthResult.Success(user)
     }
 
-    fun requestPasswordReset(identifier: String): AuthResult {
+    override fun requestPasswordReset(identifier: String): AuthResult {
         val normalized = identifier.trim().lowercase()
         if (normalized.isBlank()) {
             return AuthResult.Error("Enter your email or username first.")
@@ -99,25 +105,25 @@ object AuthRepository {
         return AuthResult.Success(user)
     }
 
-    fun logout() {
+    override fun logout() {
         _currentUser.value = null
-        appContext?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)?.edit()
-            ?.putBoolean(KEY_REMEMBER_ME, false)
-            ?.remove(KEY_SESSION_EMAIL)
-            ?.apply()
+        appContext.getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit()
+            .putBoolean(keyRememberMe, false)
+            .remove(keySessionEmail)
+            .apply()
     }
 
     private fun persistSession(email: String, rememberMe: Boolean) {
-        appContext?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)?.edit()
-            ?.putBoolean(KEY_REMEMBER_ME, rememberMe)
-            ?.putString(KEY_SESSION_EMAIL, if (rememberMe) email else null)
-            ?.apply()
+        appContext.getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit()
+            .putBoolean(keyRememberMe, rememberMe)
+            .putString(keySessionEmail, if (rememberMe) email else null)
+            .apply()
     }
 
     private fun restoreSession() {
-        val prefs = appContext?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) ?: return
-        val rememberMe = prefs.getBoolean(KEY_REMEMBER_ME, false)
-        val savedEmail = prefs.getString(KEY_SESSION_EMAIL, null)
+        val prefs = appContext.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+        val rememberMe = prefs.getBoolean(keyRememberMe, false)
+        val savedEmail = prefs.getString(keySessionEmail, null)
         if (!rememberMe || savedEmail.isNullOrBlank()) return
         val user = users.firstOrNull { it.email.equals(savedEmail, ignoreCase = true) } ?: return
         _currentUser.value = user

@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.ui.components.EnhancedCard
 import com.example.developernetworkingapp.ui.components.InteractiveButton
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
@@ -63,11 +62,27 @@ val ElectricGreen = Color(0xFF00FF7F)
 fun ProfileRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: ProfileViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ProfileScreen(padding, state, navController)
+    ProfileScreen(
+        padding = padding,
+        state = state,
+        navController = navController,
+        onLogout = {
+            viewModel.logout()
+            navController.navigate(AppRoutes.LOGIN) {
+                popUpTo(navController.graph.id) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    )
 }
 
 @Composable
-fun ProfileScreen(padding: PaddingValues, state: ProfileUiState, navController: NavController) {
+fun ProfileScreen(
+    padding: PaddingValues,
+    state: ProfileUiState,
+    navController: NavController,
+    onLogout: () -> Unit
+) {
     val content = state.content
     var showPortfolioDialog by remember { mutableStateOf(false) }
     var showInsightsDialog by remember { mutableStateOf(false) }
@@ -195,13 +210,7 @@ fun ProfileScreen(padding: PaddingValues, state: ProfileUiState, navController: 
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(onClick = { showEditProfileDialog = true }) { Text("Edit Profile") }
                         TextButton(
-                            onClick = {
-                                AuthRepository.logout()
-                                navController.navigate(AppRoutes.LOGIN) {
-                                    popUpTo(navController.graph.id) { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            }
+                            onClick = onLogout
                         ) { Text("Log out") }
                     }
                 }
@@ -340,13 +349,7 @@ fun ProfileScreen(padding: PaddingValues, state: ProfileUiState, navController: 
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Button(
-                        onClick = {
-                            AuthRepository.logout()
-                            navController.navigate(AppRoutes.LOGIN) {
-                                popUpTo(navController.graph.id) { inclusive = true }
-                                launchSingleTop = true
-                            }
-                        },
+                        onClick = onLogout,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Log out")

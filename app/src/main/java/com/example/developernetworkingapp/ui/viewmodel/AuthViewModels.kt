@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.data.repository.AuthResult
+import com.example.developernetworkingapp.di.AppContainer
 import com.example.developernetworkingapp.ui.state.LoginUiState
 import com.example.developernetworkingapp.ui.state.SignupUiState
 import kotlinx.coroutines.delay
@@ -13,7 +14,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class LoginViewModel : ViewModel() {
+class LoginViewModel(
+    private val authRepository: AuthRepository = AppContainer.authRepository
+) : ViewModel() {
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
@@ -38,7 +41,7 @@ class LoginViewModel : ViewModel() {
         _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
         viewModelScope.launch {
             delay(600)
-            when (val result = AuthRepository.login(emailOrUsername, password, state.rememberMe)) {
+            when (val result = authRepository.login(emailOrUsername, password, state.rememberMe)) {
                 is AuthResult.Success -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = null) }
                     onSuccess()
@@ -52,7 +55,7 @@ class LoginViewModel : ViewModel() {
 
     fun requestPasswordReset() {
         val identifier = _uiState.value.form.email
-        when (val result = AuthRepository.requestPasswordReset(identifier)) {
+        when (val result = authRepository.requestPasswordReset(identifier)) {
             is AuthResult.Success -> {
                 _uiState.update {
                     it.copy(
@@ -68,7 +71,9 @@ class LoginViewModel : ViewModel() {
     }
 }
 
-class SignupViewModel : ViewModel() {
+class SignupViewModel(
+    private val authRepository: AuthRepository = AppContainer.authRepository
+) : ViewModel() {
     private val _uiState = MutableStateFlow(SignupUiState())
     val uiState: StateFlow<SignupUiState> = _uiState.asStateFlow()
 
@@ -124,7 +129,7 @@ class SignupViewModel : ViewModel() {
         viewModelScope.launch {
             delay(700)
             when (
-                val result = AuthRepository.signup(
+                val result = authRepository.signup(
                     name = form.name,
                     username = form.username,
                     email = form.email,
@@ -157,4 +162,5 @@ class SignupViewModel : ViewModel() {
         val hasSymbol = password.any { !it.isLetterOrDigit() }
         return hasUpper && hasLower && hasDigit && hasSymbol
     }
+
 }

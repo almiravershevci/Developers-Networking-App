@@ -7,15 +7,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.navigation.MainAppScaffold
 import com.example.developernetworkingapp.ui.screens.AdvancedLoginScreen
@@ -23,16 +22,16 @@ import com.example.developernetworkingapp.ui.screens.AdvancedSignupScreen
 import com.example.developernetworkingapp.ui.screens.CollaboratorProfileScreen
 import com.example.developernetworkingapp.ui.screens.GenericDetailScreen
 import com.example.developernetworkingapp.ui.theme.DeveloperNetworkingAppTheme
+import com.example.developernetworkingapp.ui.viewmodel.SessionViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             DeveloperNetworkingAppTheme {
-                val context = LocalContext.current
-                AuthRepository.initialize(context)
+                val sessionViewModel: SessionViewModel = viewModel()
                 val navController = rememberNavController()
-                val currentUser by AuthRepository.currentUser.collectAsState()
+                val currentUser by sessionViewModel.currentUser.collectAsState()
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route
                 val unauthenticatedRoutes = setOf(AppRoutes.LOGIN, AppRoutes.SIGNUP)
