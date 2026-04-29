@@ -7,6 +7,7 @@ import com.example.developernetworkingapp.data.repository.AuthResult
 import com.example.developernetworkingapp.di.AppContainer
 import com.example.developernetworkingapp.ui.state.LoginUiState
 import com.example.developernetworkingapp.ui.state.SignupUiState
+import com.example.developernetworkingapp.ui.state.VerificationUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -96,7 +97,7 @@ class SignupViewModel(
         it.copy(rememberMe = value, errorMessage = null, successMessage = null)
     }
 
-    fun signup(onSuccess: () -> Unit) {
+    fun signup(onSuccess: (String) -> Unit) {
         val state = _uiState.value
         val form = state.form
 
@@ -142,10 +143,10 @@ class SignupViewModel(
                         it.copy(
                             isLoading = false,
                             errorMessage = null,
-                            successMessage = "Account created successfully. Redirecting..."
+                            successMessage = "Account created. Verify your email to continue."
                         )
                     }
-                    onSuccess()
+                    onSuccess(form.email.trim().lowercase())
                 }
                 is AuthResult.Error -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
@@ -163,4 +164,50 @@ class SignupViewModel(
         return hasUpper && hasLower && hasDigit && hasSymbol
     }
 
+}
+
+class VerificationViewModel(
+    private val authRepository: AuthRepository = AppContainer.authRepository
+) : ViewModel() {
+    private val _uiState = MutableStateFlow(VerificationUiState())
+    val uiState: StateFlow<VerificationUiState> = _uiState.asStateFlow()
+
+    fun setEmail(email: String) {
+        _uiState.update { it.copy(email = email, errorMessage = null) }
+    }
+
+    fun updateCode(value: String) {
+        _uiState.update { it.copy(code = value.filter { ch -> ch.isDigit() }.take(6), errorMessage = null) }
+    }
+
+    fun resendCode() {
+        val email = _uiState.value.email
+        when (val result = authRepository.requestEmailVerification(email)) {
+            is AuthResult.Success -> _uiState.update {
+                it.copy(infoMessage = "Verification code sent to $email. Use 123456 for demo.", errorMessage = null)
+            }
+            is AuthResult.Error -> _uiState.update { it.copy(errorMessage = result.message, infoMessage = null) }
+        }
+    }
+
+    fun verify(onSuccess: () -> Unit) {
+        val state = _uiState.value
+        if (state.code.length != 6) {
+            _uiState.update { it.copy(errorMessage = "Enter the 6-digit verification code.") }
+            return
+        }
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            delay(400)
+            when (val result = authRepository.verifyEmailCode(state.email, state.code)) {
+                is AuthResult.Success -> {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = "Email verified.") }
+                    onSuccess()
+                }
+                is AuthResult.Error -> {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                }
+            }
+        }
+    }
 }

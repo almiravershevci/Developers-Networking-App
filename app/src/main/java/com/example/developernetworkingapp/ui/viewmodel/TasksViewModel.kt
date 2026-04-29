@@ -2,6 +2,7 @@ package com.example.developernetworkingapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.developernetworkingapp.data.repository.NotificationDispatcher
 import com.example.developernetworkingapp.data.repository.TasksRepository
 import com.example.developernetworkingapp.di.AppContainer
 import com.example.developernetworkingapp.ui.state.TasksUiState
@@ -11,7 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class TasksViewModel(
-    private val repository: TasksRepository = AppContainer.tasksRepository
+    private val repository: TasksRepository = AppContainer.tasksRepository,
+    private val notificationDispatcher: NotificationDispatcher = AppContainer.notificationDispatcher
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TasksUiState())
     val uiState: StateFlow<TasksUiState> = _uiState.asStateFlow()
@@ -20,5 +22,12 @@ class TasksViewModel(
         viewModelScope.launch {
             repository.observeTasks().collect { _uiState.value = TasksUiState(it) }
         }
+    }
+
+    fun remindForTask(taskTitle: String) {
+        notificationDispatcher.showLocalNotification(
+            title = "Task reminder set",
+            message = taskTitle.take(80)
+        )
     }
 }

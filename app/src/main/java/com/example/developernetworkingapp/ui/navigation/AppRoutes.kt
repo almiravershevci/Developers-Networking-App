@@ -5,6 +5,7 @@ import android.net.Uri
 object AppRoutes {
     const val LOGIN = "login"
     const val SIGNUP = "signup"
+    const val VERIFY_EMAIL = "verify/{email}"
     const val DASHBOARD = "dashboard"
     const val PROJECTS = "projects"
     const val CHAT = "chat"
@@ -28,5 +29,9 @@ object AppRoutes {
 
     fun collaboratorProfileRoute(name: String, stack: String, score: Int): String {
         return "collaborator/${Uri.encode(name)}/${Uri.encode(stack)}/$score"
+    }
+
+    fun verifyEmailRoute(email: String): String {
+        return "verify/${Uri.encode(email)}"
     }
 }

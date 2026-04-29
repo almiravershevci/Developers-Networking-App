@@ -17,3 +17,11 @@ data class SignupUiState(
     val successMessage: String? = null,
     val rememberMe: Boolean = true
 )
+
+data class VerificationUiState(
+    val email: String = "",
+    val code: String = "",
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val infoMessage: String? = null
+)

@@ -39,11 +39,16 @@ import com.example.developernetworkingapp.ui.viewmodel.TasksViewModel
 fun TaskManagementRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: TasksViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    TaskManagementScreen(padding, state, navController)
+    TaskManagementScreen(padding, state, navController, viewModel::remindForTask)
 }
 
 @Composable
-fun TaskManagementScreen(padding: PaddingValues, state: TasksUiState, navController: NavController) {
+fun TaskManagementScreen(
+    padding: PaddingValues,
+    state: TasksUiState,
+    navController: NavController,
+    onRemindTask: (String) -> Unit
+) {
     var selectedTask by remember { mutableStateOf<String?>(null) }
 
     selectedTask?.let { task ->
@@ -97,6 +102,7 @@ fun TaskManagementScreen(padding: PaddingValues, state: TasksUiState, navControl
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { selectedTask = task }) { Text("View details") }
+                        TextButton(onClick = { onRemindTask(task) }) { Text("Remind me") }
                         TextButton(onClick = {
                             navController.navigate(
                                 AppRoutes.detailRoute(

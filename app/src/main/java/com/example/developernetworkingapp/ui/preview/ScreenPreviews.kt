@@ -207,7 +207,8 @@ fun ProfileScreenPreview() {
                         stacks = listOf("Kotlin", "Android", "React", "Node.js", "Java")
                     )
                 ),
-                navController = rememberNavController()
+                navController = rememberNavController(),
+                onLogout = {}
             )
         }
     }
@@ -279,6 +280,7 @@ fun SearchScreenPreview() {
                     )
                 ),
                 onQueryChange = {},
+                onReloadTrends = {},
                 navController = rememberNavController()
             )
         }
@@ -307,7 +309,8 @@ fun TaskManagementScreenPreview() {
                         )
                     )
                 ),
-                navController = rememberNavController()
+                navController = rememberNavController(),
+                onRemindTask = {}
             )
         }
     }

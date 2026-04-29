@@ -1,12 +1,17 @@
 package com.example.developernetworkingapp
 
+import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -20,13 +25,19 @@ import com.example.developernetworkingapp.ui.navigation.MainAppScaffold
 import com.example.developernetworkingapp.ui.screens.AdvancedLoginScreen
 import com.example.developernetworkingapp.ui.screens.AdvancedSignupScreen
 import com.example.developernetworkingapp.ui.screens.CollaboratorProfileScreen
+import com.example.developernetworkingapp.ui.screens.EmailVerificationRoute
 import com.example.developernetworkingapp.ui.screens.GenericDetailScreen
 import com.example.developernetworkingapp.ui.theme.DeveloperNetworkingAppTheme
 import com.example.developernetworkingapp.ui.viewmodel.SessionViewModel
 
 class MainActivity : ComponentActivity() {
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestNotificationPermissionIfNeeded()
         setContent {
             DeveloperNetworkingAppTheme {
                 val sessionViewModel: SessionViewModel = viewModel()
@@ -35,9 +46,10 @@ class MainActivity : ComponentActivity() {
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route
                 val unauthenticatedRoutes = setOf(AppRoutes.LOGIN, AppRoutes.SIGNUP)
+                val isVerificationRoute = currentRoute?.startsWith("verify/") == true || currentRoute == AppRoutes.VERIFY_EMAIL
 
                 LaunchedEffect(currentUser, currentRoute) {
-                    if (currentUser == null && currentRoute != null && currentRoute !in unauthenticatedRoutes) {
+                    if (currentUser == null && currentRoute != null && currentRoute !in unauthenticatedRoutes && !isVerificationRoute) {
                         navController.navigate(AppRoutes.LOGIN) {
                             popUpTo(navController.graph.id) { inclusive = true }
                             launchSingleTop = true
@@ -54,6 +66,15 @@ class MainActivity : ComponentActivity() {
                 NavHost(navController = navController, startDestination = AppRoutes.LOGIN) {
                     composable(AppRoutes.LOGIN) { AdvancedLoginScreen(navController) }
                     composable(AppRoutes.SIGNUP) { AdvancedSignupScreen(navController) }
+                    composable(
+                        route = AppRoutes.VERIFY_EMAIL,
+                        arguments = listOf(navArgument("email") { type = NavType.StringType })
+                    ) { entry ->
+                        EmailVerificationRoute(
+                            navController = navController,
+                            email = entry.arguments?.getString("email").orEmpty()
+                        )
+                    }
                     composable(AppRoutes.DASHBOARD) { MainAppScaffold(navController) }
                     composable(AppRoutes.PROJECTS) { MainAppScaffold(navController) }
                     composable(AppRoutes.CHAT) { MainAppScaffold(navController) }
@@ -100,6 +121,12 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
 }
 
 @Preview(showBackground = true)
@@ -116,6 +143,15 @@ private fun AppEntry() {
     NavHost(navController = navController, startDestination = AppRoutes.LOGIN) {
         composable(AppRoutes.LOGIN) { AdvancedLoginScreen(navController) }
         composable(AppRoutes.SIGNUP) { AdvancedSignupScreen(navController) }
+        composable(
+            route = AppRoutes.VERIFY_EMAIL,
+            arguments = listOf(navArgument("email") { type = NavType.StringType })
+        ) { entry ->
+            EmailVerificationRoute(
+                navController = navController,
+                email = entry.arguments?.getString("email").orEmpty()
+            )
+        }
         composable(AppRoutes.DASHBOARD) { MainAppScaffold(navController) }
         composable(AppRoutes.PROJECTS) { MainAppScaffold(navController) }
         composable(AppRoutes.CHAT) { MainAppScaffold(navController) }

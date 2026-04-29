@@ -43,7 +43,7 @@ import com.example.developernetworkingapp.ui.viewmodel.SearchViewModel
 fun SearchRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: SearchViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SearchScreen(padding, state, viewModel::updateQuery, navController)
+    SearchScreen(padding, state, viewModel::updateQuery, viewModel::loadTrendingTopics, navController)
 }
 
 @Composable
@@ -51,6 +51,7 @@ fun SearchScreen(
     padding: PaddingValues,
     state: SearchUiState,
     onQueryChange: (String) -> Unit,
+    onReloadTrends: () -> Unit,
     navController: NavController
 ) {
     var selectedResult by remember { mutableStateOf<SearchResult?>(null) }
@@ -115,6 +116,33 @@ fun SearchScreen(
             )
         }
         item { SectionTitle("Quick Filters") }
+        if (state.errorMessage != null) {
+            item {
+                ElevatedCard(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(state.errorMessage, color = MaterialTheme.colorScheme.onErrorContainer)
+                        TextButton(onClick = onReloadTrends) { Text("Retry live API") }
+                    }
+                }
+            }
+        }
+        if (state.trendingTopics.isNotEmpty()) {
+            item { SectionTitle("Live API Trends") }
+            item {
+                Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    state.trendingTopics.forEach { topic ->
+                        AssistChip(
+                            onClick = { onQueryChange(topic) },
+                            label = { Text(topic.take(28)) },
+                            colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                        )
+                    }
+                }
+            }
+        }
         item {
             Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 (state.content?.filters ?: emptyList()).forEach { label ->

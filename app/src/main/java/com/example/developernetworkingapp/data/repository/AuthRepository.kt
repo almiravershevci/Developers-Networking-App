@@ -9,7 +9,8 @@ data class AuthUser(
     val name: String,
     val username: String,
     val email: String,
-    val password: String
+    val password: String,
+    val isVerified: Boolean = false
 )
 
 sealed class AuthResult {
@@ -22,6 +23,8 @@ interface AuthRepository {
     fun login(identifier: String, password: String, rememberMe: Boolean): AuthResult
     fun signup(name: String, username: String, email: String, password: String, rememberMe: Boolean): AuthResult
     fun requestPasswordReset(identifier: String): AuthResult
+    fun requestEmailVerification(email: String): AuthResult
+    fun verifyEmailCode(email: String, code: String): AuthResult
     fun logout()
 }
 
@@ -39,7 +42,8 @@ class AuthRepositoryImpl(
             name = "Demo User",
             username = "demo",
             email = "demo@devconnect.app",
-            password = "Demo@123"
+            password = "Demo@123",
+            isVerified = true
         )
     )
 
@@ -57,6 +61,9 @@ class AuthRepositoryImpl(
         } ?: return AuthResult.Error("No account found for this email/username.")
 
         return if (user.password == password) {
+            if (!user.isVerified) {
+                return AuthResult.Error("Please verify your email before logging in.")
+            }
             _currentUser.value = user
             persistSession(user.email, rememberMe)
             AuthResult.Success(user)
@@ -86,11 +93,10 @@ class AuthRepositoryImpl(
             name = name.trim(),
             username = username.trim(),
             email = normalizedEmail,
-            password = password
+            password = password,
+            isVerified = false
         )
         users.add(user)
-        _currentUser.value = user
-        persistSession(user.email, rememberMe)
         return AuthResult.Success(user)
     }
 
@@ -103,6 +109,31 @@ class AuthRepositoryImpl(
             it.email.lowercase() == normalized || it.username.lowercase() == normalized
         } ?: return AuthResult.Error("No account found for that email/username.")
         return AuthResult.Success(user)
+    }
+
+    override fun requestEmailVerification(email: String): AuthResult {
+        val normalizedEmail = email.trim().lowercase()
+        val user = users.firstOrNull { it.email == normalizedEmail }
+            ?: return AuthResult.Error("No account found for this email.")
+        return if (user.isVerified) {
+            AuthResult.Error("This email is already verified.")
+        } else {
+            AuthResult.Success(user)
+        }
+    }
+
+    override fun verifyEmailCode(email: String, code: String): AuthResult {
+        val normalizedEmail = email.trim().lowercase()
+        if (code.trim() != "123456") {
+            return AuthResult.Error("Invalid verification code.")
+        }
+        val index = users.indexOfFirst { it.email == normalizedEmail }
+        if (index == -1) {
+            return AuthResult.Error("No account found for this email.")
+        }
+        val verifiedUser = users[index].copy(isVerified = true)
+        users[index] = verifiedUser
+        return AuthResult.Success(verifiedUser)
     }
 
     override fun logout() {
