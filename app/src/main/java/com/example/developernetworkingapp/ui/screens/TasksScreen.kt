@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -39,17 +40,17 @@ import com.example.developernetworkingapp.ui.viewmodel.TasksViewModel
 fun TaskManagementRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: TasksViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    TaskManagementScreen(padding, state, navController, viewModel::remindForTask)
+    TaskManagementScreen(padding, state, navController)
 }
 
 @Composable
 fun TaskManagementScreen(
     padding: PaddingValues,
     state: TasksUiState,
-    navController: NavController,
-    onRemindTask: (String) -> Unit
+    navController: NavController
 ) {
     var selectedTask by remember { mutableStateOf<String?>(null) }
+    val taskStatusOverrides = remember { mutableStateMapOf<String, String>() }
 
     selectedTask?.let { task ->
         AlertDialog(
@@ -89,37 +90,56 @@ fun TaskManagementScreen(
     ) {
         item { SectionTitle("Task Management") }
         items(state.content?.items ?: emptyList()) { task ->
+            val parsedTask = remember(task) { parseTask(task) }
+            val activeStatus = taskStatusOverrides[task] ?: parsedTask.status
+            val displayTaskText = "${parsedTask.content} - $activeStatus"
             ElevatedCard(
                 onClick = { selectedTask = task },
                 shape = AppDesignTokens.cardShape,
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
                 Column(modifier = Modifier.padding(AppDesignTokens.cardInnerPadding), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(task, style = MaterialTheme.typography.titleMedium)
+                    Text(displayTaskText, style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         AssistChip(
-                            onClick = { navController.navigate(AppRoutes.projectsRoute(taskLinkedProject(task))) },
+                            onClick = { taskStatusOverrides[task] = "In Progress" },
                             label = { Text("In Progress") }
                         )
-                        AssistChip(onClick = { navController.navigate(AppRoutes.NOTIFICATIONS) }, label = { Text("Priority") })
+                        AssistChip(
+                            onClick = { taskStatusOverrides[task] = "To Do" },
+                            label = { Text("To Do") }
+                        )
+                        AssistChip(
+                            onClick = { taskStatusOverrides[task] = "Done" },
+                            label = { Text("Done") }
+                        )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { selectedTask = task }) { Text("View details") }
-                        TextButton(onClick = { onRemindTask(task) }) { Text("Remind me") }
-                        TextButton(onClick = {
-                            navController.navigate(
-                                AppRoutes.detailRoute(
-                                    title = task,
-                                    subtitle = "Task status update",
-                                    description = "Update task stage, assignee, blockers, and ETA. Status changes sync with project board and notifications.",
-                                    sourceRoute = AppRoutes.TASKS
-                                )
-                            )
-                        }) { Text("Update status") }
                     }
                 }
             }
         }
+    }
+}
+
+private data class ParsedTask(
+    val content: String,
+    val status: String
+)
+
+private fun parseTask(rawTask: String): ParsedTask {
+    val statusOptions = setOf("In Progress", "To Do", "Done", "In Review")
+    val segments = rawTask.split(" - ")
+    if (segments.isEmpty()) return ParsedTask(content = rawTask, status = "To Do")
+    val lastSegment = segments.last()
+    return if (lastSegment in statusOptions && segments.size > 1) {
+        ParsedTask(
+            content = segments.dropLast(1).joinToString(" - "),
+            status = if (lastSegment == "In Review") "In Progress" else lastSegment
+        )
+    } else {
+        ParsedTask(content = rawTask, status = "To Do")
     }
 }
 

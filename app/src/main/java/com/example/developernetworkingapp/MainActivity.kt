@@ -24,7 +24,6 @@ import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.navigation.MainAppScaffold
 import com.example.developernetworkingapp.ui.screens.AdvancedLoginScreen
 import com.example.developernetworkingapp.ui.screens.AdvancedSignupScreen
-import com.example.developernetworkingapp.ui.screens.CollaboratorProfileScreen
 import com.example.developernetworkingapp.ui.screens.EmailVerificationRoute
 import com.example.developernetworkingapp.ui.screens.GenericDetailScreen
 import com.example.developernetworkingapp.ui.theme.DeveloperNetworkingAppTheme
@@ -109,20 +108,6 @@ class MainActivity : ComponentActivity() {
                             sourceRoute = entry.arguments?.getString("sourceRoute") ?: AppRoutes.DASHBOARD
                         )
                     }
-                    composable(
-                        route = AppRoutes.COLLABORATOR_PROFILE,
-                        arguments = listOf(
-                            navArgument("id") { type = NavType.StringType },
-                            navArgument("score") { type = NavType.IntType }
-                        )
-                    ) { entry ->
-                        CollaboratorProfileScreen(
-                            padding = androidx.compose.foundation.layout.PaddingValues(),
-                            navController = navController,
-                            collaboratorId = entry.arguments?.getString("id").orEmpty(),
-                            score = entry.arguments?.getInt("score") ?: 0
-                        )
-                    }
                 }
             }
         }
@@ -190,20 +175,6 @@ private fun AppEntry() {
                 subtitle = entry.arguments?.getString("subtitle").orEmpty(),
                 description = entry.arguments?.getString("description").orEmpty(),
                 sourceRoute = entry.arguments?.getString("sourceRoute") ?: AppRoutes.DASHBOARD
-            )
-        }
-        composable(
-            route = AppRoutes.COLLABORATOR_PROFILE,
-            arguments = listOf(
-                navArgument("id") { type = NavType.StringType },
-                navArgument("score") { type = NavType.IntType }
-            )
-        ) { entry ->
-            CollaboratorProfileScreen(
-                padding = androidx.compose.foundation.layout.PaddingValues(),
-                navController = navController,
-                collaboratorId = entry.arguments?.getString("id").orEmpty(),
-                score = entry.arguments?.getInt("score") ?: 0
             )
         }
     }

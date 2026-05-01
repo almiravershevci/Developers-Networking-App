@@ -330,8 +330,7 @@ fun TaskManagementScreenPreview() {
                         )
                     )
                 ),
-                navController = rememberNavController(),
-                onRemindTask = {}
+                navController = rememberNavController()
             )
         }
     }

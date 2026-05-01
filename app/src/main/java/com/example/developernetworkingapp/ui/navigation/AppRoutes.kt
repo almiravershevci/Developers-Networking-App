@@ -17,7 +17,6 @@ object AppRoutes {
     const val EVENTS = "events"
 
     const val DETAIL = "detail/{title}/{subtitle}/{description}/{sourceRoute}"
-    const val COLLABORATOR_PROFILE = "collaborator_profile/{id}/{score}"
 
     fun detailRoute(
         title: String,
@@ -34,16 +33,6 @@ object AppRoutes {
         } else {
             "projects?project=${Uri.encode(project)}"
         }
-    }
-
-    fun collaboratorProfileRoute(name: String, score: Int): String {
-        val id = name
-            .trim()
-            .lowercase()
-            .replace(Regex("[^a-z0-9]+"), "-")
-            .trim('-')
-            .ifBlank { "collaborator" }
-        return "collaborator_profile/$id/$score"
     }
 
     fun verifyEmailRoute(email: String): String {
