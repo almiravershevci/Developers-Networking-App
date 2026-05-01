@@ -3,6 +3,7 @@ package com.example.developernetworkingapp.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,38 +20,86 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.developernetworkingapp.domain.model.ProjectBoardContent
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
+import com.example.developernetworkingapp.ui.components.NotificationBanner
 import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.components.TaskColumn
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.ProjectsUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
+import com.example.developernetworkingapp.ui.viewmodel.ProjectsUiEvent
 import com.example.developernetworkingapp.ui.viewmodel.ProjectsViewModel
+import kotlinx.coroutines.flow.SharedFlow
 
 @Composable
-fun ProjectBoardRoute(padding: PaddingValues, navController: NavController) {
+fun ProjectBoardRoute(
+    padding: PaddingValues,
+    navController: NavController,
+    selectedProjectName: String = ""
+) {
     val viewModel: ProjectsViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ProjectBoardScreen(padding, state, navController)
+    ProjectBoardScreen(
+        padding = padding,
+        state = state,
+        navController = navController,
+        selectedProjectName = selectedProjectName,
+        events = viewModel.events,
+        onInviteDeveloper = viewModel::notifyInviteStarted
+    )
 }
 
 @Composable
-fun ProjectBoardScreen(padding: PaddingValues, state: ProjectsUiState, navController: NavController) {
-    val content = state.content
+fun ProjectBoardScreen(
+    padding: PaddingValues,
+    state: ProjectsUiState,
+    navController: NavController,
+    selectedProjectName: String,
+    events: SharedFlow<ProjectsUiEvent>,
+    onInviteDeveloper: () -> Unit
+) {
+    val content = remember(state.content, selectedProjectName) {
+        projectSpecificBoardContent(selectedProjectName, state.content)
+    }
     var selectedTask by remember { mutableStateOf<String?>(null) }
+    var activeNotification by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(events) {
+        events.collect { event ->
+            when (event) {
+                is ProjectsUiEvent.ShowNotification -> activeNotification = event.message
+            }
+        }
+    }
+
+    activeNotification?.let { message ->
+        LaunchedEffect(message) {
+            kotlinx.coroutines.delay(AppDesignTokens.notificationAutoHideMs)
+            activeNotification = null
+        }
+        NotificationBanner(message = message, onDismiss = { activeNotification = null })
+    }
 
     selectedTask?.let { task ->
         AlertDialog(
@@ -117,7 +166,10 @@ fun ProjectBoardScreen(padding: PaddingValues, state: ProjectsUiState, navContro
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(onClick = { navController.navigate(AppRoutes.TASKS) }) { Text("Open Project") }
-                        TextButton(onClick = { navController.navigate(AppRoutes.SEARCH) }) { Text("Invite dev") }
+                        TextButton(onClick = {
+                            onInviteDeveloper()
+                            navController.navigate(AppRoutes.SEARCH)
+                        }) { Text("Invite dev") }
                     }
                 }
             }
@@ -138,6 +190,58 @@ fun ProjectBoardScreen(padding: PaddingValues, state: ProjectsUiState, navContro
                 "Create sprint, review merge requests, assign members, and publish updates to followers."
             )
         }
+    }
+}
+
+private fun projectSpecificBoardContent(
+    selectedProjectName: String,
+    fallback: ProjectBoardContent?
+): ProjectBoardContent? {
+    val normalized = selectedProjectName.trim().lowercase()
+    return when {
+        normalized.isBlank() -> fallback
+        "devconnect mobile" in normalized -> ProjectBoardContent(
+            teamName = "DevConnect Mobile Workspace",
+            teamMeta = "6 active members • Android + Backend Sync • Sprint 9",
+            todo = listOf(
+                "Finalize chat thread unread indicators",
+                "Implement push permission onboarding copy",
+                "Design profile activity timeline card"
+            ),
+            inProgress = listOf(
+                "Realtime presence heartbeat reliability",
+                "In-app notification deep-link routing",
+                "Crash-free startup optimization pass"
+            ),
+            done = listOf(
+                "Authentication session persistence",
+                "Feed composer validation rules",
+                "Collaborator profile navigation flow"
+            )
+        )
+        "talent graph api" in normalized -> ProjectBoardContent(
+            teamName = "Talent Graph API Workspace",
+            teamMeta = "5 active members • Ranking Engine • Sprint 6",
+            todo = listOf(
+                "Document scoring-weight tuning guidelines",
+                "Add contract tests for match explanation field",
+                "Create rate-limit policy for public endpoints"
+            ),
+            inProgress = listOf(
+                "Endpoint latency optimization under load",
+                "Redis cache invalidation strategy",
+                "Integration tests for ranking consistency"
+            ),
+            done = listOf(
+                "Initial match scoring pipeline",
+                "Skill normalization dictionary",
+                "Base endpoint authentication middleware"
+            )
+        )
+        else -> fallback?.copy(
+            teamName = "${selectedProjectName.ifBlank { "Project" }} Workspace",
+            teamMeta = "Project-specific board • Planning + Delivery • Active sprint"
+        )
     }
 }
 

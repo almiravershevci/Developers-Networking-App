@@ -37,11 +37,13 @@ fun MainAppScaffold(navController: NavController) {
     val tabs = MockUiData.bottomTabs
     val currentRoute by navController.currentBackStackEntryAsState()
     val route = currentRoute?.destination?.route ?: AppRoutes.DASHBOARD
+    val normalizedRoute = normalizeRoute(route)
+    val selectedProjectName = currentRoute?.arguments?.getString("project").orEmpty()
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(screenTitle(route)) },
+                title = { Text(screenTitle(normalizedRoute)) },
                 actions = {
                     IconButton(onClick = { navController.navigate(AppRoutes.NOTIFICATIONS) }) {
                         Icon(
@@ -64,9 +66,9 @@ fun MainAppScaffold(navController: NavController) {
             NavigationBar {
                 tabs.forEach { tab ->
                     NavigationBarItem(
-                        selected = route == tab.route,
+                        selected = normalizedRoute == tab.route,
                         onClick = {
-                            if (route != tab.route) navController.navigate(tab.route)
+                            if (normalizedRoute != tab.route) navController.navigate(tab.route)
                         },
                         icon = { Icon(imageVector = tab.icon, contentDescription = tab.label) },
                         label = { Text(tab.label) }
@@ -82,9 +84,9 @@ fun MainAppScaffold(navController: NavController) {
             }
         }
     ) { padding ->
-        when (route) {
+        when (normalizedRoute) {
             AppRoutes.DASHBOARD -> DashboardRoute(padding, navController)
-            AppRoutes.PROJECTS -> ProjectBoardRoute(padding, navController)
+            AppRoutes.PROJECTS -> ProjectBoardRoute(padding, navController, selectedProjectName)
             AppRoutes.CHAT -> ChatRoute(padding, navController)
             AppRoutes.SEARCH -> SearchRoute(padding, navController)
             AppRoutes.NOTIFICATIONS -> NotificationRoute(padding, navController)
@@ -92,6 +94,20 @@ fun MainAppScaffold(navController: NavController) {
             AppRoutes.TASKS -> TaskManagementRoute(padding, navController)
             AppRoutes.EVENTS -> EventFeedRoute(padding, navController)
         }
+    }
+}
+
+private fun normalizeRoute(route: String): String {
+    return when {
+        route.startsWith(AppRoutes.PROJECTS) -> AppRoutes.PROJECTS
+        route.startsWith(AppRoutes.DASHBOARD) -> AppRoutes.DASHBOARD
+        route.startsWith(AppRoutes.CHAT) -> AppRoutes.CHAT
+        route.startsWith(AppRoutes.SEARCH) -> AppRoutes.SEARCH
+        route.startsWith(AppRoutes.NOTIFICATIONS) -> AppRoutes.NOTIFICATIONS
+        route.startsWith(AppRoutes.PROFILE) -> AppRoutes.PROFILE
+        route.startsWith(AppRoutes.TASKS) -> AppRoutes.TASKS
+        route.startsWith(AppRoutes.EVENTS) -> AppRoutes.EVENTS
+        else -> route
     }
 }
 

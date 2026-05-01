@@ -15,4 +15,5 @@ object AppDesignTokens {
 
     val inputSectionSpacing = 16.dp
     val compactButtonHeight = 38.dp
+    const val notificationAutoHideMs = 3500L
 }

@@ -76,7 +76,15 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(AppRoutes.DASHBOARD) { MainAppScaffold(navController) }
-                    composable(AppRoutes.PROJECTS) { MainAppScaffold(navController) }
+                    composable(
+                        route = AppRoutes.PROJECTS_WITH_PROJECT,
+                        arguments = listOf(
+                            navArgument("project") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            }
+                        )
+                    ) { MainAppScaffold(navController) }
                     composable(AppRoutes.CHAT) { MainAppScaffold(navController) }
                     composable(AppRoutes.SEARCH) { MainAppScaffold(navController) }
                     composable(AppRoutes.NOTIFICATIONS) { MainAppScaffold(navController) }
@@ -104,16 +112,14 @@ class MainActivity : ComponentActivity() {
                     composable(
                         route = AppRoutes.COLLABORATOR_PROFILE,
                         arguments = listOf(
-                            navArgument("name") { type = NavType.StringType },
-                            navArgument("stack") { type = NavType.StringType },
+                            navArgument("id") { type = NavType.StringType },
                             navArgument("score") { type = NavType.IntType }
                         )
                     ) { entry ->
                         CollaboratorProfileScreen(
                             padding = androidx.compose.foundation.layout.PaddingValues(),
                             navController = navController,
-                            name = entry.arguments?.getString("name").orEmpty(),
-                            stack = entry.arguments?.getString("stack").orEmpty(),
+                            collaboratorId = entry.arguments?.getString("id").orEmpty(),
                             score = entry.arguments?.getInt("score") ?: 0
                         )
                     }
@@ -153,7 +159,15 @@ private fun AppEntry() {
             )
         }
         composable(AppRoutes.DASHBOARD) { MainAppScaffold(navController) }
-        composable(AppRoutes.PROJECTS) { MainAppScaffold(navController) }
+        composable(
+            route = AppRoutes.PROJECTS_WITH_PROJECT,
+            arguments = listOf(
+                navArgument("project") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) { MainAppScaffold(navController) }
         composable(AppRoutes.CHAT) { MainAppScaffold(navController) }
         composable(AppRoutes.SEARCH) { MainAppScaffold(navController) }
         composable(AppRoutes.NOTIFICATIONS) { MainAppScaffold(navController) }
@@ -181,16 +195,14 @@ private fun AppEntry() {
         composable(
             route = AppRoutes.COLLABORATOR_PROFILE,
             arguments = listOf(
-                navArgument("name") { type = NavType.StringType },
-                navArgument("stack") { type = NavType.StringType },
+                navArgument("id") { type = NavType.StringType },
                 navArgument("score") { type = NavType.IntType }
             )
         ) { entry ->
             CollaboratorProfileScreen(
                 padding = androidx.compose.foundation.layout.PaddingValues(),
                 navController = navController,
-                name = entry.arguments?.getString("name").orEmpty(),
-                stack = entry.arguments?.getString("stack").orEmpty(),
+                collaboratorId = entry.arguments?.getString("id").orEmpty(),
                 score = entry.arguments?.getInt("score") ?: 0
             )
         }

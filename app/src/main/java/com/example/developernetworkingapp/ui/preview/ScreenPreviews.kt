@@ -35,6 +35,7 @@ import com.example.developernetworkingapp.ui.state.ProjectsUiState
 import com.example.developernetworkingapp.ui.state.SearchUiState
 import com.example.developernetworkingapp.ui.state.TasksUiState
 import com.example.developernetworkingapp.ui.theme.DeveloperNetworkingAppTheme
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 /**
  * Created by Eljesa on 28-Apr-26.
@@ -105,7 +106,19 @@ fun DashboardScreenPreview() {
                 padding = PaddingValues(16.dp),
                 navController = rememberNavController(),
                 state = DashboardUiState(),
-                onRefresh = {}
+                events = MutableSharedFlow(),
+                onRefresh = {},
+                onCreatePost = {},
+                onToggleLike = {},
+                onTogglePostExpanded = {},
+                onToggleComments = {},
+                onCommentDraftChange = { _, _ -> },
+                onSubmitComment = {},
+                onProjectApplicationSubmitted = {},
+                onComposerTextChange = {},
+                onComposerStackChange = {},
+                onComposerBackendNeedChange = {},
+                onComposerSpotsInputChange = {}
             )
         }
     }
@@ -153,7 +166,9 @@ fun EventFeedScreenPreview() {
                         )
                     )
                 ),
-                navController = rememberNavController()
+                navController = rememberNavController(),
+                events = MutableSharedFlow(),
+                onJoinEvent = {}
             )
         }
     }
@@ -207,7 +222,10 @@ fun ProfileScreenPreview() {
                         stacks = listOf("Kotlin", "Android", "React", "Node.js", "Java")
                     )
                 ),
+                events = MutableSharedFlow(),
                 navController = rememberNavController(),
+                onProfileSaved = {},
+                onSyncStarted = {},
                 onLogout = {}
             )
         }
@@ -244,7 +262,10 @@ fun ProjectBoardScreenPreview() {
                         )
                     )
                 ),
-                navController = rememberNavController()
+                navController = rememberNavController(),
+                selectedProjectName = "DevConnect Mobile",
+                events = MutableSharedFlow(),
+                onInviteDeveloper = {}
             )
         }
     }

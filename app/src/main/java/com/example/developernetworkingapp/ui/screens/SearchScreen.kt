@@ -209,7 +209,6 @@ fun SearchScreen(
                             navController.navigate(
                                 AppRoutes.collaboratorProfileRoute(
                                     name = result.owner,
-                                    stack = result.stack,
                                     score = (result.membersCount * 7).coerceAtMost(99)
                                 )
                             )

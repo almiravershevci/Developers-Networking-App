@@ -64,7 +64,7 @@ fun TaskManagementScreen(
             confirmButton = {
                 Button(onClick = {
                     selectedTask = null
-                    navController.navigate(AppRoutes.PROJECTS)
+                    navController.navigate(AppRoutes.projectsRoute(taskLinkedProject(task)))
                 }) { Text("Open Task") }
             },
             dismissButton = { TextButton(onClick = { selectedTask = null }) { Text("Close") } }
@@ -97,7 +97,10 @@ fun TaskManagementScreen(
                 Column(modifier = Modifier.padding(AppDesignTokens.cardInnerPadding), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(task, style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = { navController.navigate(AppRoutes.PROJECTS) }, label = { Text("In Progress") })
+                        AssistChip(
+                            onClick = { navController.navigate(AppRoutes.projectsRoute(taskLinkedProject(task))) },
+                            label = { Text("In Progress") }
+                        )
                         AssistChip(onClick = { navController.navigate(AppRoutes.NOTIFICATIONS) }, label = { Text("Priority") })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -117,5 +120,13 @@ fun TaskManagementScreen(
                 }
             }
         }
+    }
+}
+
+private fun taskLinkedProject(task: String): String {
+    val normalized = task.lowercase()
+    return when {
+        "api" in normalized || "backend" in normalized -> "Talent Graph API"
+        else -> "DevConnect Mobile"
     }
 }

@@ -2,10 +2,12 @@ package com.example.developernetworkingapp.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,35 +18,74 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.developernetworkingapp.ui.components.NotificationBanner
 import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.EventsUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
+import com.example.developernetworkingapp.ui.viewmodel.EventsUiEvent
 import com.example.developernetworkingapp.ui.viewmodel.EventsViewModel
+import kotlinx.coroutines.flow.SharedFlow
 
 @Composable
 fun EventFeedRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: EventsViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    EventFeedScreen(padding, state, navController)
+    EventFeedScreen(
+        padding = padding,
+        state = state,
+        navController = navController,
+        events = viewModel.events,
+        onJoinEvent = viewModel::notifyEventJoined
+    )
 }
 
 @Composable
-fun EventFeedScreen(padding: PaddingValues, state: EventsUiState, navController: NavController) {
+fun EventFeedScreen(
+    padding: PaddingValues,
+    state: EventsUiState,
+    navController: NavController,
+    events: SharedFlow<EventsUiEvent>,
+    onJoinEvent: (String) -> Unit
+) {
     var selectedEvent by remember { mutableStateOf<String?>(null) }
+    var activeNotification by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(events) {
+        events.collect { event ->
+            when (event) {
+                is EventsUiEvent.ShowNotification -> activeNotification = event.message
+            }
+        }
+    }
+
+    activeNotification?.let { message ->
+        LaunchedEffect(message) {
+            kotlinx.coroutines.delay(AppDesignTokens.notificationAutoHideMs)
+            activeNotification = null
+        }
+        NotificationBanner(message = message, onDismiss = { activeNotification = null })
+    }
 
     selectedEvent?.let { event ->
         AlertDialog(
@@ -80,6 +121,7 @@ fun EventFeedScreen(padding: PaddingValues, state: EventsUiState, navController:
             },
             confirmButton = {
                 Button(onClick = {
+                    onJoinEvent(event)
                     selectedEvent = null
                     navController.navigate(AppRoutes.CHAT)
                 }) { Text("Join event") }
@@ -120,7 +162,7 @@ fun EventFeedScreen(padding: PaddingValues, state: EventsUiState, navController:
                                 AppRoutes.detailRoute(
                                     title = event,
                                     subtitle = "Event Overview",
-                                    description = "See timeline, challenges, mentors, participant feed, and leaderboard updates for this event.",
+                                    description = "Complete event brief:\n• Full timeline and submission windows\n• Challenge tracks with judging criteria\n• Mentor office hours and team matching notes\n• Participant activity and leaderboard trends\n• Recommended preparation checklist before joining\n\nUse this page as the single source of truth for planning and execution during the event.",
                                     sourceRoute = AppRoutes.EVENTS
                                 )
                             )

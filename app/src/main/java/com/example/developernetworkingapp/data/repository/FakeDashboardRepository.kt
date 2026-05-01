@@ -28,8 +28,7 @@ class FakeDashboardRepository : DashboardRepository {
                 modules = listOf(
                     FeatureModule("Team Matching", "AI-suggested devs by stack and availability"),
                     FeatureModule("Smart Tasks", "Auto-prioritized sprint board"),
-                    FeatureModule("Live Events", "Hackathon feed and scoreboards"),
-                    FeatureModule("Portfolio Sync", "GitHub + GitLab insights")
+                    FeatureModule("Live Events", "Hackathon feed and scoreboards")
                 ),
                 matches = listOf(
                     CollaboratorMatch("Mina", "Android + Firebase", 95),

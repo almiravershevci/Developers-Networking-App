@@ -48,8 +48,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,18 +66,20 @@ import androidx.navigation.NavController
 import com.example.developernetworkingapp.domain.model.ActivityItem
 import com.example.developernetworkingapp.domain.model.CollaboratorMatch
 import com.example.developernetworkingapp.domain.model.EventHighlight
-import com.example.developernetworkingapp.domain.model.NewsHighlight
-import com.example.developernetworkingapp.domain.model.ProjectPost
+import com.example.developernetworkingapp.ui.state.FeedPostState
 import com.example.developernetworkingapp.ui.components.GradientHeroCard
+import com.example.developernetworkingapp.ui.components.NotificationBanner
 import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.data.ShortcutItem
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.DashboardUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
+import com.example.developernetworkingapp.ui.viewmodel.DashboardUiEvent
 import com.example.developernetworkingapp.ui.viewmodel.DashboardViewModel
 import com.example.developernetworkingapp.ui.theme.VibrantOrange
 import com.example.developernetworkingapp.ui.theme.ElectricCyan
 import com.example.developernetworkingapp.ui.theme.ElectricGreen
+import kotlinx.coroutines.flow.SharedFlow
 import kotlin.math.absoluteValue
 
 @Composable
@@ -93,7 +94,19 @@ fun DashboardRoute(
         padding = padding,
         navController = navController,
         state = state,
-        onRefresh = viewModel::loadDashboard
+        events = viewModel.events,
+        onRefresh = viewModel::refreshFeed,
+        onCreatePost = viewModel::submitComposerPost,
+        onToggleLike = viewModel::togglePostLike,
+        onTogglePostExpanded = viewModel::togglePostExpanded,
+        onToggleComments = viewModel::toggleCommentsVisibility,
+        onCommentDraftChange = viewModel::updateCommentDraft,
+        onSubmitComment = viewModel::submitComment,
+        onProjectApplicationSubmitted = viewModel::notifyProjectApplicationSubmitted,
+        onComposerTextChange = viewModel::updateComposerText,
+        onComposerStackChange = viewModel::updateComposerStack,
+        onComposerBackendNeedChange = viewModel::updateComposerBackendNeed,
+        onComposerSpotsInputChange = viewModel::updateComposerSpotsInput
     )
 }
 
@@ -102,22 +115,26 @@ fun DashboardScreen(
     padding: PaddingValues,
     navController: NavController,
     state: DashboardUiState,
-    onRefresh: () -> Unit
+    events: SharedFlow<DashboardUiEvent>,
+    onRefresh: () -> Unit,
+    onCreatePost: () -> Unit,
+    onToggleLike: (String) -> Unit,
+    onTogglePostExpanded: (String) -> Unit,
+    onToggleComments: (String) -> Unit,
+    onCommentDraftChange: (String, String) -> Unit,
+    onSubmitComment: (String) -> Unit,
+    onProjectApplicationSubmitted: () -> Unit,
+    onComposerTextChange: (String) -> Unit,
+    onComposerStackChange: (String) -> Unit,
+    onComposerBackendNeedChange: (String) -> Unit,
+    onComposerSpotsInputChange: (String) -> Unit
 ) {
     val content = state.content
-    val posts = remember(content?.projectPosts) {
-        mutableStateListOf(*(content?.projectPosts ?: emptyList()).toTypedArray())
-    }
-    var composerText by rememberSaveable { mutableStateOf("") }
-    var composerStack by rememberSaveable { mutableStateOf("") }
-    var composerBackendNeed by rememberSaveable { mutableStateOf("") }
-    var composerSpotsInput by rememberSaveable { mutableStateOf("3") }
     var showInviteDialog by rememberSaveable { mutableStateOf(false) }
     var selectedCollaborator by remember { mutableStateOf<CollaboratorMatch?>(null) }
     var showJoinProjectDialog by rememberSaveable { mutableStateOf(false) }
     var selectedProject by remember { mutableStateOf<String?>(null) }
-    var notificationMessage by rememberSaveable { mutableStateOf("") }
-    var showNotification by rememberSaveable { mutableStateOf(false) }
+    var activeNotification by rememberSaveable { mutableStateOf<String?>(null) }
     val shortcuts = listOf(
         ShortcutItem("Task Board", AppRoutes.TASKS, Icons.Outlined.Task),
         ShortcutItem("Live Events", AppRoutes.EVENTS, Icons.Outlined.Event),
@@ -125,45 +142,26 @@ fun DashboardScreen(
         ShortcutItem("Advanced Search", AppRoutes.SEARCH, Icons.Outlined.Task)
     )
 
-    // Notification Display
-    if (showNotification) {
-        LaunchedEffect(showNotification) {
-            kotlinx.coroutines.delay(4000)
-            showNotification = false
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = ElectricGreen.copy(alpha = 0.9f),
-                tonalElevation = 8.dp,
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        notificationMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = { showNotification = false }) {
-                        Text("✕", color = Color.White, fontSize = 16.sp)
-                    }
-                }
+    LaunchedEffect(events) {
+        events.collect { event ->
+            when (event) {
+                is DashboardUiEvent.ShowNotification -> activeNotification = event.message
             }
         }
+    }
+
+    // Notification Display
+    activeNotification?.let { notificationMessage ->
+        LaunchedEffect(notificationMessage) {
+            kotlinx.coroutines.delay(AppDesignTokens.notificationAutoHideMs)
+            activeNotification = null
+        }
+        NotificationBanner(
+            message = notificationMessage,
+            onDismiss = { activeNotification = null },
+            containerColor = ElectricGreen.copy(alpha = 0.9f),
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 
     if (showInviteDialog && selectedCollaborator != null) {
@@ -177,10 +175,7 @@ fun DashboardScreen(
         JoinProjectTeamDialog(
             projectTitle = selectedProject!!,
             onDismissRequest = { showJoinProjectDialog = false; selectedProject = null },
-            onSubmit = {
-                notificationMessage = "✓ Application submitted! We'll notify you when the project owner reviews your request."
-                showNotification = true
-            }
+            onSubmit = onProjectApplicationSubmitted
         )
     }
 
@@ -233,11 +228,7 @@ fun DashboardScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
-                    Button(onClick = {
-                        onRefresh()
-                        notificationMessage = "Feed refreshed with latest activity."
-                        showNotification = true
-                    }) {
+                    Button(onClick = onRefresh) {
                         Icon(Icons.Outlined.Add, contentDescription = "Post project")
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Refresh Feed")
@@ -266,53 +257,34 @@ fun DashboardScreen(
         item { SectionTitle("Post Something New") }
         item {
             FeedComposerCard(
-                composerText = composerText,
-                onComposerTextChange = { composerText = it },
-                stack = composerStack,
-                onStackChange = { composerStack = it },
-                backendStackNeed = composerBackendNeed,
-                onBackendStackNeedChange = { composerBackendNeed = it },
-                spotsInput = composerSpotsInput,
-                onSpotsInputChange = { composerSpotsInput = it.filter { ch -> ch.isDigit() }.take(2) },
-                onPostProject = {
-                    if (composerText.isBlank()) {
-                        notificationMessage = "Add a short project update before posting."
-                        showNotification = true
-                    } else {
-                        val spots = composerSpotsInput.toIntOrNull()?.coerceIn(1, 20) ?: 3
-                        val backendNeed = composerBackendNeed.takeIf { it.isNotBlank() } ?: "Backend (any stack)"
-                        posts.add(
-                            0,
-                            ProjectPost(
-                                title = composerText.take(48),
-                                stack = composerStack.ifBlank { "General Stack" },
-                                description = composerText,
-                                owner = "You",
-                                openRoles = listOf("Mobile", backendNeed, "UI/UX"),
-                                spotsLeft = spots
-                            )
-                        )
-                        composerText = ""
-                        composerStack = ""
-                        composerBackendNeed = ""
-                        composerSpotsInput = "3"
-                        notificationMessage = "Project update posted to your feed."
-                        showNotification = true
-                    }
-                }
+                composerText = state.composerText,
+                onComposerTextChange = onComposerTextChange,
+                stack = state.composerStack,
+                onStackChange = onComposerStackChange,
+                backendStackNeed = state.composerBackendNeed,
+                onBackendStackNeedChange = onComposerBackendNeedChange,
+                spotsInput = state.composerSpotsInput,
+                onSpotsInputChange = onComposerSpotsInputChange,
+                onPostProject = onCreatePost
             )
         }
         item { SectionTitle("Developer Project Feed") }
-        items(posts) { post ->
-            ProjectPostCard(post = post)
+        items(state.feedPosts, key = { it.id }) { postState ->
+            ProjectPostCard(
+                postState = postState,
+                onToggleLike = { onToggleLike(postState.id) },
+                onToggleComments = { onToggleComments(postState.id) },
+                onToggleExpanded = { onTogglePostExpanded(postState.id) },
+                onCommentDraftChange = { onCommentDraftChange(postState.id, it) },
+                onSubmitComment = { onSubmitComment(postState.id) }
+            )
         }
         item { SectionTitle("Feature Modules") }
         items(content?.modules ?: emptyList()) { module ->
             InteractiveGradientCard(
                 title = module.title,
                 subtitle = module.subtitle,
-                onPrimaryClick = { navController.navigate(modulePrimaryRoute(module.title)) },
-                onSecondaryClick = { navController.navigate(moduleSecondaryRoute(module.title)) }
+                onLearnMoreClick = { navController.navigate(moduleLearnMoreRoute(module.title, module.subtitle)) }
             )
         }
         item { SectionTitle("Suggested Collaborators") }
@@ -324,7 +296,6 @@ fun DashboardScreen(
                     navController.navigate(
                         AppRoutes.collaboratorProfileRoute(
                             name = match.name,
-                            stack = match.stack,
                             score = match.matchScore
                         )
                     )
@@ -341,7 +312,16 @@ fun DashboardScreen(
                 project.title,
                 project.description,
                 project.progress,
-                onViewClick = { navController.navigate(AppRoutes.PROJECTS) },
+                onViewClick = {
+                    navController.navigate(
+                        AppRoutes.detailRoute(
+                            title = project.title,
+                            subtitle = "Project Progress: ${project.progress}%",
+                            description = projectDetailsDescription(project.title, project.description, project.progress),
+                            sourceRoute = AppRoutes.PROJECTS
+                        )
+                    )
+                },
                 onJoinClick = {
                     selectedProject = project.title
                     showJoinProjectDialog = true
@@ -358,12 +338,6 @@ fun DashboardScreen(
         items(content?.events ?: emptyList()) { event ->
             EventCard(event) {
                 navController.navigate(AppRoutes.EVENTS)
-            }
-        }
-        item { SectionTitle("Tech News Feed") }
-        items(content?.news ?: emptyList()) { news ->
-            NewsCard(news) {
-                navController.navigate(AppRoutes.SEARCH)
             }
         }
     }
@@ -540,17 +514,18 @@ private fun FeedComposerCard(
 }
 
 @Composable
-private fun ProjectPostCard(post: ProjectPost) {
-    var isExpanded by remember { mutableStateOf(false) }
+private fun ProjectPostCard(
+    postState: FeedPostState,
+    onToggleLike: () -> Unit,
+    onToggleComments: () -> Unit,
+    onToggleExpanded: () -> Unit,
+    onCommentDraftChange: (String) -> Unit,
+    onSubmitComment: () -> Unit
+) {
+    val post = postState.post
     val baseLikes = remember(post.title) { (post.title.hashCode().absoluteValue % 120) + 4 }
-    val baseComments = remember(post.title) { (post.owner.hashCode().absoluteValue % 24) + 1 }
-    var hasLiked by remember { mutableStateOf(false) }
-    var hasCommented by remember { mutableStateOf(false) }
     var hasJoined by remember { mutableStateOf(false) }
     var hasMessaged by remember { mutableStateOf(false) }
-    var showCommentComposer by remember { mutableStateOf(false) }
-    var commentDraft by rememberSaveable(post.title) { mutableStateOf("") }
-    var submittedComment by rememberSaveable(post.title) { mutableStateOf("") }
     var showJoinForm by remember { mutableStateOf(false) }
     var showMessageForm by remember { mutableStateOf(false) }
 
@@ -630,7 +605,7 @@ private fun ProjectPostCard(post: ProjectPost) {
                 maxLines = 2
             )
 
-            if (isExpanded) {
+            if (postState.isExpanded) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
@@ -645,43 +620,44 @@ private fun ProjectPostCard(post: ProjectPost) {
                 }
             }
 
-            if (showCommentComposer && !hasCommented) {
+            if (postState.isCommentsVisible) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("Comments", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        postState.comments.forEach { comment ->
+                            Text(comment, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = commentDraft,
-                    onValueChange = { commentDraft = it },
+                    value = postState.commentDraft,
+                    onValueChange = onCommentDraftChange,
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Add your comment") },
-                    maxLines = 3,
-                    supportingText = { Text("Each user can comment once per post in this demo") }
+                    maxLines = 3
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Button(
-                    onClick = {
-                        if (commentDraft.isNotBlank()) {
-                            submittedComment = commentDraft
-                            commentDraft = ""
-                            hasCommented = true
-                            showCommentComposer = false
-                        }
-                    },
-                    enabled = commentDraft.isNotBlank(),
+                    onClick = onSubmitComment,
+                    enabled = postState.commentDraft.isNotBlank(),
                     modifier = Modifier.align(Alignment.End)
                 ) {
                     Text("Post Comment")
                 }
-            }
-
-            if (submittedComment.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
+                if (postState.comments.any { it.startsWith("You:") }) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Your comment: $submittedComment",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.bodySmall
+                        "Your latest comments appear under the public thread.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -695,21 +671,26 @@ private fun ProjectPostCard(post: ProjectPost) {
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
-                        onClick = { hasLiked = true },
-                        enabled = !hasLiked,
+                        onClick = onToggleLike,
                         modifier = Modifier.height(AppDesignTokens.compactButtonHeight)
                     ) {
-                        Text("👍 ${baseLikes + if (hasLiked) 1 else 0}", style = MaterialTheme.typography.labelMedium)
+                        Text("👍 ${baseLikes + if (postState.hasLiked) 1 else 0}", style = MaterialTheme.typography.labelMedium)
                     }
                     TextButton(
-                        onClick = { showCommentComposer = true },
-                        enabled = !hasCommented,
+                        onClick = onToggleComments,
                         modifier = Modifier.height(AppDesignTokens.compactButtonHeight)
                     ) {
-                        Text("💬 ${baseComments + if (hasCommented) 1 else 0}", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            if (postState.isCommentsVisible) {
+                                "Hide comments (${postState.comments.size})"
+                            } else {
+                                "Comments (${postState.comments.size})"
+                            },
+                            style = MaterialTheme.typography.labelMedium
+                        )
                     }
-                    TextButton(onClick = { isExpanded = !isExpanded }, modifier = Modifier.height(AppDesignTokens.compactButtonHeight)) {
-                        Text(if (isExpanded) "Less" else "More", style = MaterialTheme.typography.labelMedium)
+                    TextButton(onClick = onToggleExpanded, modifier = Modifier.height(AppDesignTokens.compactButtonHeight)) {
+                        Text(if (postState.isExpanded) "Less" else "More", style = MaterialTheme.typography.labelMedium)
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -737,8 +718,7 @@ private fun ProjectPostCard(post: ProjectPost) {
 private fun InteractiveGradientCard(
     title: String,
     subtitle: String,
-    onPrimaryClick: () -> Unit,
-    onSecondaryClick: () -> Unit
+    onLearnMoreClick: () -> Unit
 ) {
     val estimatedTasks = remember(title) { (title.hashCode().absoluteValue % 9) + 3 }
     val activeContributors = remember(subtitle) { (subtitle.hashCode().absoluteValue % 6) + 2 }
@@ -747,7 +727,7 @@ private fun InteractiveGradientCard(
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .padding(vertical = 4.dp),
         shape = AppDesignTokens.cardLargeShape,
         colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent)
     ) {
@@ -786,14 +766,14 @@ private fun InteractiveGradientCard(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     AssistChip(
-                        onClick = onPrimaryClick,
+                        onClick = {},
                         label = { Text("$activeContributors active") },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
                         )
                     )
                     AssistChip(
-                        onClick = onSecondaryClick,
+                        onClick = {},
                         label = { Text("$estimatedTasks tasks") },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
@@ -820,31 +800,10 @@ private fun InteractiveGradientCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.74f)
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .fillMaxWidth()
-                ) {
-                    Button(
-                        onClick = onPrimaryClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(AppDesignTokens.compactButtonHeight),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Explore", fontSize = 12.sp)
-                    }
-                    TextButton(
-                        onClick = onSecondaryClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(AppDesignTokens.compactButtonHeight)
-                    ) {
-                        Text("Learn More", style = MaterialTheme.typography.labelMedium)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
-                    }
+                TextButton(onClick = onLearnMoreClick, modifier = Modifier.padding(top = 2.dp)) {
+                    Text("Learn More", style = MaterialTheme.typography.labelLarge, textDecoration = TextDecoration.Underline)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                 }
             }
         }
@@ -867,8 +826,10 @@ private fun MatchCard(
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(subtitle, style = MaterialTheme.typography.bodyMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onViewClick) { Text("View profile") }
-                TextButton(onClick = onInviteClick) { Text("Invite") }
+                TextButton(onClick = onViewClick) {
+                    Text("View profile", textDecoration = TextDecoration.Underline)
+                }
+                Button(onClick = onInviteClick) { Text("Invite") }
             }
         }
     }
@@ -916,40 +877,34 @@ private fun EventCard(event: EventHighlight, onViewClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun NewsCard(news: NewsHighlight, onViewClick: () -> Unit) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = AppDesignTokens.cardShape,
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(news.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(news.source, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-            TextButton(onClick = onViewClick) { Text("Read more", style = MaterialTheme.typography.labelLarge) }
-        }
+private fun moduleLearnMoreRoute(moduleTitle: String, moduleSubtitle: String): String {
+    val normalized = moduleTitle.lowercase()
+    val detailDescription = when {
+        "team" in normalized || "matching" in normalized ->
+            "Team Matching analyzes stack fit, timezone overlap, delivery pace, and collaboration history to suggest reliable partners.\n\nWhat you get:\n• Ranked collaborator shortlist by role and availability\n• Confidence score with reasons (skills, overlap, past delivery)\n• Suggested intro message templates and follow-up reminders\n\nExample:\nA mobile project needing Firebase + Kotlin can instantly identify backend-friendly Android collaborators, compare match strength, and invite top candidates in one step."
+        "task" in normalized ->
+            "Smart Tasks clusters backlog items by urgency and dependency, then recommends sprint ordering.\n\nWhat you get:\n• Auto-priority queue (critical, high, normal)\n• Blocker and dependency visibility before sprint planning\n• Ownership gaps and delivery risk alerts\n\nExample:\nIf API integration depends on auth completion, Smart Tasks flags sequence risks and proposes a safer execution order."
+        "event" in normalized ->
+            "Live Events centralizes hackathons, meetups, and coding jams with countdowns, participant trends, and team registration actions.\n\nWhat you get:\n• Event timeline and challenge tracks\n• Mentor availability and team formation cues\n• Participation trends and leaderboard snapshots\n\nExample:\nBefore joining a weekend hackathon, you can evaluate active tracks, team needs, and skill fit to pick the best challenge quickly."
+        else ->
+            "$moduleSubtitle.\n\nThis module includes dedicated workflows, progress indicators, collaboration touchpoints, and execution examples to help teams move from discovery to delivery with fewer blockers."
     }
+    return AppRoutes.detailRoute(
+        title = moduleTitle,
+        subtitle = "Module Deep Dive",
+        description = detailDescription,
+        sourceRoute = AppRoutes.DASHBOARD
+    )
 }
 
-private fun modulePrimaryRoute(moduleTitle: String): String {
-    val normalized = moduleTitle.lowercase()
-    return when {
-        "team" in normalized || "matching" in normalized -> AppRoutes.SEARCH
-        "task" in normalized -> AppRoutes.TASKS
-        "event" in normalized -> AppRoutes.EVENTS
-        "portfolio" in normalized || "sync" in normalized -> AppRoutes.PROFILE
-        else -> AppRoutes.PROJECTS
-    }
-}
-
-private fun moduleSecondaryRoute(moduleTitle: String): String {
-    val normalized = moduleTitle.lowercase()
-    return when {
-        "team" in normalized || "matching" in normalized -> AppRoutes.CHAT
-        "task" in normalized -> AppRoutes.PROJECTS
-        "event" in normalized -> AppRoutes.NOTIFICATIONS
-        "portfolio" in normalized || "sync" in normalized -> AppRoutes.PROFILE
-        else -> AppRoutes.DASHBOARD
+private fun projectDetailsDescription(title: String, summary: String, progress: Int): String {
+    return when (title.lowercase()) {
+        "devconnect mobile" ->
+            "DevConnect Mobile focuses on realtime team communication, in-app notifications, and collaboration feed updates for Android.\n\nStatus:\n• Current progress: $progress%\n• Sprint focus: chat threading, push reliability, beta onboarding\n• Team: Android, backend integration, QA automation\n\nDeliverables:\n• Stable realtime messaging\n• Event-driven notification center\n• Collaboration timeline and role-based updates\n\nOverview: $summary"
+        "talent graph api" ->
+            "Talent Graph API powers collaborator matching by ranking skills, availability, and collaboration outcomes.\n\nStatus:\n• Current progress: $progress%\n• Sprint focus: latency optimization, caching, integration test coverage\n• Team: backend, data modeling, API quality\n\nDeliverables:\n• Accurate match scoring endpoint\n• Fast search/filter response under load\n• Stable ranking rules with test visibility\n\nOverview: $summary"
+        else ->
+            "$summary\n\nCurrent progress: $progress%.\nThis project detail tracks scope, sprint milestones, role ownership, blockers, and release readiness checks."
     }
 }
 
