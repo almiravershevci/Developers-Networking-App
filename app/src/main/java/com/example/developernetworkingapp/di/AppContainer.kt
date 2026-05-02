@@ -3,8 +3,11 @@ package com.example.developernetworkingapp.di
 import android.content.Context
 import com.example.developernetworkingapp.data.remote.TechTrendsApi
 import com.example.developernetworkingapp.data.repository.ApiTechTrendsRepository
+import com.example.developernetworkingapp.data.repository.AdminRepository
 import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.data.repository.AuthRepositoryImpl
+import com.example.developernetworkingapp.data.repository.InMemoryAdminRepository
+import com.example.developernetworkingapp.data.local.ChatMuteStore
 import com.example.developernetworkingapp.data.repository.ChatRepository
 import com.example.developernetworkingapp.data.repository.DashboardRepository
 import com.example.developernetworkingapp.data.repository.EventsRepository
@@ -33,6 +36,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 object AppContainer {
     private lateinit var authRepo: AuthRepository
     private lateinit var notificationDispatcherImpl: NotificationDispatcher
+    private lateinit var chatMuteStoreImpl: ChatMuteStore
     val authRepository: AuthRepository
         get() = authRepo
     val notificationDispatcher: NotificationDispatcher
@@ -43,10 +47,13 @@ object AppContainer {
     val tasksRepository: TasksRepository by lazy { FakeTasksRepository() }
     val eventsRepository: EventsRepository by lazy { FakeEventsRepository() }
     val chatRepository: ChatRepository by lazy { FakeChatRepository() }
+    val chatMuteStore: ChatMuteStore
+        get() = chatMuteStoreImpl
     val searchRepository: SearchRepository by lazy { FakeSearchRepository() }
     val notificationsRepository: NotificationsRepository by lazy { FakeNotificationsRepository() }
     val profileRepository: ProfileRepository by lazy { FakeProfileRepository() }
     val techTrendsRepository: TechTrendsRepository by lazy { ApiTechTrendsRepository(techTrendsApi) }
+    val adminRepository: AdminRepository by lazy { InMemoryAdminRepository() }
 
     private val techTrendsApi: TechTrendsApi by lazy {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
@@ -63,6 +70,7 @@ object AppContainer {
         if (!::authRepo.isInitialized) {
             authRepo = AuthRepositoryImpl(context)
             notificationDispatcherImpl = LocalNotificationDispatcher(context)
+            chatMuteStoreImpl = ChatMuteStore(context)
             NotificationChannels.ensureCreated(context)
         }
     }

@@ -5,12 +5,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+enum class UserRole {
+    USER,
+    ADMIN
+}
+
 data class AuthUser(
     val name: String,
     val username: String,
     val email: String,
     val password: String,
-    val isVerified: Boolean = false
+    val isVerified: Boolean = false,
+    val role: UserRole = UserRole.USER
 )
 
 sealed class AuthResult {
@@ -43,7 +49,16 @@ class AuthRepositoryImpl(
             username = "demo",
             email = "demo@devconnect.app",
             password = "Demo@123",
-            isVerified = true
+            isVerified = true,
+            role = UserRole.USER
+        ),
+        AuthUser(
+            name = "Admin",
+            username = "admin",
+            email = "admin@devconnect.app",
+            password = "Admin@123",
+            isVerified = true,
+            role = UserRole.ADMIN
         )
     )
 
@@ -94,7 +109,8 @@ class AuthRepositoryImpl(
             username = username.trim(),
             email = normalizedEmail,
             password = password,
-            isVerified = false
+            isVerified = false,
+            role = UserRole.USER
         )
         users.add(user)
         return AuthResult.Success(user)

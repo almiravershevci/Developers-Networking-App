@@ -85,26 +85,28 @@ fun GenericDetailScreen(
                 }
             }
         }
-        item {
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+        if (sourceRoute == AppRoutes.PROJECTS) {
+            item {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
                 ) {
-                    Text(
-                        "Need task-level board for this project?",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Button(
-                        onClick = { navController.navigate(AppRoutes.projectsRoute(title)) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Open Project Workspace") }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            "Need task-level board for this project?",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Button(
+                            onClick = { navController.navigate(AppRoutes.projectsRoute(title)) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Open Project Workspace") }
+                    }
                 }
             }
         }

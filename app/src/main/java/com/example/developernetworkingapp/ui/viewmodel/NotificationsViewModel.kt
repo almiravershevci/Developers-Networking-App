@@ -21,4 +21,8 @@ class NotificationsViewModel(
             repository.observeNotifications().collect { _uiState.value = NotificationsUiState(it) }
         }
     }
+
+    fun markAsRead(notificationId: String) {
+        repository.markAsRead(notificationId)
+    }
 }

@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.developernetworkingapp.domain.model.ChatContent
 import com.example.developernetworkingapp.domain.model.EventContent
 import com.example.developernetworkingapp.domain.model.NotificationContent
+import com.example.developernetworkingapp.domain.model.NotificationItem
 import com.example.developernetworkingapp.domain.model.ProfileContent
 import com.example.developernetworkingapp.domain.model.ProjectBoardContent
 import com.example.developernetworkingapp.domain.model.SearchContent
@@ -85,9 +86,11 @@ fun ChatScreenPreview() {
                             "Testing Updates"
                         ),
                         composerHint = "Type a message..."
-                    )
+                    ),
+                    mutedConversations = setOf("Design Feedback")
                 ),
-                navController = rememberNavController()
+                navController = rememberNavController(),
+                onToggleMute = {}
             )
         }
     }
@@ -188,14 +191,15 @@ fun NotificationScreenPreview() {
                 state = NotificationsUiState(
                     content = NotificationContent(
                         items = listOf(
-                            "You were invited to Mobile App Project",
-                            "Eljesa liked your project post",
-                            "New message from Eljesa in Chat Hub",
-                            "Reminder: Project deadline in 2 days"
+                            NotificationItem("p1", "You were invited to Mobile App Project", read = false),
+                            NotificationItem("p2", "Eljesa liked your project post", read = true),
+                            NotificationItem("p3", "New message from Eljesa in Chat Hub", read = false),
+                            NotificationItem("p4", "Reminder: Project deadline in 2 days", read = false)
                         )
                     )
                 ),
-                navController = rememberNavController()
+                navController = rememberNavController(),
+                onMarkRead = {}
             )
         }
     }
@@ -224,6 +228,7 @@ fun ProfileScreenPreview() {
                 ),
                 events = MutableSharedFlow(),
                 navController = rememberNavController(),
+                isAdmin = false,
                 onProfileSaved = {},
                 onSyncStarted = {},
                 onLogout = {}
@@ -330,8 +335,7 @@ fun TaskManagementScreenPreview() {
                         )
                     )
                 ),
-                navController = rememberNavController(),
-                onRemindTask = {}
+                navController = rememberNavController()
             )
         }
     }

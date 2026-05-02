@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,7 +45,6 @@ import com.example.developernetworkingapp.domain.model.ProjectBoardContent
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
 import com.example.developernetworkingapp.ui.components.NotificationBanner
 import com.example.developernetworkingapp.ui.components.SectionTitle
-import com.example.developernetworkingapp.ui.components.TaskColumn
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.ProjectsUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
@@ -84,6 +84,9 @@ fun ProjectBoardScreen(
     }
     var selectedTask by remember { mutableStateOf<String?>(null) }
     var activeNotification by rememberSaveable { mutableStateOf<String?>(null) }
+    var showInviteDialog by rememberSaveable { mutableStateOf(false) }
+    var inviteTarget by rememberSaveable { mutableStateOf("") }
+    var inviteRole by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(events) {
         events.collect { event ->
@@ -134,6 +137,57 @@ fun ProjectBoardScreen(
         )
     }
 
+    if (showInviteDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showInviteDialog = false
+                inviteTarget = ""
+                inviteRole = ""
+            },
+            title = { Text("Invite Developer") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Send an invitation to join this project workspace.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    OutlinedTextField(
+                        value = inviteTarget,
+                        onValueChange = { inviteTarget = it },
+                        label = { Text("Email or username") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = inviteRole,
+                        onValueChange = { inviteRole = it },
+                        label = { Text("Role (optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onInviteDeveloper()
+                        showInviteDialog = false
+                        inviteTarget = ""
+                        inviteRole = ""
+                    },
+                    enabled = inviteTarget.isNotBlank()
+                ) { Text("Send invite") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showInviteDialog = false
+                    inviteTarget = ""
+                    inviteRole = ""
+                }) { Text("Cancel") }
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -166,10 +220,7 @@ fun ProjectBoardScreen(
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(onClick = { navController.navigate(AppRoutes.TASKS) }) { Text("Open Project") }
-                        TextButton(onClick = {
-                            onInviteDeveloper()
-                            navController.navigate(AppRoutes.SEARCH)
-                        }) { Text("Invite dev") }
+                        TextButton(onClick = { showInviteDialog = true }) { Text("Invite dev") }
                     }
                 }
             }

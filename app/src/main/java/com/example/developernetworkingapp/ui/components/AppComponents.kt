@@ -121,12 +121,14 @@ fun InteractiveButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     colors: ButtonColors = ButtonDefaults.buttonColors(),
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    /** When false, width follows parent (e.g. use with [Modifier.weight] in a [Row]). */
+    fillMaxWidth: Boolean = true
 ) {
     Button(
         onClick = onClick,
         modifier = modifier
-            .fillMaxWidth()
+            .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
             .height(48.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(

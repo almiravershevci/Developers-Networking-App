@@ -55,6 +55,28 @@ fun SearchScreen(
     navController: NavController
 ) {
     var selectedResult by remember { mutableStateOf<SearchResult?>(null) }
+    var showJoinStackForm by remember { mutableStateOf(false) }
+    var applicantName by remember { mutableStateOf("") }
+    var applicantSurname by remember { mutableStateOf("") }
+    var applicantEmail by remember { mutableStateOf("") }
+    var applicantRole by remember { mutableStateOf("") }
+    val query = state.query.trim().lowercase()
+    val filteredResults = remember(state.content?.results, query) {
+        val allResults = state.content?.results ?: emptyList()
+        if (query.isBlank()) {
+            allResults
+        } else {
+            allResults.filter { result ->
+                result.title.lowercase().contains(query) ||
+                    result.subtitle.lowercase().contains(query) ||
+                    result.stack.lowercase().contains(query) ||
+                    result.owner.lowercase().contains(query) ||
+                    result.location.lowercase().contains(query) ||
+                    result.rolesNeeded.any { it.lowercase().contains(query) } ||
+                    result.description.lowercase().contains(query)
+            }
+        }
+    }
 
     selectedResult?.let { result ->
         AlertDialog(
@@ -71,16 +93,7 @@ fun SearchScreen(
                     Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         result.rolesNeeded.forEach { role ->
                             AssistChip(
-                                onClick = {
-                                    navController.navigate(
-                                        AppRoutes.detailRoute(
-                                            title = role,
-                                            subtitle = "Role requirement",
-                                            description = "Role needed in ${result.title} by ${result.owner}. Review expectations, tools, and availability before joining.",
-                                            sourceRoute = AppRoutes.SEARCH
-                                        )
-                                    )
-                                },
+                                onClick = { onQueryChange(role) },
                                 label = { Text(role) }
                             )
                         }
@@ -89,12 +102,69 @@ fun SearchScreen(
             },
             confirmButton = {
                 Button(onClick = {
-                    selectedResult = null
-                    navController.navigate(AppRoutes.CHAT)
+                    showJoinStackForm = true
                 }) { Text("Join the stack") }
             },
             dismissButton = {
                 TextButton(onClick = { selectedResult = null }) { Text("Close") }
+            }
+        )
+    }
+
+    if (showJoinStackForm && selectedResult != null) {
+        AlertDialog(
+            onDismissRequest = { showJoinStackForm = false },
+            title = { Text("Join ${selectedResult!!.title}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = applicantName,
+                        onValueChange = { applicantName = it },
+                        label = { Text("Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = applicantSurname,
+                        onValueChange = { applicantSurname = it },
+                        label = { Text("Surname") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = applicantEmail,
+                        onValueChange = { applicantEmail = it },
+                        label = { Text("Email") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = applicantRole,
+                        onValueChange = { applicantRole = it },
+                        label = { Text("Role you want for this stack") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showJoinStackForm = false
+                        selectedResult = null
+                        applicantName = ""
+                        applicantSurname = ""
+                        applicantEmail = ""
+                        applicantRole = ""
+                    },
+                    enabled = applicantName.isNotBlank() &&
+                        applicantSurname.isNotBlank() &&
+                        applicantEmail.isNotBlank() &&
+                        applicantRole.isNotBlank()
+                ) { Text("Submit") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showJoinStackForm = false }) { Text("Cancel") }
             }
         )
     }
@@ -108,12 +178,19 @@ fun SearchScreen(
         contentPadding = AppDesignTokens.screenContentPadding
     ) {
         item {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = onQueryChange,
-                label = { Text("Search by stack, location, skills, availability") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = state.query,
+                    onValueChange = onQueryChange,
+                    label = { Text("Search by stack, location, skills, availability") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (state.query.isNotBlank()) {
+                    TextButton(onClick = { onQueryChange("") }) {
+                        Text("Clear filter")
+                    }
+                }
+            }
         }
         item { SectionTitle("Quick Filters") }
         if (state.errorMessage != null) {
@@ -147,16 +224,7 @@ fun SearchScreen(
             Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 (state.content?.filters ?: emptyList()).forEach { label ->
                     AssistChip(
-                        onClick = {
-                            navController.navigate(
-                                AppRoutes.detailRoute(
-                                    title = "Search Filter",
-                                    subtitle = label,
-                                    description = "Browse developers and teams filtered by $label to find relevant collaboration opportunities.",
-                                    sourceRoute = AppRoutes.SEARCH
-                                )
-                            )
-                        },
+                        onClick = { onQueryChange(label) },
                         label = { Text(label) },
                         colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     )
@@ -164,7 +232,20 @@ fun SearchScreen(
             }
         }
         item { SectionTitle("Search Results") }
-        items(state.content?.results ?: emptyList()) { result ->
+        if (filteredResults.isEmpty()) {
+            item {
+                ElevatedCard(
+                    shape = AppDesignTokens.cardShape,
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    Column(modifier = Modifier.padding(AppDesignTokens.cardInnerPadding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("No projects match \"$query\".", style = MaterialTheme.typography.titleSmall)
+                        Text("Try another stack, role, or location keyword.", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
+        items(filteredResults) { result ->
             ElevatedCard(
                 onClick = { selectedResult = result },
                 shape = AppDesignTokens.cardLargeShape,
@@ -180,16 +261,7 @@ fun SearchScreen(
                     Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         result.rolesNeeded.forEach { role ->
                             AssistChip(
-                                onClick = {
-                                    navController.navigate(
-                                        AppRoutes.detailRoute(
-                                            title = result.title,
-                                            subtitle = "Role: $role",
-                                            description = "${result.subtitle}\n\nOwner: ${result.owner}\nLocation: ${result.location}\nStack: ${result.stack}",
-                                            sourceRoute = AppRoutes.SEARCH
-                                        )
-                                    )
-                                },
+                                onClick = { onQueryChange(role) },
                                 label = { Text(role) }
                             )
                         }
@@ -207,9 +279,11 @@ fun SearchScreen(
                         }) { Text("View details") }
                         TextButton(onClick = {
                             navController.navigate(
-                                AppRoutes.collaboratorProfileRoute(
-                                    name = result.owner,
-                                    score = (result.membersCount * 7).coerceAtMost(99)
+                                AppRoutes.detailRoute(
+                                    title = "${result.owner} Profile",
+                                    subtitle = "${result.stack} • Match ${(result.membersCount * 7).coerceAtMost(99)}%",
+                                    description = "Owner: ${result.owner}\nStack: ${result.stack}\nLocation: ${result.location}\nTeam size: ${result.membersCount}\n\nProject focus:\n${result.description}\n\nThis profile summarizes collaborator fit, active work style, and relevant technical strengths.",
+                                    sourceRoute = AppRoutes.SEARCH
                                 )
                             )
                         }) { Text("View owner") }

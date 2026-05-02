@@ -294,9 +294,15 @@ fun DashboardScreen(
                 subtitle = "Match score: ${match.matchScore}% - Invite or start 1:1 chat",
                 onViewClick = {
                     navController.navigate(
-                        AppRoutes.collaboratorProfileRoute(
-                            name = match.name,
-                            score = match.matchScore
+                        AppRoutes.detailRoute(
+                            title = "${match.name} Profile",
+                            subtitle = "${match.stack} • Match ${match.matchScore}%",
+                            description = collaboratorProfileDetailDescription(
+                                name = match.name,
+                                stack = match.stack,
+                                score = match.matchScore
+                            ),
+                            sourceRoute = AppRoutes.DASHBOARD
                         )
                     )
                 },
@@ -905,6 +911,19 @@ private fun projectDetailsDescription(title: String, summary: String, progress: 
             "Talent Graph API powers collaborator matching by ranking skills, availability, and collaboration outcomes.\n\nStatus:\n• Current progress: $progress%\n• Sprint focus: latency optimization, caching, integration test coverage\n• Team: backend, data modeling, API quality\n\nDeliverables:\n• Accurate match scoring endpoint\n• Fast search/filter response under load\n• Stable ranking rules with test visibility\n\nOverview: $summary"
         else ->
             "$summary\n\nCurrent progress: $progress%.\nThis project detail tracks scope, sprint milestones, role ownership, blockers, and release readiness checks."
+    }
+}
+
+private fun collaboratorProfileDetailDescription(name: String, stack: String, score: Int): String {
+    return when (name.lowercase()) {
+        "mina" ->
+            "Role: Android + Firebase specialist\nLocation: Prishtina (UTC+2)\nAvailability: 14-18 hrs/week\nCompatibility score: $score%\n\nRecent projects:\n• DevPulse Mobile Alerts\n• Compose Performance Lab\n• Remote Team Sprintboard\n\nStrengths:\n• Realtime mobile sync architecture\n• Release stability and QA alignment\n• Clear async collaboration habits"
+        "khaled" ->
+            "Role: Backend + AI APIs engineer\nLocation: Tirana (UTC+2)\nAvailability: 10-14 hrs/week\nCompatibility score: $score%\n\nRecent projects:\n• Talent Graph Ranking Engine\n• Realtime Notification Gateway\n• LLM Workflow Assistant API\n\nStrengths:\n• API reliability and caching\n• Scoring and ranking pipelines\n• Performance tuning under load"
+        "nora" ->
+            "Role: UI/UX + React Native contributor\nLocation: Skopje (UTC+1)\nAvailability: 12-16 hrs/week\nCompatibility score: $score%\n\nRecent projects:\n• CollabFlow Design System\n• Mentor Connect Mobile\n• Cross-Platform Team Rooms\n\nStrengths:\n• User journey optimization\n• Cross-platform interface consistency\n• Product-to-engineering collaboration"
+        else ->
+            "Role: $stack\nCompatibility score: $score%\n\nThis collaborator profile includes project history, collaboration style, location/availability, and fit summary for your team."
     }
 }
 

@@ -7,7 +7,6 @@ import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,7 +27,9 @@ import com.example.developernetworkingapp.ui.screens.EventFeedRoute
 import com.example.developernetworkingapp.ui.screens.NotificationRoute
 import com.example.developernetworkingapp.ui.screens.ProfileRoute
 import com.example.developernetworkingapp.ui.screens.ProjectBoardRoute
+import com.example.developernetworkingapp.ui.screens.AdminDashboardRoute
 import com.example.developernetworkingapp.ui.screens.SearchRoute
+import com.example.developernetworkingapp.ui.screens.SettingsRoute
 import com.example.developernetworkingapp.ui.screens.TaskManagementRoute
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,35 +53,31 @@ fun MainAppScaffold(navController: NavController) {
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(
-                        text = "LIVE",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(onClick = { navController.navigate(AppRoutes.PROFILE) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.PersonOutline,
+                            contentDescription = "Profile",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             )
         },
         bottomBar = {
-            NavigationBar {
-                tabs.forEach { tab ->
-                    NavigationBarItem(
-                        selected = normalizedRoute == tab.route,
-                        onClick = {
-                            if (normalizedRoute != tab.route) navController.navigate(tab.route)
-                        },
-                        icon = { Icon(imageVector = tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label) }
-                    )
+            if (normalizedRoute != AppRoutes.ADMIN_DASHBOARD) {
+                NavigationBar {
+                    tabs.forEach { tab ->
+                        NavigationBarItem(
+                            selected = normalizedRoute == tab.route,
+                            onClick = {
+                                if (normalizedRoute != tab.route) navController.navigate(tab.route)
+                            },
+                            icon = { Icon(imageVector = tab.icon, contentDescription = tab.label) },
+                            label = { Text(tab.label) }
+                        )
+                    }
                 }
-            }
-        },
-        floatingActionButton = {
-            FilledTonalButton(onClick = { navController.navigate(AppRoutes.PROFILE) }) {
-                Icon(imageVector = Icons.Outlined.PersonOutline, contentDescription = "Open profile")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Profile")
             }
         }
     ) { padding ->
@@ -91,6 +88,8 @@ fun MainAppScaffold(navController: NavController) {
             AppRoutes.SEARCH -> SearchRoute(padding, navController)
             AppRoutes.NOTIFICATIONS -> NotificationRoute(padding, navController)
             AppRoutes.PROFILE -> ProfileRoute(padding, navController)
+            AppRoutes.SETTINGS -> SettingsRoute(padding, navController)
+            AppRoutes.ADMIN_DASHBOARD -> AdminDashboardRoute(padding, navController)
             AppRoutes.TASKS -> TaskManagementRoute(padding, navController)
             AppRoutes.EVENTS -> EventFeedRoute(padding, navController)
             else -> DashboardRoute(padding, navController)
@@ -106,6 +105,8 @@ private fun normalizeRoute(route: String): String {
         route.startsWith(AppRoutes.SEARCH) -> AppRoutes.SEARCH
         route.startsWith(AppRoutes.NOTIFICATIONS) -> AppRoutes.NOTIFICATIONS
         route.startsWith(AppRoutes.PROFILE) -> AppRoutes.PROFILE
+        route.startsWith(AppRoutes.SETTINGS) -> AppRoutes.SETTINGS
+        route.startsWith(AppRoutes.ADMIN_DASHBOARD) -> AppRoutes.ADMIN_DASHBOARD
         route.startsWith(AppRoutes.TASKS) -> AppRoutes.TASKS
         route.startsWith(AppRoutes.EVENTS) -> AppRoutes.EVENTS
         else -> route
@@ -120,6 +121,8 @@ private fun screenTitle(route: String): String {
         AppRoutes.SEARCH -> "Talent Search"
         AppRoutes.NOTIFICATIONS -> "Notifications"
         AppRoutes.PROFILE -> "Profile"
+        AppRoutes.SETTINGS -> "Settings"
+        AppRoutes.ADMIN_DASHBOARD -> "Admin Dashboard"
         AppRoutes.TASKS -> "Task Manager"
         AppRoutes.EVENTS -> "Hackathons & Events"
         else -> "Developer App"
