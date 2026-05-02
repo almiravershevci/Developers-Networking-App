@@ -19,6 +19,7 @@ object AppRoutes {
     const val EVENTS = "events"
 
     const val DETAIL = "detail/{title}/{subtitle}/{description}/{sourceRoute}"
+    const val COLLABORATOR_PROFILE = "collaborator_profile/{id}/{score}"
 
     /** Full-screen messaging UI for a conversation (opened from Chat). */
     const val CONVERSATION = "conversation/{title}"
@@ -46,5 +47,15 @@ object AppRoutes {
 
     fun verifyEmailRoute(email: String): String {
         return "verify/${Uri.encode(email)}"
+    }
+
+    fun collaboratorProfileRoute(name: String, score: Int): String {
+        val id = name
+            .trim()
+            .lowercase()
+            .replace(Regex("[^a-z0-9]+"), "-")
+            .trim('-')
+            .ifBlank { "collaborator" }
+        return "collaborator_profile/$id/$score"
     }
 }
