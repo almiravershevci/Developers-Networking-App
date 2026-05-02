@@ -25,6 +25,7 @@ import com.example.developernetworkingapp.ui.navigation.MainAppScaffold
 import com.example.developernetworkingapp.ui.screens.AdvancedLoginScreen
 import com.example.developernetworkingapp.ui.screens.AdvancedSignupScreen
 import com.example.developernetworkingapp.ui.screens.EmailVerificationRoute
+import com.example.developernetworkingapp.ui.screens.ConversationScreen
 import com.example.developernetworkingapp.ui.screens.GenericDetailScreen
 import com.example.developernetworkingapp.ui.theme.DeveloperNetworkingAppTheme
 import com.example.developernetworkingapp.ui.viewmodel.SessionViewModel
@@ -88,8 +89,20 @@ class MainActivity : ComponentActivity() {
                     composable(AppRoutes.SEARCH) { MainAppScaffold(navController) }
                     composable(AppRoutes.NOTIFICATIONS) { MainAppScaffold(navController) }
                     composable(AppRoutes.PROFILE) { MainAppScaffold(navController) }
+                    composable(AppRoutes.SETTINGS) { MainAppScaffold(navController) }
+                    composable(AppRoutes.ADMIN_DASHBOARD) { MainAppScaffold(navController) }
                     composable(AppRoutes.TASKS) { MainAppScaffold(navController) }
                     composable(AppRoutes.EVENTS) { MainAppScaffold(navController) }
+                    composable(
+                        route = AppRoutes.CONVERSATION,
+                        arguments = listOf(navArgument("title") { type = NavType.StringType })
+                    ) { entry ->
+                        ConversationScreen(
+                            padding = androidx.compose.foundation.layout.PaddingValues(),
+                            navController = navController,
+                            conversationTitle = entry.arguments?.getString("title").orEmpty()
+                        )
+                    }
                     composable(
                         route = AppRoutes.DETAIL,
                         arguments = listOf(
@@ -157,8 +170,20 @@ private fun AppEntry() {
         composable(AppRoutes.SEARCH) { MainAppScaffold(navController) }
         composable(AppRoutes.NOTIFICATIONS) { MainAppScaffold(navController) }
         composable(AppRoutes.PROFILE) { MainAppScaffold(navController) }
+        composable(AppRoutes.SETTINGS) { MainAppScaffold(navController) }
+        composable(AppRoutes.ADMIN_DASHBOARD) { MainAppScaffold(navController) }
         composable(AppRoutes.TASKS) { MainAppScaffold(navController) }
         composable(AppRoutes.EVENTS) { MainAppScaffold(navController) }
+        composable(
+            route = AppRoutes.CONVERSATION,
+            arguments = listOf(navArgument("title") { type = NavType.StringType })
+        ) { entry ->
+            ConversationScreen(
+                padding = androidx.compose.foundation.layout.PaddingValues(),
+                navController = navController,
+                conversationTitle = entry.arguments?.getString("title").orEmpty()
+            )
+        }
         composable(
             route = AppRoutes.DETAIL,
             arguments = listOf(

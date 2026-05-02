@@ -13,10 +13,19 @@ object AppRoutes {
     const val SEARCH = "search"
     const val NOTIFICATIONS = "notifications"
     const val PROFILE = "profile"
+    const val SETTINGS = "settings"
+    const val ADMIN_DASHBOARD = "admin_dashboard"
     const val TASKS = "tasks"
     const val EVENTS = "events"
 
     const val DETAIL = "detail/{title}/{subtitle}/{description}/{sourceRoute}"
+
+    /** Full-screen messaging UI for a conversation (opened from Chat). */
+    const val CONVERSATION = "conversation/{title}"
+
+    fun conversationRoute(title: String): String {
+        return "conversation/${Uri.encode(title)}"
+    }
 
     fun detailRoute(
         title: String,

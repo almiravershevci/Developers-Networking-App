@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -16,7 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -48,11 +51,21 @@ import com.example.developernetworkingapp.ui.viewmodel.ChatViewModel
 fun ChatRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: ChatViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ChatScreen(padding, state, navController)
+    ChatScreen(
+        padding = padding,
+        state = state,
+        navController = navController,
+        onToggleMute = { viewModel.toggleMute(it) }
+    )
 }
 
 @Composable
-fun ChatScreen(padding: PaddingValues, state: ChatUiState, navController: NavController) {
+fun ChatScreen(
+    padding: PaddingValues,
+    state: ChatUiState,
+    navController: NavController,
+    onToggleMute: (String) -> Unit
+) {
     var selectedConversation by remember { mutableStateOf<String?>(null) }
     val quickRooms = listOf("Project Room", "Mentorship", "Hackathon Team", "General")
 
@@ -63,20 +76,20 @@ fun ChatScreen(padding: PaddingValues, state: ChatUiState, navController: NavCon
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("This conversation includes rich messages, file sharing, and task references.")
-                    Text("Status: 2 members typing • 5 unread", style = androidx.compose.material3.MaterialTheme.typography.bodyMedium)
+                    Text("Status: 2 members typing • 5 unread", style = MaterialTheme.typography.bodyMedium)
+                    if (state.mutedConversations.contains(convo)) {
+                        Text(
+                            "Notifications muted for this chat.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
             },
             confirmButton = {
                 Button(onClick = {
                     selectedConversation = null
-                    navController.navigate(
-                        AppRoutes.detailRoute(
-                            title = convo,
-                            subtitle = "Conversation Details",
-                            description = "Message timeline, members online, shared files, linked tasks, and project references for this room.",
-                            sourceRoute = AppRoutes.CHAT
-                        )
-                    )
+                    navController.navigate(AppRoutes.conversationRoute(convo))
                 }) { Text("Open chat") }
             },
             dismissButton = { TextButton(onClick = { selectedConversation = null }) { Text("Close") } }
@@ -109,16 +122,7 @@ fun ChatScreen(padding: PaddingValues, state: ChatUiState, navController: NavCon
                     Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         quickRooms.forEach { room ->
                             AssistChip(
-                                onClick = {
-                                    navController.navigate(
-                                        AppRoutes.detailRoute(
-                                            title = room,
-                                            subtitle = "Room",
-                                            description = "Open this room to discuss planning, review updates, and coordinate teammates in real time.",
-                                            sourceRoute = AppRoutes.CHAT
-                                        )
-                                    )
-                                },
+                                onClick = { navController.navigate(AppRoutes.conversationRoute(room)) },
                                 label = { Text(room) },
                                 leadingIcon = {
                                     androidx.compose.material3.Icon(
@@ -141,20 +145,30 @@ fun ChatScreen(padding: PaddingValues, state: ChatUiState, navController: NavCon
                 colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
                 Column(modifier = Modifier.padding(AppDesignTokens.cardInnerPadding), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(item, style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
-                    Text("Typing indicators • read receipts • pinned messages", style = androidx.compose.material3.MaterialTheme.typography.bodyMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            item,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (state.mutedConversations.contains(item)) {
+                            Icon(
+                                imageVector = Icons.Outlined.NotificationsOff,
+                                contentDescription = "Notifications muted",
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+                    Text("Typing indicators • read receipts • pinned messages", style = MaterialTheme.typography.bodyMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(onClick = { selectedConversation = item }) { Text("Open") }
-                        TextButton(onClick = {
-                            navController.navigate(
-                                AppRoutes.detailRoute(
-                                    title = item,
-                                    subtitle = "Notification settings",
-                                    description = "Manage mute duration, mention alerts, and priority notifications for this conversation.",
-                                    sourceRoute = AppRoutes.CHAT
-                                )
-                            )
-                        }) { Text("Mute") }
+                        TextButton(onClick = { onToggleMute(item) }) {
+                            Text(if (state.mutedConversations.contains(item)) "Unmute" else "Mute")
+                        }
                     }
                 }
             }

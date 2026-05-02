@@ -9,22 +9,30 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -41,11 +49,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.developernetworkingapp.data.repository.UserRole
 import com.example.developernetworkingapp.ui.components.EnhancedCard
 import com.example.developernetworkingapp.ui.components.InteractiveButton
 import com.example.developernetworkingapp.ui.components.NotificationBanner
@@ -56,6 +67,7 @@ import com.example.developernetworkingapp.ui.state.ProfileUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.ProfileUiEvent
 import com.example.developernetworkingapp.ui.viewmodel.ProfileViewModel
+import com.example.developernetworkingapp.ui.viewmodel.SessionViewModel
 import kotlinx.coroutines.flow.SharedFlow
 
 val ElectricCyan = Color(0xFF00FFFF)
@@ -68,12 +80,15 @@ val ElectricGreen = Color(0xFF00FF7F)
 @Composable
 fun ProfileRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: ProfileViewModel = viewModel()
+    val sessionViewModel: SessionViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentUser by sessionViewModel.currentUser.collectAsStateWithLifecycle()
     ProfileScreen(
         padding = padding,
         state = state,
         events = viewModel.events,
         navController = navController,
+        isAdmin = currentUser?.role == UserRole.ADMIN,
         onProfileSaved = viewModel::notifyProfileSaved,
         onSyncStarted = viewModel::notifySyncStarted,
         onLogout = {
@@ -92,6 +107,7 @@ fun ProfileScreen(
     state: ProfileUiState,
     events: SharedFlow<ProfileUiEvent>,
     navController: NavController,
+    isAdmin: Boolean,
     onProfileSaved: () -> Unit,
     onSyncStarted: () -> Unit,
     onLogout: () -> Unit
@@ -220,6 +236,21 @@ fun ProfileScreen(
         contentPadding = AppDesignTokens.screenContentPadding
     ) {
         item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { navController.navigate(AppRoutes.SETTINGS) }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+        item {
             EnhancedCard(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { showEditProfileDialog = true }
@@ -239,6 +270,11 @@ fun ProfileScreen(
                     Text(content?.bio ?: "Passionate developer building amazing apps and connecting with fellow creators.", style = MaterialTheme.typography.bodyMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(onClick = { showEditProfileDialog = true }) { Text("Edit Profile") }
+                        if (isAdmin) {
+                            FilledTonalButton(onClick = { navController.navigate(AppRoutes.ADMIN_DASHBOARD) }) {
+                                Text("Admin Dashboard")
+                            }
+                        }
                         TextButton(
                             onClick = onLogout
                         ) { Text("Log out") }
@@ -274,16 +310,41 @@ fun ProfileScreen(
 
         item { SectionTitle("Portfolio & Achievements") }
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                EnhancedCard(modifier = Modifier.weight(1f), onClick = { showPortfolioDialog = true }) {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(168.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                EnhancedCard(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    onClick = { showPortfolioDialog = true }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text("Portfolio", style = MaterialTheme.typography.titleMedium, color = NeonBlue)
                         Text("GitHub, LinkedIn, Personal Site", style = MaterialTheme.typography.bodyMedium)
                         InteractiveButton(text = "View Links", onClick = { showPortfolioDialog = true })
                     }
                 }
-                EnhancedCard(modifier = Modifier.weight(1f), onClick = { showAchievementsDialog = true }) {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                EnhancedCard(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    onClick = { showAchievementsDialog = true }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text("Achievements", style = MaterialTheme.typography.titleMedium, color = VibrantOrange)
                         Text("4 badges earned", style = MaterialTheme.typography.bodyMedium)
                         InteractiveButton(text = "View Badges", onClick = { showAchievementsDialog = true })
@@ -293,24 +354,44 @@ fun ProfileScreen(
         }
 
         item {
-            EnhancedCard(modifier = Modifier.fillMaxWidth(), onClick = { showInsightsDialog = true }) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            EnhancedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                onClick = { showInsightsDialog = true }
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Text("GitHub Insights", style = MaterialTheme.typography.titleMedium, color = ElectricGreen)
                     Text("Commits: 1,247 | PRs: 89 | Stars: 156", style = MaterialTheme.typography.bodyMedium)
                     Text("Most active in Kotlin and Android projects", style = MaterialTheme.typography.bodyMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        InteractiveButton(text = "View Details", onClick = { showInsightsDialog = true })
-                        TextButton(onClick = {
-                            onSyncStarted()
-                            navController.navigate(
-                                AppRoutes.detailRoute(
-                                    title = "GitHub Sync",
-                                    subtitle = "Sync started",
-                                    description = "Repository activity, PR stats, and contribution insights are now syncing with your profile.",
-                                    sourceRoute = AppRoutes.PROFILE
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        InteractiveButton(
+                            text = "View Details",
+                            onClick = { showInsightsDialog = true },
+                            modifier = Modifier.weight(1f),
+                            fillMaxWidth = false
+                        )
+                        TextButton(
+                            onClick = {
+                                onSyncStarted()
+                                navController.navigate(
+                                    AppRoutes.detailRoute(
+                                        title = "GitHub Sync",
+                                        subtitle = "Sync started",
+                                        description = "Repository activity, PR stats, and contribution insights are now syncing with your profile.",
+                                        sourceRoute = AppRoutes.PROFILE
+                                    )
                                 )
-                            )
-                        }) { Text("Sync Now") }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Sync Now") }
                     }
                 }
             }
@@ -318,26 +399,46 @@ fun ProfileScreen(
 
         item { SectionTitle("Activity Stats") }
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                listOf(
-                    "Projects" to "23",
-                    "Collaborations" to "45",
-                    "Messages" to "189",
-                    "Events" to "12"
-                ).forEach { (label, value) ->
-                    EnhancedCard(modifier = Modifier.weight(1f), onClick = {
-                        navController.navigate(
-                            AppRoutes.detailRoute(
-                                title = label,
-                                subtitle = "Activity stat",
-                                description = "Detailed trend chart, weekly changes, and linked records for $label: $value.",
-                                sourceRoute = AppRoutes.PROFILE
+            val activityStats = listOf(
+                Triple("Projects", "23", AppRoutes.PROJECTS),
+                Triple("Collaborations", "45", AppRoutes.PROJECTS),
+                Triple("Messages", "189", AppRoutes.CHAT),
+                Triple("Events", "12", AppRoutes.EVENTS)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(112.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                activityStats.forEach { (label, value, route) ->
+                    EnhancedCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        onClick = { navController.navigate(route) }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 6.dp, vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                value,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = NeonViolet,
+                                fontWeight = FontWeight.Bold
                             )
-                        )
-                    }) {
-                        Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(value, style = MaterialTheme.typography.headlineMedium, color = NeonViolet, fontWeight = FontWeight.Bold)
-                            Text(label, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelMedium,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = 16.sp
+                            )
                         }
                     }
                 }
