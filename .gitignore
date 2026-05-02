@@ -8,4 +8,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+/firestore/node_modules
 /backend/node_modules
+**/firebase-adminsdk*.json
+**/serviceAccount*.json
+firebase-debug.log

@@ -93,6 +93,7 @@ fun MainAppScaffold(navController: NavController) {
             AppRoutes.PROFILE -> ProfileRoute(padding, navController)
             AppRoutes.TASKS -> TaskManagementRoute(padding, navController)
             AppRoutes.EVENTS -> EventFeedRoute(padding, navController)
+            else -> DashboardRoute(padding, navController)
         }
     }
 }

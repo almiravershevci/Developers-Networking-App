@@ -1,0 +1,176 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function projectData(projectId) {
+      return get(/databases/$(database)/documents/projects/$(projectId)).data;
+    }
+
+    function isProjectMember(projectId, uid) {
+      return exists(/databases/$(database)/documents/projects/$(projectId)/members/$(uid));
+    }
+
+    function canReadProjectDoc(projectId) {
+      let p = projectData(projectId);
+      return p.visibility == 'public'
+        || p.visibility == 'unlisted'
+        || p.ownerUserId == request.auth.uid
+        || (p.visibility == 'private' && isProjectMember(projectId, request.auth.uid));
+    }
+
+    function memberRoleOrNull(projectId) {
+      let path = /databases/$(database)/documents/projects/$(projectId)/members/$(request.auth.uid);
+      return exists(path)
+        ? get(path).data.memberRole
+        : null;
+    }
+
+    function canManageProject(projectId) {
+      let p = projectData(projectId);
+      let role = memberRoleOrNull(projectId);
+      return p.ownerUserId == request.auth.uid
+        || role == 'maintainer'
+        || role == 'owner';
+    }
+
+    function conversationParticipantIds(convId) {
+      return get(/databases/$(database)/documents/conversations/$(convId)).data.participantIds;
+    }
+
+    function isConversationParticipant(convId) {
+      return signedIn()
+        && request.auth.uid in conversationParticipantIds(convId);
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if isUser(userId)
+        && request.resource.data.schemaVersion is int
+        && request.resource.data.displayName is string
+        && request.resource.data.usernameLower is string;
+      allow update: if isUser(userId);
+      allow delete: if isUser(userId);
+    }
+
+    match /usernames/{usernameLower} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && usernameLower == request.resource.data.usernameLower;
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /userStats/{userId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /projects/{projectId} {
+      allow read: if signedIn() && canReadProjectDoc(projectId);
+      allow create: if signedIn()
+        && request.resource.data.ownerUserId == request.auth.uid
+        && request.resource.data.schemaVersion is int;
+      allow update: if signedIn() && canManageProject(projectId);
+      allow delete: if signedIn() && projectData(projectId).ownerUserId == request.auth.uid;
+
+      match /members/{memberId} {
+        allow read: if signedIn() && canReadProjectDoc(projectId);
+        allow create: if signedIn() && canManageProject(projectId);
+        allow update: if signedIn() && canManageProject(projectId);
+        allow delete: if signedIn() && (
+            canManageProject(projectId)
+            || (isUser(memberId) && request.auth.uid == memberId)
+          );
+      }
+
+      match /tasks/{taskId} {
+        allow read: if signedIn() && canReadProjectDoc(projectId);
+        allow create, update: if signedIn() && canReadProjectDoc(projectId)
+          && (
+            canManageProject(projectId)
+            || isProjectMember(projectId, request.auth.uid)
+          );
+        allow delete: if signedIn() && canManageProject(projectId);
+      }
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isConversationParticipant(conversationId);
+      allow create: if signedIn()
+        && request.auth.uid in request.resource.data.participantIds;
+      allow update: if isConversationParticipant(conversationId);
+      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+
+      match /messages/{messageId} {
+        allow read: if isConversationParticipant(conversationId);
+        allow create: if isConversationParticipant(conversationId)
+          && request.resource.data.senderId == request.auth.uid;
+        allow update: if isConversationParticipant(conversationId);
+        allow delete: if signedIn()
+          && resource.data.senderId == request.auth.uid;
+      }
+    }
+
+    match /matchRequests/{requestId} {
+      allow read: if signedIn()
+        && (resource.data.fromUserId == request.auth.uid
+            || resource.data.toUserId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.fromUserId != request.resource.data.toUserId;
+      allow update: if signedIn()
+        && (resource.data.toUserId == request.auth.uid
+            || resource.data.fromUserId == request.auth.uid);
+      allow delete: if false;
+    }
+
+    match /events/{eventId} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /inbox/{notificationId} {
+      allow read: if signedIn()
+        && resource.data.recipientUserId == request.auth.uid;
+      allow create: if false;
+      allow update: if signedIn()
+        && resource.data.recipientUserId == request.auth.uid;
+      allow delete: if signedIn()
+        && resource.data.recipientUserId == request.auth.uid;
+    }
+
+    match /activity/{activityId} {
+      allow read: if signedIn()
+        && resource.data.audienceUserId == request.auth.uid;
+      allow create: if false;
+      allow update, delete: if false;
+    }
+
+    match /newsHighlights/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /collaboratorSuggestions/{docId} {
+      allow read: if signedIn()
+        && resource.data.viewerUserId == request.auth.uid;
+      allow create, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

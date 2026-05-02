@@ -1,0 +1,12 @@
+{
+  "name": "devconnect-firestore-seed",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "node seed-firestore.mjs",
+    "seed:dry": "node seed-firestore.mjs --dry-run"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

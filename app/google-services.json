@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "639111310168",
+    "project_id": "developers-networking-app",
+    "storage_bucket": "developers-networking-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:639111310168:android:3c931cb5288ed6d31bd32d",
+        "android_client_info": {
+          "package_name": "com.example.developernetworkingapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoXXrhVbYHkyvzXn3kwgJA9jp1ziuKMtw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

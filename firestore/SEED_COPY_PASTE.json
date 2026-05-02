@@ -1,0 +1,795 @@
+{
+  "about": "Sample Firestore documents for Developers-Networking-App. See firestore/README.txt for seed script and deploy steps. Replace demo_* UIDs when wiring Firebase Auth.",
+  "documents": {
+    "users/demo_alex_uid": {
+      "schemaVersion": 1,
+      "displayName": "Alex Dev",
+      "usernameLower": "alexdev",
+      "headline": "Mobile + Cloud Engineer",
+      "bio": "Building scalable collaboration tools and real-time mobile experiences.",
+      "photoUrl": null,
+      "skillTags": [
+        "Android",
+        "Kotlin",
+        "Compose",
+        "Firebase",
+        "REST APIs",
+        "CI/CD"
+      ],
+      "portfolioLinks": {
+        "github": "https://github.com/alex-dev",
+        "linkedin": "https://linkedin.com/in/alex-dev",
+        "portfolio": "https://alex.dev/portfolio"
+      },
+      "profileVisibility": "public",
+      "gitInsightsSummary": "134 commits this month - 11 PRs merged - 7 repositories active",
+      "createdAt_iso": "2026-05-01T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-02T08:00:00.000Z",
+      "lastActiveAt_iso": "2026-05-02T12:00:00.000Z"
+    },
+    "users/demo_mina_uid": {
+      "schemaVersion": 1,
+      "displayName": "Mina Rahman",
+      "usernameLower": "mina",
+      "headline": "Android + Firebase",
+      "bio": "Ships production mobile apps with realtime backends.",
+      "skillTags": ["Android", "Firebase", "Kotlin"],
+      "profileVisibility": "public",
+      "createdAt_iso": "2026-04-15T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-01T10:00:00.000Z"
+    },
+    "users/demo_khaled_uid": {
+      "schemaVersion": 1,
+      "displayName": "Khaled",
+      "usernameLower": "khaled",
+      "headline": "Backend + AI APIs",
+      "bio": "APIs, inference pipelines, and observability.",
+      "skillTags": ["Backend", "Python", "AI APIs"],
+      "profileVisibility": "public",
+      "createdAt_iso": "2026-04-20T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-01T10:00:00.000Z"
+    },
+    "users/demo_nora_uid": {
+      "schemaVersion": 1,
+      "displayName": "Nora",
+      "usernameLower": "nora",
+      "headline": "UI/UX + React Native",
+      "bio": "Product design systems and motion.",
+      "skillTags": ["React Native", "UI", "UX"],
+      "profileVisibility": "public",
+      "createdAt_iso": "2026-04-10T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-01T10:00:00.000Z"
+    },
+    "users/demo_aria_uid": {
+      "schemaVersion": 1,
+      "displayName": "Aria Chen",
+      "usernameLower": "aria",
+      "headline": "Staff Engineer · API platforms",
+      "bio": "Contracts, versioning, and pragmatic pagination for high-scale APIs.",
+      "skillTags": ["API Design", "GraphQL", "OpenAPI", "Kotlin"],
+      "portfolioLinks": {
+        "github": "https://github.com/aria-chen",
+        "linkedin": "https://linkedin.com/in/aria-chen"
+      },
+      "profileVisibility": "public",
+      "createdAt_iso": "2026-03-01T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-02T07:00:00.000Z"
+    },
+    "users/demo_ravi_uid": {
+      "schemaVersion": 1,
+      "displayName": "Ravi",
+      "usernameLower": "ravi",
+      "headline": "Platform · DevOps · Kotlin",
+      "bio": "Shipping deployment pipelines and infra templates for startup teams.",
+      "skillTags": ["DevOps", "Kubernetes", "Kotlin", "Cloud"],
+      "profileVisibility": "public",
+      "createdAt_iso": "2026-02-10T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-01T12:00:00.000Z"
+    },
+    "users/demo_lina_uid": {
+      "schemaVersion": 1,
+      "displayName": "Lina",
+      "usernameLower": "lina",
+      "headline": "Product design · Design systems",
+      "bio": "Interface craft, motion, and design systems for mobile product teams.",
+      "skillTags": ["Compose", "Design Systems", "Motion", "Brand"],
+      "profileVisibility": "public",
+      "createdAt_iso": "2026-01-20T10:00:00.000Z",
+      "updatedAt_iso": "2026-04-30T10:00:00.000Z"
+    },
+    "usernames/alexdev": {
+      "usernameLower": "alexdev",
+      "userId": "demo_alex_uid"
+    },
+    "usernames/mina": {
+      "usernameLower": "mina",
+      "userId": "demo_mina_uid"
+    },
+    "usernames/khaled": {
+      "usernameLower": "khaled",
+      "userId": "demo_khaled_uid"
+    },
+    "usernames/nora": {
+      "usernameLower": "nora",
+      "userId": "demo_nora_uid"
+    },
+    "usernames/aria": {
+      "usernameLower": "aria",
+      "userId": "demo_aria_uid"
+    },
+    "usernames/ravi": {
+      "usernameLower": "ravi",
+      "userId": "demo_ravi_uid"
+    },
+    "usernames/lina": {
+      "usernameLower": "lina",
+      "userId": "demo_lina_uid"
+    },
+    "userStats/demo_alex_uid": {
+      "schemaVersion": 1,
+      "activeProjectsCount": 8,
+      "openTasksCount": 24,
+      "unreadMessagesCount": 12,
+      "pendingMatchRequestsCount": 17,
+      "collaborationsCount": 12,
+      "ratingAggregate": 4.7,
+      "updatedAt_iso": "2026-05-02T12:00:00.000Z"
+    },
+    "userStats/demo_mina_uid": {
+      "schemaVersion": 1,
+      "activeProjectsCount": 4,
+      "openTasksCount": 11,
+      "unreadMessagesCount": 3,
+      "pendingMatchRequestsCount": 2,
+      "collaborationsCount": 9,
+      "ratingAggregate": 4.9,
+      "updatedAt_iso": "2026-05-02T10:00:00.000Z"
+    },
+    "userStats/demo_khaled_uid": {
+      "schemaVersion": 1,
+      "activeProjectsCount": 3,
+      "openTasksCount": 8,
+      "unreadMessagesCount": 1,
+      "pendingMatchRequestsCount": 0,
+      "collaborationsCount": 14,
+      "ratingAggregate": 4.8,
+      "updatedAt_iso": "2026-05-01T15:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile": {
+      "schemaVersion": 1,
+      "title": "DevConnect Mobile",
+      "subtitle": "Realtime collaboration app for developers",
+      "description": "A social collaboration platform where developers can discover each other, post active projects, join stacks, and coordinate work with messaging and task boards.",
+      "primaryStackLabel": "Kotlin + Firebase + Compose",
+      "stackTags": ["kotlin", "firebase", "compose", "android"],
+      "ownerUserId": "demo_alex_uid",
+      "locationKind": "remote",
+      "cityName": null,
+      "openRoleLabels": ["Backend APIs", "Mobile UI", "Notifications"],
+      "capacityTotal": 6,
+      "spotsOpen": 2,
+      "memberCount": 4,
+      "progressPercent": 76,
+      "lifecycleStatus": "recruiting",
+      "visibility": "public",
+      "searchKeywords": ["devconnect", "collaboration", "kotlin", "firebase", "compose"],
+      "createdAt_iso": "2026-04-01T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-02T09:00:00.000Z"
+    },
+    "projects/proj_cloudforge": {
+      "schemaVersion": 1,
+      "title": "CloudForge",
+      "subtitle": "DevOps-focused startup toolkit",
+      "description": "Building a platform for startup teams to manage deployments, infra templates, and release workflows with realtime operational alerts.",
+      "primaryStackLabel": "Cloud + DevOps + Kotlin",
+      "stackTags": ["cloud", "devops", "kotlin"],
+      "ownerUserId": "demo_ravi_uid",
+      "locationKind": "remote",
+      "openRoleLabels": ["DevOps", "Platform Engineering"],
+      "capacityTotal": 10,
+      "spotsOpen": 2,
+      "memberCount": 6,
+      "progressPercent": 58,
+      "lifecycleStatus": "active",
+      "visibility": "public",
+      "searchKeywords": ["cloudforge", "devops", "infra"],
+      "createdAt_iso": "2026-03-20T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-01T14:00:00.000Z"
+    },
+    "projects/proj_pixelpair": {
+      "schemaVersion": 1,
+      "title": "PixelPair",
+      "subtitle": "Design system and community showcase app",
+      "description": "A beautiful social showcase for app builders to publish interface work, design systems, and creative coding experiments.",
+      "primaryStackLabel": "Android + Design Systems",
+      "stackTags": ["android", "design-systems", "compose"],
+      "ownerUserId": "demo_lina_uid",
+      "locationKind": "onsite",
+      "cityName": "Amman",
+      "openRoleLabels": ["Compose UI", "Motion Design", "Brand Systems"],
+      "capacityTotal": 5,
+      "spotsOpen": 1,
+      "memberCount": 3,
+      "progressPercent": 45,
+      "lifecycleStatus": "recruiting",
+      "visibility": "public",
+      "searchKeywords": ["pixelpair", "design", "android"],
+      "createdAt_iso": "2026-04-05T10:00:00.000Z",
+      "updatedAt_iso": "2026-04-28T10:00:00.000Z"
+    },
+    "projects/proj_talent_graph_api": {
+      "schemaVersion": 1,
+      "title": "Talent Graph API",
+      "subtitle": "Skill matching backend services",
+      "description": "Vector + graph hybrid for skill edges, team fit scoring, and explainable match reasons for partner discovery.",
+      "primaryStackLabel": "Kotlin · Spring · Redis · OpenSearch",
+      "stackTags": ["kotlin", "graph", "ml", "search", "api"],
+      "ownerUserId": "demo_khaled_uid",
+      "locationKind": "remote",
+      "openRoleLabels": ["Search", "Data Engineering", "APIs"],
+      "capacityTotal": 8,
+      "spotsOpen": 2,
+      "memberCount": 3,
+      "progressPercent": 58,
+      "lifecycleStatus": "active",
+      "visibility": "public",
+      "projectIntent": "product",
+      "searchKeywords": ["talent", "graph", "matching", "skills"],
+      "createdAt_iso": "2026-01-10T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-01T20:00:00.000Z"
+    },
+    "projects/proj_ai_pair_copilot": {
+      "schemaVersion": 1,
+      "title": "Open source AI pair-programming assistant",
+      "subtitle": "Project rooms, live suggestions, GitHub sync",
+      "description": "Small product team building an AI coding companion with project rooms, live suggestions, and GitHub sync — Android, Python, LLM APIs.",
+      "primaryStackLabel": "Android, Python, LLM APIs",
+      "stackTags": ["android", "python", "llm", "github", "compose"],
+      "ownerUserId": "demo_mina_uid",
+      "locationKind": "remote",
+      "openRoleLabels": ["Android", "Prompt Design", "Python"],
+      "capacityTotal": 6,
+      "spotsOpen": 3,
+      "memberCount": 2,
+      "progressPercent": 34,
+      "lifecycleStatus": "recruiting",
+      "visibility": "public",
+      "projectIntent": "product",
+      "searchKeywords": ["ai", "pair-programming", "llm", "github"],
+      "createdAt_iso": "2026-04-12T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-02T06:00:00.000Z"
+    },
+    "projects/proj_listing_android_firebase_partner": {
+      "schemaVersion": 1,
+      "title": "Looking for Android + Firebase partner",
+      "subtitle": "Recruiting post — DevConnect collaboration",
+      "description": "I am building a developer collaboration app and need one backend-minded mobile developer to help with realtime features and notifications.",
+      "primaryStackLabel": "Kotlin, Compose, Firebase",
+      "stackTags": ["kotlin", "compose", "firebase", "recruiting"],
+      "ownerUserId": "demo_alex_uid",
+      "locationKind": "remote",
+      "openRoleLabels": ["Firebase", "Backend APIs", "Compose UI"],
+      "capacityTotal": 2,
+      "spotsOpen": 2,
+      "memberCount": 1,
+      "progressPercent": 0,
+      "lifecycleStatus": "recruiting",
+      "visibility": "unlisted",
+      "projectIntent": "recruitment",
+      "searchKeywords": ["recruiting", "firebase", "android", "compose"],
+      "createdAt_iso": "2026-05-01T16:00:00.000Z",
+      "updatedAt_iso": "2026-05-02T08:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile/members/demo_alex_uid": {
+      "memberUserId": "demo_alex_uid",
+      "memberRole": "owner",
+      "joinedAt_iso": "2026-04-01T10:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile/members/demo_mina_uid": {
+      "memberUserId": "demo_mina_uid",
+      "memberRole": "contributor",
+      "joinedAt_iso": "2026-04-10T12:00:00.000Z"
+    },
+    "projects/proj_cloudforge/members/demo_ravi_uid": {
+      "memberUserId": "demo_ravi_uid",
+      "memberRole": "owner",
+      "joinedAt_iso": "2026-03-20T10:00:00.000Z"
+    },
+    "projects/proj_cloudforge/members/demo_khaled_uid": {
+      "memberUserId": "demo_khaled_uid",
+      "memberRole": "maintainer",
+      "joinedAt_iso": "2026-04-01T10:00:00.000Z"
+    },
+    "projects/proj_pixelpair/members/demo_lina_uid": {
+      "memberUserId": "demo_lina_uid",
+      "memberRole": "owner",
+      "joinedAt_iso": "2026-04-05T10:00:00.000Z"
+    },
+    "projects/proj_pixelpair/members/demo_nora_uid": {
+      "memberUserId": "demo_nora_uid",
+      "memberRole": "contributor",
+      "joinedAt_iso": "2026-04-08T10:00:00.000Z"
+    },
+    "projects/proj_talent_graph_api/members/demo_khaled_uid": {
+      "memberUserId": "demo_khaled_uid",
+      "memberRole": "owner",
+      "joinedAt_iso": "2026-01-10T10:00:00.000Z"
+    },
+    "projects/proj_talent_graph_api/members/demo_mina_uid": {
+      "memberUserId": "demo_mina_uid",
+      "memberRole": "contributor",
+      "joinedAt_iso": "2026-04-15T10:00:00.000Z"
+    },
+    "projects/proj_ai_pair_copilot/members/demo_mina_uid": {
+      "memberUserId": "demo_mina_uid",
+      "memberRole": "owner",
+      "joinedAt_iso": "2026-04-12T10:00:00.000Z"
+    },
+    "projects/proj_listing_android_firebase_partner/members/demo_alex_uid": {
+      "memberUserId": "demo_alex_uid",
+      "memberRole": "owner",
+      "joinedAt_iso": "2026-05-01T16:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile/tasks/task_todo_1": {
+      "schemaVersion": 1,
+      "title": "Onboarding flow",
+      "boardColumn": "todo",
+      "priority": "high",
+      "assigneeUserId": null,
+      "createdByUserId": "demo_alex_uid",
+      "createdAt_iso": "2026-05-01T08:00:00.000Z",
+      "updatedAt_iso": "2026-05-01T08:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile/tasks/task_todo_2": {
+      "schemaVersion": 1,
+      "title": "Integrate search filters",
+      "boardColumn": "todo",
+      "priority": "medium",
+      "assigneeUserId": "demo_mina_uid",
+      "createdByUserId": "demo_alex_uid",
+      "createdAt_iso": "2026-05-01T09:00:00.000Z",
+      "updatedAt_iso": "2026-05-01T09:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile/tasks/task_ip_1": {
+      "schemaVersion": 1,
+      "title": "Realtime chat room",
+      "boardColumn": "in_progress",
+      "priority": "high",
+      "assigneeUserId": "demo_alex_uid",
+      "createdByUserId": "demo_alex_uid",
+      "createdAt_iso": "2026-04-28T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-02T11:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile/tasks/task_ip_2": {
+      "schemaVersion": 1,
+      "title": "Task assignment module",
+      "boardColumn": "in_progress",
+      "priority": "medium",
+      "assigneeUserId": "demo_mina_uid",
+      "createdByUserId": "demo_alex_uid",
+      "createdAt_iso": "2026-04-29T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-02T10:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile/tasks/task_done_1": {
+      "schemaVersion": 1,
+      "title": "Auth draft screens",
+      "boardColumn": "done",
+      "priority": "medium",
+      "assigneeUserId": "demo_alex_uid",
+      "createdByUserId": "demo_alex_uid",
+      "createdAt_iso": "2026-04-20T10:00:00.000Z",
+      "updatedAt_iso": "2026-04-25T10:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile/tasks/task_done_2": {
+      "schemaVersion": 1,
+      "title": "Profile summary card",
+      "boardColumn": "done",
+      "priority": "low",
+      "assigneeUserId": "demo_mina_uid",
+      "createdByUserId": "demo_alex_uid",
+      "createdAt_iso": "2026-04-18T10:00:00.000Z",
+      "updatedAt_iso": "2026-04-22T10:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile/tasks/task_todo_3": {
+      "schemaVersion": 1,
+      "title": "Team invite modal",
+      "boardColumn": "todo",
+      "priority": "urgent",
+      "assigneeUserId": "demo_alex_uid",
+      "createdByUserId": "demo_alex_uid",
+      "createdAt_iso": "2026-05-02T07:00:00.000Z",
+      "updatedAt_iso": "2026-05-02T07:00:00.000Z"
+    },
+    "projects/proj_devconnect_mobile/tasks/task_ip_3": {
+      "schemaVersion": 1,
+      "title": "Home analytics cards",
+      "boardColumn": "in_progress",
+      "priority": "high",
+      "assigneeUserId": "demo_mina_uid",
+      "createdByUserId": "demo_alex_uid",
+      "createdAt_iso": "2026-04-30T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-02T08:00:00.000Z"
+    },
+    "projects/proj_talent_graph_api/tasks/tg_todo_1": {
+      "schemaVersion": 1,
+      "title": "Explainable match reason endpoint",
+      "boardColumn": "in_progress",
+      "priority": "high",
+      "assigneeUserId": "demo_khaled_uid",
+      "createdByUserId": "demo_khaled_uid",
+      "createdAt_iso": "2026-04-20T10:00:00.000Z",
+      "updatedAt_iso": "2026-05-01T18:00:00.000Z"
+    },
+    "projects/proj_ai_pair_copilot/tasks/ai_todo_1": {
+      "schemaVersion": 1,
+      "title": "GitHub sync webhooks for project rooms",
+      "boardColumn": "todo",
+      "priority": "medium",
+      "assigneeUserId": null,
+      "createdByUserId": "demo_mina_uid",
+      "createdAt_iso": "2026-05-01T09:00:00.000Z",
+      "updatedAt_iso": "2026-05-01T09:00:00.000Z"
+    },
+    "conversations/conv_team_neon": {
+      "schemaVersion": 1,
+      "conversationKind": "group",
+      "title": "Team Neon - Sprint planning thread",
+      "projectId": "proj_devconnect_mobile",
+      "participantIds": ["demo_alex_uid", "demo_mina_uid"],
+      "createdBy": "demo_alex_uid",
+      "lastMessagePreview": "Let's align on realtime chat scope for this sprint.",
+      "lastMessageAt_iso": "2026-05-02T11:30:00.000Z",
+      "createdAt_iso": "2026-04-25T10:00:00.000Z"
+    },
+    "conversations/conv_team_neon/messages/msg_1": {
+      "schemaVersion": 1,
+      "senderId": "demo_mina_uid",
+      "body": "Can we prioritize Firestore security rules before beta?",
+      "messageKind": "text",
+      "readByUserIds": ["demo_mina_uid", "demo_alex_uid"],
+      "createdAt_iso": "2026-05-02T11:30:00.000Z"
+    },
+    "conversations/conv_team_neon/messages/msg_2": {
+      "schemaVersion": 1,
+      "senderId": "demo_alex_uid",
+      "body": "Yes — I will land rules + seed data this week, then we run the Auth + rules matrix in the doc you shared.",
+      "messageKind": "text",
+      "readByUserIds": ["demo_alex_uid", "demo_mina_uid"],
+      "createdAt_iso": "2026-05-02T11:32:00.000Z"
+    },
+    "conversations/conv_team_neon/messages/msg_3": {
+      "schemaVersion": 1,
+      "senderId": "demo_mina_uid",
+      "body": "Mention: @Alex can you tag the exact collection paths in the rules PR description?",
+      "messageKind": "mention",
+      "readByUserIds": ["demo_mina_uid"],
+      "createdAt_iso": "2026-05-02T11:35:00.000Z"
+    },
+    "conversations/conv_aria_api/messages/msg_aria_1": {
+      "schemaVersion": 1,
+      "senderId": "demo_aria_uid",
+      "body": "OpenAPI diff looks clean. For pagination, prefer cursor on (createdAt, id) to stay index-friendly.",
+      "messageKind": "text",
+      "readByUserIds": ["demo_aria_uid", "demo_alex_uid"],
+      "createdAt_iso": "2026-05-02T09:10:00.000Z"
+    },
+    "conversations/conv_aria_api/messages/msg_aria_2": {
+      "schemaVersion": 1,
+      "senderId": "demo_alex_uid",
+      "body": "Payload shape looks good; adding pagination next. I will align mobile DTOs with the new contract.",
+      "messageKind": "text",
+      "readByUserIds": ["demo_alex_uid", "demo_aria_uid"],
+      "createdAt_iso": "2026-05-02T09:15:00.000Z"
+    },
+    "conversations/conv_khaled_platform/messages/msg_k_1": {
+      "schemaVersion": 1,
+      "senderId": "demo_khaled_uid",
+      "body": "GraphQL batch loader cut p95 latency by 40% on canary. Rollout to prod Friday if you are good with the SLOs.",
+      "messageKind": "text",
+      "readByUserIds": ["demo_khaled_uid", "demo_alex_uid"],
+      "createdAt_iso": "2026-05-02T08:40:00.000Z"
+    },
+    "conversations/conv_hackathon_squad/messages/msg_h_1": {
+      "schemaVersion": 1,
+      "senderId": "demo_mina_uid",
+      "body": "Demo checklist: auth flow, realtime chat, tasks board — can we freeze scope tonight?",
+      "messageKind": "text",
+      "readByUserIds": ["demo_mina_uid", "demo_alex_uid", "demo_khaled_uid"],
+      "createdAt_iso": "2026-05-02T10:45:00.000Z"
+    },
+    "conversations/conv_design_crew/messages/msg_d_1": {
+      "schemaVersion": 1,
+      "senderId": "demo_lina_uid",
+      "body": "Motion spec for the showcase carousel is in Figma — please leave comments on easing curves only.",
+      "messageKind": "text",
+      "readByUserIds": ["demo_lina_uid", "demo_nora_uid", "demo_alex_uid"],
+      "createdAt_iso": "2026-05-02T07:55:00.000Z"
+    },
+    "conversations/conv_aria_api": {
+      "schemaVersion": 1,
+      "conversationKind": "direct",
+      "title": "Aria - API contract review",
+      "participantIds": ["demo_alex_uid", "demo_aria_uid"],
+      "createdBy": "demo_alex_uid",
+      "lastMessagePreview": "Pagination cursor landed in staging — ship tomorrow?",
+      "lastMessageAt_iso": "2026-05-02T09:15:00.000Z",
+      "createdAt_iso": "2026-05-01T08:00:00.000Z"
+    },
+    "conversations/conv_khaled_platform": {
+      "schemaVersion": 1,
+      "conversationKind": "direct",
+      "title": "Khaled · Talent Graph & infra",
+      "participantIds": ["demo_alex_uid", "demo_khaled_uid"],
+      "createdBy": "demo_khaled_uid",
+      "lastMessagePreview": "GraphQL batch loader cut p95 latency by 40% on canary.",
+      "lastMessageAt_iso": "2026-05-02T08:40:00.000Z",
+      "createdAt_iso": "2026-04-28T14:00:00.000Z"
+    },
+    "conversations/conv_hackathon_squad": {
+      "schemaVersion": 1,
+      "conversationKind": "group",
+      "title": "Hackathon Squad - Demo prep",
+      "projectId": "proj_devconnect_mobile",
+      "participantIds": ["demo_alex_uid", "demo_mina_uid", "demo_khaled_uid"],
+      "createdBy": "demo_mina_uid",
+      "lastMessagePreview": "Demo checklist: auth flow, realtime chat, tasks board — green?",
+      "lastMessageAt_iso": "2026-05-02T10:45:00.000Z",
+      "createdAt_iso": "2026-05-01T12:00:00.000Z"
+    },
+    "conversations/conv_design_crew": {
+      "schemaVersion": 1,
+      "conversationKind": "group",
+      "title": "Design Crew - Portfolio showcase ideas",
+      "projectId": "proj_pixelpair",
+      "participantIds": ["demo_lina_uid", "demo_nora_uid", "demo_alex_uid"],
+      "createdBy": "demo_lina_uid",
+      "lastMessagePreview": "Motion spec for the showcase carousel — Lina attached Figma link.",
+      "lastMessageAt_iso": "2026-05-02T07:55:00.000Z",
+      "createdAt_iso": "2026-04-22T11:00:00.000Z"
+    },
+    "matchRequests/match_mina_to_alex": {
+      "schemaVersion": 1,
+      "fromUserId": "demo_mina_uid",
+      "toUserId": "demo_alex_uid",
+      "workflowStatus": "pending",
+      "message": "Interested in collaborating on DevConnect realtime features.",
+      "createdAt_iso": "2026-05-02T07:00:00.000Z",
+      "resolvedAt": null
+    },
+    "matchRequests/match_khaled_to_alex": {
+      "schemaVersion": 1,
+      "fromUserId": "demo_khaled_uid",
+      "toUserId": "demo_alex_uid",
+      "workflowStatus": "pending",
+      "message": "Backend + AI fit for your project board.",
+      "createdAt_iso": "2026-05-01T16:00:00.000Z",
+      "resolvedAt": null
+    },
+    "matchRequests/match_nora_to_alex": {
+      "schemaVersion": 1,
+      "fromUserId": "demo_nora_uid",
+      "toUserId": "demo_alex_uid",
+      "workflowStatus": "pending",
+      "message": "Happy to help with Compose motion on DevConnect — evenings GMT+3.",
+      "createdAt_iso": "2026-05-02T06:30:00.000Z",
+      "resolvedAt": null
+    },
+    "matchRequests/match_ravi_to_mina": {
+      "schemaVersion": 1,
+      "fromUserId": "demo_ravi_uid",
+      "toUserId": "demo_mina_uid",
+      "workflowStatus": "accepted",
+      "message": "Let's pair on release workflows for CloudForge x DevConnect integration.",
+      "createdAt_iso": "2026-04-18T10:00:00.000Z",
+      "resolvedAt_iso": "2026-04-19T09:00:00.000Z"
+    },
+    "matchRequests/match_lina_to_khaled_declined": {
+      "schemaVersion": 1,
+      "fromUserId": "demo_lina_uid",
+      "toUserId": "demo_khaled_uid",
+      "workflowStatus": "declined",
+      "message": "Quick consult on graph UX labeling?",
+      "createdAt_iso": "2026-04-08T10:00:00.000Z",
+      "resolvedAt_iso": "2026-04-09T14:00:00.000Z"
+    },
+    "events/event_devsprint_global": {
+      "schemaVersion": 1,
+      "title": "DevSprint Global",
+      "summaryLine": "Starts in 8h - 332 participants",
+      "startsAt_iso": "2026-05-03T14:00:00.000Z",
+      "timezone": "UTC",
+      "participantCount": 332,
+      "formatKind": "online",
+      "eventStatus": "scheduled"
+    },
+    "events/event_open_source_weekend": {
+      "schemaVersion": 1,
+      "title": "Open Source Weekend",
+      "summaryLine": "Starts in 2 days - 89 participants",
+      "startsAt_iso": "2026-05-04T10:00:00.000Z",
+      "timezone": "UTC",
+      "participantCount": 89,
+      "formatKind": "online",
+      "eventStatus": "scheduled"
+    },
+    "events/event_mobile_hack_night": {
+      "schemaVersion": 1,
+      "title": "Mobile Hack Night",
+      "summaryLine": "Live now - 17 teams active",
+      "startsAt_iso": "2026-05-02T12:00:00.000Z",
+      "timezone": "UTC",
+      "participantCount": 17,
+      "formatKind": "hybrid",
+      "eventStatus": "live"
+    },
+    "events/event_ai_builders_jam": {
+      "schemaVersion": 1,
+      "title": "AI Builders Jam",
+      "summaryLine": "Starts in 9h - 142 participants",
+      "startsAt_iso": "2026-05-03T08:00:00.000Z",
+      "timezone": "UTC",
+      "participantCount": 142,
+      "formatKind": "online",
+      "eventStatus": "scheduled"
+    },
+    "newsHighlights/nh_kotlin_perf": {
+      "schemaVersion": 1,
+      "title": "Kotlin 2.x performance upgrades shipping now",
+      "sourceName": "Kotlin Blog",
+      "sortOrder": 1,
+      "publishedAt_iso": "2026-05-01T07:00:00.000Z",
+      "tagLine": "compiler",
+      "externalUrl": "https://kotlinlang.org"
+    },
+    "newsHighlights/nh_compose_anim": {
+      "schemaVersion": 1,
+      "title": "Jetpack Compose receives new animation APIs",
+      "sourceName": "Android Developers",
+      "sortOrder": 2,
+      "publishedAt_iso": "2026-04-29T15:30:00.000Z",
+      "tagLine": "compose",
+      "externalUrl": "https://developer.android.com"
+    },
+    "newsHighlights/nh_firestore_rules": {
+      "schemaVersion": 1,
+      "title": "Structuring Firestore for scalable security rules",
+      "sourceName": "Firebase Blog",
+      "sortOrder": 3,
+      "publishedAt_iso": "2026-04-27T11:00:00.000Z",
+      "tagLine": "firebase",
+      "externalUrl": "https://firebase.google.com/docs/firestore"
+    },
+    "collaboratorSuggestions/cs_alex_mina": {
+      "schemaVersion": 1,
+      "viewerUserId": "demo_alex_uid",
+      "suggestedUserId": "demo_mina_uid",
+      "stackSummary": "Android + Firebase",
+      "matchScore": 95,
+      "rank": 1,
+      "availabilityNote": "Evenings UTC+1 · async-first",
+      "updatedAt_iso": "2026-05-02T12:00:00.000Z"
+    },
+    "collaboratorSuggestions/cs_alex_khaled": {
+      "schemaVersion": 1,
+      "viewerUserId": "demo_alex_uid",
+      "suggestedUserId": "demo_khaled_uid",
+      "stackSummary": "Backend + AI APIs",
+      "matchScore": 93,
+      "rank": 2,
+      "availabilityNote": "Overlap 14:00–18:00 UTC",
+      "updatedAt_iso": "2026-05-02T12:00:00.000Z"
+    },
+    "collaboratorSuggestions/cs_alex_nora": {
+      "schemaVersion": 1,
+      "viewerUserId": "demo_alex_uid",
+      "suggestedUserId": "demo_nora_uid",
+      "stackSummary": "UI/UX + React Native",
+      "matchScore": 91,
+      "rank": 3,
+      "availabilityNote": "Design critiques weekends",
+      "updatedAt_iso": "2026-05-02T12:00:00.000Z"
+    },
+    "inbox/notif_alex_1": {
+      "schemaVersion": 1,
+      "recipientUserId": "demo_alex_uid",
+      "notificationKind": "task_update",
+      "title": "Team Neon",
+      "body": "Task moved to In Progress: Realtime chat UI",
+      "deepLink": "/projects/proj_devconnect_mobile",
+      "read": false,
+      "createdAt_iso": "2026-05-02T10:05:00.000Z"
+    },
+    "inbox/notif_alex_2": {
+      "schemaVersion": 1,
+      "recipientUserId": "demo_alex_uid",
+      "notificationKind": "message",
+      "title": "New message",
+      "body": "New message from Mina in Team Neon - Sprint planning thread",
+      "deepLink": "/chat/conv_team_neon",
+      "read": false,
+      "createdAt_iso": "2026-05-02T09:20:00.000Z"
+    },
+    "inbox/notif_alex_3": {
+      "schemaVersion": 1,
+      "recipientUserId": "demo_alex_uid",
+      "notificationKind": "event",
+      "title": "Hackathon",
+      "body": "You were invited to hackathon: DevSprint Global",
+      "deepLink": "/events/event_devsprint_global",
+      "read": true,
+      "createdAt_iso": "2026-05-01T18:00:00.000Z"
+    },
+    "inbox/notif_alex_match_digest": {
+      "schemaVersion": 1,
+      "recipientUserId": "demo_alex_uid",
+      "notificationKind": "match",
+      "title": "New matches",
+      "body": "3 new collaborators match your Kotlin + Firebase stack",
+      "deepLink": "/dashboard/matches",
+      "read": false,
+      "createdAt_iso": "2026-05-02T07:15:00.000Z"
+    },
+    "inbox/notif_alex_feed": {
+      "schemaVersion": 1,
+      "recipientUserId": "demo_alex_uid",
+      "notificationKind": "feed",
+      "title": "Tech feed",
+      "body": "Tech feed: Kotlin 2.x release notes are out",
+      "deepLink": "/news/nh_kotlin_perf",
+      "read": false,
+      "createdAt_iso": "2026-05-02T06:00:00.000Z"
+    },
+    "inbox/notif_mina_project_invite": {
+      "schemaVersion": 1,
+      "recipientUserId": "demo_mina_uid",
+      "notificationKind": "project_invite",
+      "title": "DevConnect Mobile",
+      "body": "Alex added you as contributor — sprint scope confirmed for realtime chat.",
+      "deepLink": "/projects/proj_devconnect_mobile",
+      "read": true,
+      "createdAt_iso": "2026-04-11T09:00:00.000Z"
+    },
+    "activity/act_alex_1": {
+      "schemaVersion": 1,
+      "audienceUserId": "demo_alex_uid",
+      "verb": "commented",
+      "summary": "Aria commented on API schema PR",
+      "relatedProjectId": "proj_devconnect_mobile",
+      "relatedConversationId": "conv_aria_api",
+      "createdAt_iso": "2026-05-02T12:05:00.000Z"
+    },
+    "activity/act_alex_2": {
+      "schemaVersion": 1,
+      "audienceUserId": "demo_alex_uid",
+      "verb": "status_changed",
+      "summary": "Task moved to In Progress in Team Neon",
+      "relatedProjectId": "proj_devconnect_mobile",
+      "createdAt_iso": "2026-05-02T11:50:00.000Z"
+    },
+    "activity/act_alex_3": {
+      "schemaVersion": 1,
+      "audienceUserId": "demo_alex_uid",
+      "verb": "invited",
+      "summary": "New invitation to AI Builders Jam",
+      "relatedProjectId": null,
+      "relatedEventId": "event_ai_builders_jam",
+      "createdAt_iso": "2026-05-02T10:00:00.000Z"
+    },
+    "activity/act_alex_4": {
+      "schemaVersion": 1,
+      "audienceUserId": "demo_alex_uid",
+      "verb": "joined",
+      "summary": "Ravi joined CloudForge release channel — welcome thread pinned.",
+      "relatedProjectId": "proj_cloudforge",
+      "createdAt_iso": "2026-05-01T13:20:00.000Z"
+    },
+    "activity/act_alex_5": {
+      "schemaVersion": 1,
+      "audienceUserId": "demo_alex_uid",
+      "verb": "status_changed",
+      "summary": "Home analytics cards moved to In Progress in Team Neon",
+      "relatedProjectId": "proj_devconnect_mobile",
+      "createdAt_iso": "2026-05-02T08:12:00.000Z"
+    }
+  }
+}
