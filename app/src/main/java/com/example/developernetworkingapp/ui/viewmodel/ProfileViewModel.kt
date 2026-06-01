@@ -13,7 +13,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ProfileViewModel(
     private val repository: ProfileRepository = AppContainer.profileRepository,
@@ -36,6 +38,19 @@ class ProfileViewModel(
 
     fun logout() {
         authRepository.logout()
+    }
+
+    fun saveProfile(displayName: String, headline: String, bio: String) {
+        viewModelScope.launch {
+            val saved = withContext(Dispatchers.IO) {
+                repository.updateProfile(displayName, headline, bio)
+            }
+            emitEvent(
+                ProfileUiEvent.ShowNotification(
+                    if (saved) "Profile saved to Firestore." else "Could not save profile. Try again.",
+                ),
+            )
+        }
     }
 
     fun notifyProfileSaved() {

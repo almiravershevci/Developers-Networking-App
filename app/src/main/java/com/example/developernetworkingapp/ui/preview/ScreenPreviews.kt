@@ -229,7 +229,7 @@ fun ProfileScreenPreview() {
                 events = MutableSharedFlow(),
                 navController = rememberNavController(),
                 isAdmin = false,
-                onProfileSaved = {},
+                onSaveProfile = { _, _, _ -> },
                 onSyncStarted = {},
                 onLogout = {}
             )

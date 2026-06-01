@@ -32,7 +32,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.example.developernetworkingapp.domain.model.NotificationItem
+import com.example.developernetworkingapp.ui.components.PremiumInfoCard
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Alignment
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.NotificationsUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
@@ -109,7 +112,31 @@ fun NotificationScreen(
         verticalArrangement = Arrangement.spacedBy(AppDesignTokens.screenVerticalSpacing),
         contentPadding = AppDesignTokens.screenContentPadding
     ) {
-        item { SectionTitle("Recent Alerts") }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SectionTitle("Recent Alerts")
+                val unread = state.content?.unreadCount ?: 0
+                if (unread > 0) {
+                    Text(
+                        "$unread unread",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        }
+        state.content?.statusMessage?.let { message ->
+            item {
+                PremiumInfoCard(
+                    title = "Inbox",
+                    subtitle = message,
+                )
+            }
+        }
         items(state.content?.items ?: emptyList(), key = { it.id }) { item ->
             ElevatedCard(
                 onClick = { selectedNotification = item },
@@ -124,7 +151,11 @@ fun NotificationScreen(
                 ) {
                     Text(item.body, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (item.read) "Read" else "Just now",
+                        when {
+                            item.read -> "Read"
+                            item.relativeTime.isNotBlank() -> item.relativeTime
+                            else -> "New"
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (item.read) {
                             MaterialTheme.colorScheme.outline

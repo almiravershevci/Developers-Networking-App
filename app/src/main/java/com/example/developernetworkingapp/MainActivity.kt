@@ -95,12 +95,12 @@ class MainActivity : ComponentActivity() {
                     composable(AppRoutes.EVENTS) { MainAppScaffold(navController) }
                     composable(
                         route = AppRoutes.CONVERSATION,
-                        arguments = listOf(navArgument("title") { type = NavType.StringType })
+                        arguments = listOf(navArgument("conversationId") { type = NavType.StringType })
                     ) { entry ->
                         ConversationScreen(
                             padding = androidx.compose.foundation.layout.PaddingValues(),
                             navController = navController,
-                            conversationTitle = entry.arguments?.getString("title").orEmpty()
+                            conversationId = entry.arguments?.getString("conversationId").orEmpty()
                         )
                     }
                     composable(
@@ -176,12 +176,12 @@ private fun AppEntry() {
         composable(AppRoutes.EVENTS) { MainAppScaffold(navController) }
         composable(
             route = AppRoutes.CONVERSATION,
-            arguments = listOf(navArgument("title") { type = NavType.StringType })
+            arguments = listOf(navArgument("conversationId") { type = NavType.StringType })
         ) { entry ->
             ConversationScreen(
                 padding = androidx.compose.foundation.layout.PaddingValues(),
                 navController = navController,
-                conversationTitle = entry.arguments?.getString("title").orEmpty()
+                conversationId = entry.arguments?.getString("conversationId").orEmpty()
             )
         }
         composable(

@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.domain.model.SearchResult
+import com.example.developernetworkingapp.ui.components.PremiumInfoCard
 import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.SearchUiState
@@ -192,6 +193,14 @@ fun SearchScreen(
                 }
             }
         }
+        state.content?.statusMessage?.let { message ->
+            item {
+                PremiumInfoCard(
+                    title = "Talent search",
+                    subtitle = message,
+                )
+            }
+        }
         item { SectionTitle("Quick Filters") }
         if (state.errorMessage != null) {
             item {
@@ -268,14 +277,18 @@ fun SearchScreen(
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(onClick = {
-                            navController.navigate(
-                                AppRoutes.detailRoute(
-                                    title = result.title,
-                                    subtitle = result.subtitle,
-                                    description = "Owner: ${result.owner}\nLocation: ${result.location}\nStack: ${result.stack}\nTeam size: ${result.membersCount}\n\n${result.description}",
-                                    sourceRoute = AppRoutes.PROJECTS
+                            if (result.projectId.isNotBlank()) {
+                                navController.navigate(AppRoutes.projectsRoute(result.projectId))
+                            } else {
+                                navController.navigate(
+                                    AppRoutes.detailRoute(
+                                        title = result.title,
+                                        subtitle = result.subtitle,
+                                        description = "Owner: ${result.owner}\nLocation: ${result.location}\nStack: ${result.stack}\nTeam size: ${result.membersCount}\n\n${result.description}",
+                                        sourceRoute = AppRoutes.PROJECTS,
+                                    ),
                                 )
-                            )
+                            }
                         }) { Text("View details") }
                         TextButton(onClick = {
                             navController.navigate(

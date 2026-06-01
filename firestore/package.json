@@ -4,7 +4,11 @@
   "type": "module",
   "scripts": {
     "seed": "node seed-firestore.mjs",
-    "seed:dry": "node seed-firestore.mjs --dry-run"
+    "seed:dry": "node seed-firestore.mjs --dry-run",
+    "chat:add-me": "node add-chat-participant.mjs",
+    "chat:add-me:dry": "node add-chat-participant.mjs --dry-run",
+    "inbox:copy-demo": "node add-inbox-for-user.mjs",
+    "inbox:copy-demo:dry": "node add-inbox-for-user.mjs --dry-run"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0"

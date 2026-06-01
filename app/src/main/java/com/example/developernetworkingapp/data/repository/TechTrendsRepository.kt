@@ -1,6 +1,6 @@
 package com.example.developernetworkingapp.data.repository
 
-import com.example.developernetworkingapp.data.remote.TechTrendsApi
+import com.example.developernetworkingapp.data.datasource.remote.TechTrendsApi
 
 interface TechTrendsRepository {
     suspend fun loadTrendingTopics(): List<String>

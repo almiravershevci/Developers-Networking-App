@@ -134,7 +134,6 @@ fun EmailVerificationRoute(navController: NavController, email: String) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     androidx.compose.runtime.LaunchedEffect(email) {
         viewModel.setEmail(email)
-        viewModel.resendCode()
     }
     EmailVerificationScreen(
         state = state,
@@ -161,7 +160,10 @@ private fun EmailVerificationScreen(
     AuthCardContainer(horizontalPadding = 20.dp) {
         Text("Verify your email", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(6.dp))
-        Text("We sent a verification code to ${state.email}.", style = MaterialTheme.typography.bodyMedium)
+        Text(
+            "Open the verification link in your inbox for ${state.email}, then enter any 6 digits below and tap Verify.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedTextField(
             value = state.code,
@@ -169,7 +171,7 @@ private fun EmailVerificationScreen(
             label = { Text("6-digit code") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            supportingText = { Text("Demo code: 123456") }
+            supportingText = { Text("Check spam if you do not see the email.") }
         )
         state.errorMessage?.let {
             Spacer(modifier = Modifier.height(8.dp))

@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.ui.components.NotificationBanner
+import com.example.developernetworkingapp.ui.components.PremiumInfoCard
 import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.EventsUiState
@@ -147,6 +148,14 @@ fun EventFeedScreen(
         contentPadding = AppDesignTokens.screenContentPadding
     ) {
         item { SectionTitle("Hackathons & Events") }
+        state.content?.statusMessage?.let { message ->
+            item {
+                PremiumInfoCard(
+                    title = "Events feed",
+                    subtitle = message,
+                )
+            }
+        }
         items(state.content?.items ?: emptyList()) { event ->
             ElevatedCard(
                 onClick = { selectedEvent = event },

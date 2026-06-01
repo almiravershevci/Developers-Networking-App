@@ -95,6 +95,7 @@ data class PlatformSettingsSnapshot(
 )
 
 data class AdminDashboardSnapshot(
+    val catalogSourceLabel: String = "Firestore",
     val users: List<AdminUserRow>,
     val projects: List<AdminProjectRow>,
     val contentQueue: List<ContentQueueItem>,
@@ -111,5 +112,33 @@ data class AdminDashboardSnapshot(
     val analyticsExportsTotal: Int,
     val quickStatNewUsers7d: Int,
     val quickStatNewProjects7d: Int,
-    val activityTrendUp: Boolean
-)
+    val activityTrendUp: Boolean,
+) {
+    companion object {
+        fun empty(catalogSourceLabel: String = "Loading…") = AdminDashboardSnapshot(
+            catalogSourceLabel = catalogSourceLabel,
+            users = emptyList(),
+            projects = emptyList(),
+            contentQueue = emptyList(),
+            reports = emptyList(),
+            outboundNotifications = emptyList(),
+            pushTopic = "product_updates",
+            nextPushSlotLabel = "None scheduled",
+            tickets = emptyList(),
+            feedbackSuggestion = "—",
+            feedbackVotes = 0,
+            adminAccounts = emptyList(),
+            auditLog = emptyList(),
+            platformSettings = PlatformSettingsSnapshot(
+                defaultNotificationsEnabled = true,
+                strictTransportEncryption = true,
+                analyticsSharingEnabled = false,
+                themeDraftLabel = "Default theme",
+            ),
+            analyticsExportsTotal = 0,
+            quickStatNewUsers7d = 0,
+            quickStatNewProjects7d = 0,
+            activityTrendUp = true,
+        )
+    }
+}

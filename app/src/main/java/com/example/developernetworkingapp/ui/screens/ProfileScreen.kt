@@ -89,7 +89,7 @@ fun ProfileRoute(padding: PaddingValues, navController: NavController) {
         events = viewModel.events,
         navController = navController,
         isAdmin = currentUser?.role == UserRole.ADMIN,
-        onProfileSaved = viewModel::notifyProfileSaved,
+        onSaveProfile = viewModel::saveProfile,
         onSyncStarted = viewModel::notifySyncStarted,
         onLogout = {
             viewModel.logout()
@@ -108,7 +108,7 @@ fun ProfileScreen(
     events: SharedFlow<ProfileUiEvent>,
     navController: NavController,
     isAdmin: Boolean,
-    onProfileSaved: () -> Unit,
+    onSaveProfile: (String, String, String) -> Unit,
     onSyncStarted: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -204,7 +204,7 @@ fun ProfileScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        onProfileSaved()
+                        onSaveProfile(editName, editRole, editBio)
                         showEditProfileDialog = false
                     }
                 ) {
@@ -264,7 +264,11 @@ fun ProfileScreen(
                         Column {
                             Text(content?.name ?: "Loading user...", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text(content?.role ?: "Loading role...", style = MaterialTheme.typography.titleMedium, color = ElectricCyan)
-                            Text("⭐ 4.8 Rating • 127 Projects", style = MaterialTheme.typography.bodyMedium, color = VibrantOrange)
+                            Text(
+                                content?.statsLine?.takeIf { it.isNotBlank() } ?: "Building your profile",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = VibrantOrange,
+                            )
                         }
                     }
                     Text(content?.bio ?: "Passionate developer building amazing apps and connecting with fellow creators.", style = MaterialTheme.typography.bodyMedium)

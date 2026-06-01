@@ -6,5 +6,6 @@ data class ProfileContent(
     val bio: String,
     val stacks: List<String>,
     val portfolio: String,
-    val insights: String
+    val insights: String,
+    val statsLine: String = "",
 )

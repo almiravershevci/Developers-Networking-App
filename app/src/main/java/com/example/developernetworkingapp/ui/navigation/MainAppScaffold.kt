@@ -1,10 +1,13 @@
 package com.example.developernetworkingapp.ui.navigation
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -17,9 +20,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.developernetworkingapp.ui.navigation.AppRoutes
+import com.example.developernetworkingapp.ui.viewmodel.NotificationBadgeViewModel
 import com.example.developernetworkingapp.ui.data.MockUiData
 import com.example.developernetworkingapp.ui.screens.DashboardRoute
 import com.example.developernetworkingapp.ui.screens.ChatRoute
@@ -35,6 +43,10 @@ import com.example.developernetworkingapp.ui.screens.TaskManagementRoute
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScaffold(navController: NavController) {
+    val activity = LocalContext.current as ComponentActivity
+    val badgeViewModel: NotificationBadgeViewModel = viewModel(viewModelStoreOwner = activity)
+    val unreadAlerts by badgeViewModel.unreadCount.collectAsStateWithLifecycle()
+
     val tabs = MockUiData.bottomTabs
     val currentRoute by navController.currentBackStackEntryAsState()
     val route = currentRoute?.destination?.route ?: AppRoutes.DASHBOARD
@@ -47,10 +59,9 @@ fun MainAppScaffold(navController: NavController) {
                 title = { Text(screenTitle(normalizedRoute)) },
                 actions = {
                     IconButton(onClick = { navController.navigate(AppRoutes.NOTIFICATIONS) }) {
-                        Icon(
-                            imageVector = Icons.Outlined.NotificationsNone,
+                        NotificationNavIcon(
+                            unreadCount = unreadAlerts,
                             contentDescription = "Notifications",
-                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                     Spacer(modifier = Modifier.width(4.dp))
@@ -73,7 +84,17 @@ fun MainAppScaffold(navController: NavController) {
                             onClick = {
                                 if (normalizedRoute != tab.route) navController.navigate(tab.route)
                             },
-                            icon = { Icon(imageVector = tab.icon, contentDescription = tab.label) },
+                            icon = {
+                                if (tab.route == AppRoutes.NOTIFICATIONS) {
+                                    NotificationNavIcon(
+                                        unreadCount = unreadAlerts,
+                                        contentDescription = tab.label,
+                                        icon = tab.icon,
+                                    )
+                                } else {
+                                    Icon(imageVector = tab.icon, contentDescription = tab.label)
+                                }
+                            },
                             label = { Text(tab.label) }
                         )
                     }
@@ -110,6 +131,38 @@ private fun normalizeRoute(route: String): String {
         route.startsWith(AppRoutes.TASKS) -> AppRoutes.TASKS
         route.startsWith(AppRoutes.EVENTS) -> AppRoutes.EVENTS
         else -> route
+    }
+}
+
+@Composable
+private fun NotificationNavIcon(
+    unreadCount: Int,
+    contentDescription: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.NotificationsNone,
+) {
+    val tint = MaterialTheme.colorScheme.primary
+    if (unreadCount > 0) {
+        BadgedBox(
+            badge = {
+                Badge {
+                    Text(
+                        text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                    )
+                }
+            },
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = tint,
+            )
+        }
+    } else {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint,
+        )
     }
 }
 

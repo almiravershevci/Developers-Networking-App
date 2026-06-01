@@ -1,4 +1,4 @@
-package com.example.developernetworkingapp.data.firestore
+package com.example.developernetworkingapp.data.datasource.firebase.schema
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
@@ -19,6 +19,9 @@ data class UserProfileDoc(
     val schemaVersion: Int = 1,
     val displayName: String = "",
     val usernameLower: String = "",
+    val email: String = "",
+    val accountRole: String = "user",
+    val emailVerified: Boolean = false,
     val headline: String = "",
     val bio: String = "",
     val photoUrl: String? = null,

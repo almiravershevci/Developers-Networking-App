@@ -1,6 +1,7 @@
 package com.example.developernetworkingapp.domain.model
 
 data class SearchResult(
+    val projectId: String = "",
     val title: String,
     val subtitle: String,
     val stack: String,
@@ -12,6 +13,7 @@ data class SearchResult(
 )
 
 data class SearchContent(
-    val filters: List<String>,
-    val results: List<SearchResult>
+    val filters: List<String> = emptyList(),
+    val results: List<SearchResult> = emptyList(),
+    val statusMessage: String? = null,
 )

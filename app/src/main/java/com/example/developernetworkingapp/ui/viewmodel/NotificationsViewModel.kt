@@ -23,6 +23,8 @@ class NotificationsViewModel(
     }
 
     fun markAsRead(notificationId: String) {
-        repository.markAsRead(notificationId)
+        viewModelScope.launch {
+            repository.markAsRead(notificationId)
+        }
     }
 }

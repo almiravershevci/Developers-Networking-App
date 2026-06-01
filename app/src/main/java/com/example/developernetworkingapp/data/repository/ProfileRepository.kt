@@ -6,9 +6,12 @@ import kotlinx.coroutines.flow.flowOf
 
 interface ProfileRepository {
     fun observeProfile(): Flow<ProfileContent>
+    suspend fun updateProfile(displayName: String, headline: String, bio: String): Boolean
 }
 
 class FakeProfileRepository : ProfileRepository {
+    override suspend fun updateProfile(displayName: String, headline: String, bio: String): Boolean = true
+
     override fun observeProfile(): Flow<ProfileContent> = flowOf(
         ProfileContent(
             name = "Alex Dev",
@@ -16,7 +19,8 @@ class FakeProfileRepository : ProfileRepository {
             bio = "Building scalable collaboration tools and real-time mobile experiences.",
             stacks = listOf("Android", "Kotlin", "Compose", "Firebase", "REST APIs", "CI/CD"),
             portfolio = "github.com/alex-dev - linkedin.com/in/alex-dev - alex.dev/portfolio",
-            insights = "134 commits this month - 11 PRs merged - 7 repositories active"
+            insights = "134 commits this month - 11 PRs merged - 7 repositories active",
+            statsLine = "⭐ 4.8 Rating • 127 Projects",
         )
     )
 }

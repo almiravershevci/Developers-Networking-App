@@ -1,4 +1,4 @@
-package com.example.developernetworkingapp.data.firestore
+package com.example.developernetworkingapp.data.datasource.firebase.schema
 
 /**
  * Top-level collection identifiers and path helpers.

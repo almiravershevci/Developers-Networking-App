@@ -89,7 +89,18 @@ fun TaskManagementScreen(
         contentPadding = AppDesignTokens.screenContentPadding
     ) {
         item { SectionTitle("Task Management") }
-        items(state.content?.items ?: emptyList()) { task ->
+        val taskItems = state.content?.items.orEmpty()
+        if (taskItems.isEmpty()) {
+            item {
+                Text(
+                    "No tasks loaded. Stay logged in, rebuild the app, and confirm seed project " +
+                        "proj_devconnect_mobile has a tasks subcollection.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        items(taskItems) { task ->
             val parsedTask = remember(task) { parseTask(task) }
             val activeStatus = taskStatusOverrides[task] ?: parsedTask.status
             val displayTaskText = "${parsedTask.content} - $activeStatus"

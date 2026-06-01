@@ -312,7 +312,7 @@ class InMemoryAdminRepository : AdminRepository {
     }
 
     companion object {
-        fun seed(): AdminDashboardSnapshot {
+        internal fun seed(): AdminDashboardSnapshot {
             val users = listOf(
                 AdminUserRow(
                     id = "u1",
@@ -413,6 +413,7 @@ class InMemoryAdminRepository : AdminRepository {
                 AuditLogEntry("e2", "Yesterday", "moderator.bot banned user spam_bot_21")
             )
             return AdminDashboardSnapshot(
+                catalogSourceLabel = "In-memory demo",
                 users = users,
                 projects = projects,
                 contentQueue = queue,

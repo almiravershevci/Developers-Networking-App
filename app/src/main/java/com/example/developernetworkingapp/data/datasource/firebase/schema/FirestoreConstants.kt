@@ -1,9 +1,16 @@
-package com.example.developernetworkingapp.data.firestore
+package com.example.developernetworkingapp.data.datasource.firebase.schema
 
 /**
  * Canonical string values stored in Firestore (no Kotlin enums).
  * Treat unknown future values as opaque strings on the client.
  */
+object AccountRole {
+    const val USER = "user"
+    const val ADMIN = "admin"
+    const val BANNED = "banned"
+    const val DEACTIVATED = "deactivated"
+}
+
 object ProfileVisibility {
     const val PUBLIC = "public"
     const val NETWORK_ONLY = "network_only"

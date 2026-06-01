@@ -14,6 +14,14 @@ ANDROID APP
   Get that file from Firebase Console if you do not have it. Do not commit
   service account keys; google-services.json is the normal client config.
 
+  Firebase Console -> Authentication -> Sign-in method -> enable Email/Password.
+
+  If signup shows PERMISSION_DENIED, deploy rules from project root:
+    firebase deploy --only firestore:rules
+  (Signup reads usernames before sign-in; rules must allow get on usernames.)
+  For password reset and email verification links, add your app domain under
+  Authentication -> Settings -> Authorized domains.
+
 ----------------------------------------------------------------------------
 1) DEPLOY RULES + INDEXES (from repository root, Firebase CLI installed)
 ----------------------------------------------------------------------------

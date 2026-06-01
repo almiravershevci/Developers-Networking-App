@@ -8,7 +8,6 @@ import com.example.developernetworkingapp.di.AppContainer
 import com.example.developernetworkingapp.ui.state.LoginUiState
 import com.example.developernetworkingapp.ui.state.SignupUiState
 import com.example.developernetworkingapp.ui.state.VerificationUiState
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,7 +40,6 @@ class LoginViewModel(
 
         _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
         viewModelScope.launch {
-            delay(600)
             when (val result = authRepository.login(emailOrUsername, password, state.rememberMe)) {
                 is AuthResult.Success -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = null) }
@@ -56,17 +54,19 @@ class LoginViewModel(
 
     fun requestPasswordReset() {
         val identifier = _uiState.value.form.email
-        when (val result = authRepository.requestPasswordReset(identifier)) {
-            is AuthResult.Success -> {
-                _uiState.update {
-                    it.copy(
-                        errorMessage = null,
-                        infoMessage = "Password reset link sent to ${result.user.email}."
-                    )
+        viewModelScope.launch {
+            when (val result = authRepository.requestPasswordReset(identifier)) {
+                is AuthResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = null,
+                            infoMessage = "Password reset link sent to ${result.user.email}.",
+                        )
+                    }
                 }
-            }
-            is AuthResult.Error -> {
-                _uiState.update { it.copy(errorMessage = result.message, infoMessage = null) }
+                is AuthResult.Error -> {
+                    _uiState.update { it.copy(errorMessage = result.message, infoMessage = null) }
+                }
             }
         }
     }
@@ -128,14 +128,13 @@ class SignupViewModel(
 
         _uiState.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
         viewModelScope.launch {
-            delay(700)
             when (
                 val result = authRepository.signup(
                     name = form.name,
                     username = form.username,
                     email = form.email,
                     password = form.password,
-                    rememberMe = state.rememberMe
+                    rememberMe = state.rememberMe,
                 )
             ) {
                 is AuthResult.Success -> {
@@ -143,7 +142,7 @@ class SignupViewModel(
                         it.copy(
                             isLoading = false,
                             errorMessage = null,
-                            successMessage = "Account created. Verify your email to continue."
+                            successMessage = "Account created. Verify your email to continue.",
                         )
                     }
                     onSuccess(form.email.trim().lowercase())
@@ -163,7 +162,6 @@ class SignupViewModel(
         val hasSymbol = password.any { !it.isLetterOrDigit() }
         return hasUpper && hasLower && hasDigit && hasSymbol
     }
-
 }
 
 class VerificationViewModel(
@@ -182,11 +180,16 @@ class VerificationViewModel(
 
     fun resendCode() {
         val email = _uiState.value.email
-        when (val result = authRepository.requestEmailVerification(email)) {
-            is AuthResult.Success -> _uiState.update {
-                it.copy(infoMessage = "Verification code sent to $email. Use 123456 for demo.", errorMessage = null)
+        viewModelScope.launch {
+            when (val result = authRepository.requestEmailVerification(email)) {
+                is AuthResult.Success -> _uiState.update {
+                    it.copy(
+                        infoMessage = "Verification email sent to $email. Open the link, then enter any 6 digits and tap Verify.",
+                        errorMessage = null,
+                    )
+                }
+                is AuthResult.Error -> _uiState.update { it.copy(errorMessage = result.message, infoMessage = null) }
             }
-            is AuthResult.Error -> _uiState.update { it.copy(errorMessage = result.message, infoMessage = null) }
         }
     }
 
@@ -198,7 +201,6 @@ class VerificationViewModel(
         }
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
-            delay(400)
             when (val result = authRepository.verifyEmailCode(state.email, state.code)) {
                 is AuthResult.Success -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = "Email verified.") }

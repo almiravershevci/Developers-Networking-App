@@ -66,6 +66,12 @@ fun AdminOverviewHome(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 6.dp)
             )
+            Text(
+                dash.catalogSourceLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
         item { SectionTitle("Key metrics") }
         item {

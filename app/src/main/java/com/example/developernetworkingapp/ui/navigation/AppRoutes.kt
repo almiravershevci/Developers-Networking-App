@@ -22,10 +22,10 @@ object AppRoutes {
     const val COLLABORATOR_PROFILE = "collaborator_profile/{id}/{score}"
 
     /** Full-screen messaging UI for a conversation (opened from Chat). */
-    const val CONVERSATION = "conversation/{title}"
+    const val CONVERSATION = "conversation/{conversationId}"
 
-    fun conversationRoute(title: String): String {
-        return "conversation/${Uri.encode(title)}"
+    fun conversationRoute(conversationId: String): String {
+        return "conversation/${Uri.encode(conversationId)}"
     }
 
     fun detailRoute(
