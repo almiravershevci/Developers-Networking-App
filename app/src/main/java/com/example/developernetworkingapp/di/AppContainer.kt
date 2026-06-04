@@ -8,6 +8,7 @@ import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.data.repository.impl.AuthRepositoryFirebase
 import com.example.developernetworkingapp.data.repository.impl.AdminRepositoryFirestore
 import com.example.developernetworkingapp.data.local.ChatMuteStore
+import com.example.developernetworkingapp.data.local.SettingsStore
 import com.example.developernetworkingapp.data.repository.ChatRepository
 import com.example.developernetworkingapp.data.repository.DashboardRepository
 import com.example.developernetworkingapp.data.repository.EventsRepository
@@ -37,6 +38,7 @@ object AppContainer {
     private lateinit var authRepo: AuthRepository
     private lateinit var notificationDispatcherImpl: NotificationDispatcher
     private lateinit var chatMuteStoreImpl: ChatMuteStore
+    private lateinit var settingsStoreImpl: SettingsStore
     val authRepository: AuthRepository
         get() = authRepo
     val notificationDispatcher: NotificationDispatcher
@@ -53,6 +55,8 @@ object AppContainer {
     val chatRepository: ChatRepository by lazy { ChatRepositoryFirestore() }
     val chatMuteStore: ChatMuteStore
         get() = chatMuteStoreImpl
+    val settingsStore: SettingsStore
+        get() = settingsStoreImpl
     val searchRepository: SearchRepository by lazy { SearchRepositoryFirestore() }
     val notificationsRepository: NotificationsRepository by lazy { NotificationsRepositoryFirestore() }
     val profileRepository: ProfileRepository by lazy {
@@ -77,6 +81,7 @@ object AppContainer {
             authRepo = AuthRepositoryFirebase(context)
             notificationDispatcherImpl = LocalNotificationDispatcher(context)
             chatMuteStoreImpl = ChatMuteStore(context)
+            settingsStoreImpl = SettingsStore(context)
             NotificationChannels.ensureCreated(context)
         }
     }

@@ -30,7 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.domain.model.SearchResult
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
@@ -42,7 +42,7 @@ import com.example.developernetworkingapp.ui.viewmodel.SearchViewModel
 
 @Composable
 fun SearchRoute(padding: PaddingValues, navController: NavController) {
-    val viewModel: SearchViewModel = viewModel()
+    val viewModel: SearchViewModel = appViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SearchScreen(padding, state, viewModel::updateQuery, viewModel::loadTrendingTopics, navController)
 }

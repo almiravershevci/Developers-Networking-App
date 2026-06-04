@@ -28,8 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
+import com.example.developernetworkingapp.ui.components.EmptyStateCard
 import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.TasksUiState
@@ -38,7 +39,7 @@ import com.example.developernetworkingapp.ui.viewmodel.TasksViewModel
 
 @Composable
 fun TaskManagementRoute(padding: PaddingValues, navController: NavController) {
-    val viewModel: TasksViewModel = viewModel()
+    val viewModel: TasksViewModel = appViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     TaskManagementScreen(padding, state, navController)
 }
@@ -92,11 +93,9 @@ fun TaskManagementScreen(
         val taskItems = state.content?.items.orEmpty()
         if (taskItems.isEmpty()) {
             item {
-                Text(
-                    "No tasks loaded. Stay logged in, rebuild the app, and confirm seed project " +
-                        "proj_devconnect_mobile has a tasks subcollection.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                EmptyStateCard(
+                    title = "No tasks yet",
+                    subtitle = "Tasks from your active project will sync here. Open Projects to join a workspace.",
                 )
             }
         }

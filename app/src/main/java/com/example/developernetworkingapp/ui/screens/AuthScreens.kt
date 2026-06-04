@@ -38,9 +38,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import com.example.developernetworkingapp.ui.navigation.AppRoutes
+import com.example.developernetworkingapp.di.appViewModel
 import com.example.developernetworkingapp.ui.state.LoginUiState
 import com.example.developernetworkingapp.ui.state.SignupUiState
 import com.example.developernetworkingapp.ui.state.VerificationUiState
@@ -49,56 +47,26 @@ import com.example.developernetworkingapp.ui.viewmodel.SignupViewModel
 import com.example.developernetworkingapp.ui.viewmodel.VerificationViewModel
 
 @Composable
-fun AdvancedLoginScreen(navController: NavController) {
-    val viewModel: LoginViewModel = viewModel()
-    val signupViewModel: SignupViewModel = viewModel()
-    val loginState = viewModel.uiState.collectAsStateWithLifecycle().value
-    val signupState = signupViewModel.uiState.collectAsStateWithLifecycle().value
-
-    UnifiedAuthScreen(
-        loginState = loginState,
-        signupState = signupState,
-        startInSignup = false,
-        onLoginEmailChange = viewModel::updateEmail,
-        onLoginPasswordChange = viewModel::updatePassword,
-        onSignupNameChange = signupViewModel::updateName,
-        onSignupUsernameChange = signupViewModel::updateUsername,
-        onSignupEmailChange = signupViewModel::updateEmail,
-        onSignupPasswordChange = signupViewModel::updatePassword,
-        onSignupConfirmPasswordChange = signupViewModel::updateConfirmPassword,
-        onLoginRememberMeChange = viewModel::updateRememberMe,
-        onSignupRememberMeChange = signupViewModel::updateRememberMe,
-        onForgotPassword = viewModel::requestPasswordReset,
-        onLoginSubmit = {
-            viewModel.login {
-                navController.navigate(AppRoutes.DASHBOARD) {
-                    popUpTo(AppRoutes.LOGIN) { inclusive = true }
-                    launchSingleTop = true
-                }
-            }
-        },
-        onSignupSubmit = {
-            signupViewModel.signup { email ->
-                navController.navigate(AppRoutes.verifyEmailRoute(email)) {
-                    popUpTo(AppRoutes.LOGIN) { inclusive = true }
-                    launchSingleTop = true
-                }
-            }
-        }
-    )
+fun AdvancedLoginScreen() {
+    AuthScreen(startInSignup = false)
 }
 
 @Composable
-fun AdvancedSignupScreen(navController: NavController) {
-    val loginViewModel: LoginViewModel = viewModel()
-    val signupViewModel: SignupViewModel = viewModel()
+fun AdvancedSignupScreen() {
+    AuthScreen(startInSignup = true)
+}
+
+@Composable
+private fun AuthScreen(startInSignup: Boolean) {
+    val loginViewModel: LoginViewModel = appViewModel()
+    val signupViewModel: SignupViewModel = appViewModel()
     val loginState = loginViewModel.uiState.collectAsStateWithLifecycle().value
     val signupState = signupViewModel.uiState.collectAsStateWithLifecycle().value
 
     UnifiedAuthScreen(
         loginState = loginState,
         signupState = signupState,
-        startInSignup = true,
+        startInSignup = startInSignup,
         onLoginEmailChange = loginViewModel::updateEmail,
         onLoginPasswordChange = loginViewModel::updatePassword,
         onSignupNameChange = signupViewModel::updateName,
@@ -109,28 +77,14 @@ fun AdvancedSignupScreen(navController: NavController) {
         onLoginRememberMeChange = loginViewModel::updateRememberMe,
         onSignupRememberMeChange = signupViewModel::updateRememberMe,
         onForgotPassword = loginViewModel::requestPasswordReset,
-        onLoginSubmit = {
-            loginViewModel.login {
-                navController.navigate(AppRoutes.DASHBOARD) {
-                    popUpTo(AppRoutes.LOGIN) { inclusive = true }
-                    launchSingleTop = true
-                }
-            }
-        },
-        onSignupSubmit = {
-            signupViewModel.signup { email ->
-                navController.navigate(AppRoutes.verifyEmailRoute(email)) {
-                    popUpTo(AppRoutes.LOGIN) { inclusive = true }
-                    launchSingleTop = true
-                }
-            }
-        }
+        onLoginSubmit = loginViewModel::login,
+        onSignupSubmit = signupViewModel::signup,
     )
 }
 
 @Composable
-fun EmailVerificationRoute(navController: NavController, email: String) {
-    val viewModel: VerificationViewModel = viewModel()
+fun EmailVerificationRoute(email: String) {
+    val viewModel: VerificationViewModel = appViewModel()
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     androidx.compose.runtime.LaunchedEffect(email) {
         viewModel.setEmail(email)
@@ -139,14 +93,7 @@ fun EmailVerificationRoute(navController: NavController, email: String) {
         state = state,
         onCodeChange = viewModel::updateCode,
         onResend = viewModel::resendCode,
-        onVerify = {
-            viewModel.verify {
-                navController.navigate(AppRoutes.LOGIN) {
-                    popUpTo(AppRoutes.LOGIN) { inclusive = true }
-                    launchSingleTop = true
-                }
-            }
-        }
+        onVerify = viewModel::verify,
     )
 }
 
@@ -161,17 +108,17 @@ private fun EmailVerificationScreen(
         Text("Verify your email", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            "Open the verification link in your inbox for ${state.email}, then enter any 6 digits below and tap Verify.",
+            "We sent a verification link to ${state.email}. Open the link on this device, then return here and tap Verify.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedTextField(
             value = state.code,
             onValueChange = onCodeChange,
-            label = { Text("6-digit code") },
+            label = { Text("Confirmation code (optional)") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            supportingText = { Text("Check spam if you do not see the email.") }
+            supportingText = { Text("After opening the email link, enter any 6 digits to continue. Check spam if needed.") }
         )
         state.errorMessage?.let {
             Spacer(modifier = Modifier.height(8.dp))

@@ -3,7 +3,6 @@ package com.example.developernetworkingapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.ChatRepository
-import com.example.developernetworkingapp.di.AppContainer
 import com.example.developernetworkingapp.ui.state.ConversationUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +12,7 @@ import kotlinx.coroutines.launch
 
 class ConversationViewModel(
     private val conversationId: String,
-    private val repository: ChatRepository = AppContainer.chatRepository,
+    private val repository: ChatRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ConversationUiState())
     val uiState: StateFlow<ConversationUiState> = _uiState.asStateFlow()

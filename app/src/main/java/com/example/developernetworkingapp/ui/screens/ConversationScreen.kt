@@ -38,31 +38,21 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.developernetworkingapp.data.datasource.firebase.schema.MessageKind
-import com.example.developernetworkingapp.data.repository.impl.ChatRepositoryFirestore
+import com.example.developernetworkingapp.di.conversationViewModel
 import com.example.developernetworkingapp.domain.model.ChatMessage
+import com.example.developernetworkingapp.domain.model.chatMentionPrefix
 import com.example.developernetworkingapp.ui.state.ConversationUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.ConversationViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConversationScreen(
+fun ConversationRoute(
     padding: PaddingValues,
     navController: NavController,
     conversationId: String,
 ) {
-    val viewModel: ConversationViewModel = viewModel(
-        key = conversationId,
-        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return ConversationViewModel(conversationId) as T
-            }
-        },
-    )
+    val viewModel = conversationViewModel(conversationId)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -70,6 +60,26 @@ fun ConversationScreen(
         state.sendError?.let { snackbarHostState.showSnackbar(it) }
     }
 
+    ConversationScreen(
+        padding = padding,
+        state = state,
+        snackbarHostState = snackbarHostState,
+        onBack = { navController.popBackStack() },
+        onDraftChange = viewModel::onDraftChange,
+        onSend = viewModel::sendMessage,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConversationScreen(
+    padding: PaddingValues,
+    state: ConversationUiState,
+    snackbarHostState: SnackbarHostState,
+    onBack: () -> Unit,
+    onDraftChange: (String) -> Unit,
+    onSend: () -> Unit,
+) {
     val thread = state.thread
     Scaffold(
         modifier = Modifier.padding(padding),
@@ -90,7 +100,7 @@ fun ConversationScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -100,8 +110,8 @@ fun ConversationScreen(
         ConversationBody(
             innerPadding = innerPadding,
             state = state,
-            onDraftChange = viewModel::onDraftChange,
-            onSend = viewModel::sendMessage,
+            onDraftChange = onDraftChange,
+            onSend = onSend,
         )
     }
 }
@@ -209,12 +219,8 @@ private fun ConversationBody(
 
 @Composable
 private fun MessageBubble(message: ChatMessage) {
-    val mentionPrefix = ChatRepositoryFirestore.mentionPrefix(message.messageKind)
-    val displayBody = when (message.messageKind) {
-        MessageKind.MENTION -> message.body
-        MessageKind.SYSTEM -> message.body
-        else -> message.body
-    }
+    val mentionPrefix = chatMentionPrefix(message.messageKind)
+    val displayBody = message.body
 
     Row(
         modifier = Modifier.fillMaxWidth(),

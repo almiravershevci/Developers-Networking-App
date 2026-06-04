@@ -3,7 +3,6 @@ package com.example.developernetworkingapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.DashboardRepository
-import com.example.developernetworkingapp.di.AppContainer
 import com.example.developernetworkingapp.domain.model.ProjectPost
 import com.example.developernetworkingapp.ui.state.DashboardUiState
 import com.example.developernetworkingapp.ui.state.FeedPostState
@@ -19,7 +18,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
 class DashboardViewModel(
-    private val repository: DashboardRepository = AppContainer.dashboardRepository
+    private val repository: DashboardRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())

@@ -15,10 +15,7 @@ import com.example.developernetworkingapp.domain.model.ProjectBoardContent
 import com.example.developernetworkingapp.domain.model.SearchContent
 import com.example.developernetworkingapp.domain.model.SearchResult
 import com.example.developernetworkingapp.domain.model.TaskContent
-import com.example.developernetworkingapp.ui.screens.AdvancedLoginScreen
-import com.example.developernetworkingapp.ui.screens.AdvancedSignupScreen
 import com.example.developernetworkingapp.ui.screens.ChatScreen
-import com.example.developernetworkingapp.ui.screens.CollaboratorProfileScreen
 import com.example.developernetworkingapp.ui.screens.DashboardScreen
 import com.example.developernetworkingapp.ui.screens.EventFeedScreen
 import com.example.developernetworkingapp.ui.screens.GenericDetailScreen
@@ -41,30 +38,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 /**
  * Created by Eljesa on 28-Apr-26.
  */
-
-// ============================================================================
-// AUTH SCREENS PREVIEWS
-// ============================================================================
-
-@Preview(showBackground = true)
-@Composable
-fun AdvancedLoginScreenPreview() {
-    DeveloperNetworkingAppTheme {
-        Surface {
-            AdvancedLoginScreen(navController = rememberNavController())
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AdvancedSignupScreenPreview() {
-    DeveloperNetworkingAppTheme {
-        Surface {
-            AdvancedSignupScreen(navController = rememberNavController())
-        }
-    }
-}
 
 // ============================================================================
 // CHAT SCREEN PREVIEW
@@ -246,31 +219,33 @@ fun ProfileScreenPreview() {
 fun ProjectBoardScreenPreview() {
     DeveloperNetworkingAppTheme {
         Surface {
+            val board = ProjectBoardContent(
+                teamName = "Mobile App Redesign Team",
+                teamMeta = "5 active members • Sprint 12 • On track",
+                todo = listOf(
+                    "Design login flow",
+                    "Set up authentication",
+                    "Create API models",
+                ),
+                inProgress = listOf(
+                    "Implement dashboard",
+                    "Write unit tests",
+                ),
+                done = listOf(
+                    "Project setup",
+                    "Database schema",
+                ),
+            )
             ProjectBoardScreen(
                 padding = PaddingValues(16.dp),
                 state = ProjectsUiState(
-                    content = ProjectBoardContent(
-                        teamName = "Mobile App Redesign Team",
-                        teamMeta = "5 active members • Sprint 12 • On track",
-                        todo = listOf(
-                            "Design login flow",
-                            "Set up authentication",
-                            "Create API models"
-                        ),
-                        inProgress = listOf(
-                            "Implement dashboard",
-                            "Write unit tests"
-                        ),
-                        done = listOf(
-                            "Project setup",
-                            "Database schema"
-                        )
-                    )
+                    content = board,
+                    displayContent = board,
+                    isLoading = false,
                 ),
                 navController = rememberNavController(),
-                selectedProjectName = "DevConnect Mobile",
                 events = MutableSharedFlow(),
-                onInviteDeveloper = {}
+                onInviteDeveloper = {},
             )
         }
     }

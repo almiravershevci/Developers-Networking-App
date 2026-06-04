@@ -61,13 +61,16 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.domain.model.ActivityItem
 import com.example.developernetworkingapp.domain.model.CollaboratorMatch
 import com.example.developernetworkingapp.domain.model.EventHighlight
 import com.example.developernetworkingapp.ui.state.FeedPostState
+import com.example.developernetworkingapp.ui.components.EmptyStateCard
+import com.example.developernetworkingapp.ui.components.ErrorStateCard
 import com.example.developernetworkingapp.ui.components.GradientHeroCard
+import com.example.developernetworkingapp.ui.components.LoadingStateCard
 import com.example.developernetworkingapp.ui.components.NotificationBanner
 import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.data.ShortcutItem
@@ -86,7 +89,7 @@ import kotlin.math.absoluteValue
 fun DashboardRoute(
     padding: PaddingValues,
     navController: NavController,
-    viewModel: DashboardViewModel = viewModel()
+    viewModel: DashboardViewModel = appViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -200,9 +203,19 @@ fun DashboardScreen(
         item {
             GradientHeroCard(
                 title = content?.heroTitle ?: "Building your personalized feed",
-                subtitle = content?.heroSubtitle ?: "Loading collaboration intelligence...",
-                progress = "Your creator feed, matching engine, and live project discovery are active"
+                subtitle = content?.heroSubtitle ?: if (state.isLoading) {
+                    "Loading collaboration intelligence…"
+                } else {
+                    "Discover collaborators, projects, and events tailored to you"
+                },
+                progress = "Your creator feed, matching engine, and live project discovery are active",
             )
+        }
+        if (state.isLoading && content == null) {
+            item { LoadingStateCard("Loading your command center…") }
+        }
+        state.errorMessage?.let { error ->
+            item { ErrorStateCard(error, onRetry = onRefresh) }
         }
         item {
             Surface(
@@ -294,16 +307,7 @@ fun DashboardScreen(
                 subtitle = "Match score: ${match.matchScore}% - Invite or start 1:1 chat",
                 onViewClick = {
                     navController.navigate(
-                        AppRoutes.detailRoute(
-                            title = "${match.name} Profile",
-                            subtitle = "${match.stack} • Match ${match.matchScore}%",
-                            description = collaboratorProfileDetailDescription(
-                                name = match.name,
-                                stack = match.stack,
-                                score = match.matchScore
-                            ),
-                            sourceRoute = AppRoutes.DASHBOARD
-                        )
+                        AppRoutes.collaboratorProfileRoute(match.name, match.matchScore),
                     )
                 },
                 onInviteClick = {

@@ -30,7 +30,6 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,13 +45,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ConversationKind
 import com.example.developernetworkingapp.domain.model.ChatQuickRooms
 import com.example.developernetworkingapp.domain.model.ConversationSummary
+import com.example.developernetworkingapp.ui.components.EmptyStateCard
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import com.example.developernetworkingapp.ui.util.userFacingStatusMessage
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.ChatUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
@@ -60,7 +61,7 @@ import com.example.developernetworkingapp.ui.viewmodel.ChatViewModel
 
 @Composable
 fun ChatRoute(padding: PaddingValues, navController: NavController) {
-    val viewModel: ChatViewModel = viewModel()
+    val viewModel: ChatViewModel = appViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     ChatScreen(
         padding = padding,
@@ -80,20 +81,6 @@ fun ChatScreen(
 ) {
     var selectedConversation by remember { mutableStateOf<ConversationSummary?>(null) }
     val inbox = state.content?.inbox.orEmpty()
-    val legacyTitles = state.content?.conversations.orEmpty()
-    val displayInbox = inbox.ifEmpty {
-        legacyTitles.map { title ->
-            ConversationSummary(
-                id = title,
-                title = title,
-                preview = "Open to load messages",
-                relativeTime = "",
-                conversationKind = ConversationKind.DIRECT,
-                unreadCount = 0,
-                participantCount = 0,
-            )
-        }
-    }
 
     selectedConversation?.let { convo ->
         AlertDialog(
@@ -193,7 +180,7 @@ fun ChatScreen(
             item {
                 PremiumInfoCard(
                     title = if (state.content?.isSignedIn == true) "Inbox status" else "Sign in required",
-                    subtitle = message,
+                    subtitle = userFacingStatusMessage(message) ?: message,
                 )
             }
         }
@@ -206,14 +193,23 @@ fun ChatScreen(
             ) {
                 SectionTitle("Conversations")
                 Text(
-                    "${displayInbox.size} active",
+                    "${inbox.size} active",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
 
-        items(displayInbox, key = { it.id }) { summary ->
+        if (inbox.isEmpty()) {
+            item {
+                EmptyStateCard(
+                    title = "No conversations yet",
+                    subtitle = "Start from a quick room above or open a project thread to begin messaging.",
+                )
+            }
+        }
+
+        items(inbox, key = { it.id }) { summary ->
             ConversationInboxCard(
                 summary = summary,
                 isMuted = state.mutedConversations.contains(summary.title),
@@ -226,19 +222,9 @@ fun ChatScreen(
         }
 
         item {
-            OutlinedTextField(
-                value = "",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text(state.content?.composerHint ?: "Type a message...") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        item {
             PremiumInfoCard(
-                title = "Message actions",
-                subtitle = "Reply in thread, react with emoji, attach task card, or jump to linked project.",
+                title = "Start a conversation",
+                subtitle = "Open any thread above to compose messages with read receipts and live updates.",
             )
         }
     }

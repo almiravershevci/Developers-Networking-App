@@ -51,3 +51,15 @@ object ChatQuickRooms {
     fun conversationIdForLabel(label: String): String? =
         rooms.firstOrNull { it.label == label }?.conversationId
 }
+
+object ChatMessageKinds {
+    const val TEXT = "text"
+    const val SYSTEM = "system"
+    const val MENTION = "mention"
+}
+
+fun chatMentionPrefix(messageKind: String): String? = when (messageKind) {
+    ChatMessageKinds.MENTION -> "@"
+    ChatMessageKinds.SYSTEM -> "•"
+    else -> null
+}

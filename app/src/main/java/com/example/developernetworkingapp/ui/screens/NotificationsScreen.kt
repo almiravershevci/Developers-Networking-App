@@ -21,7 +21,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -32,8 +32,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.example.developernetworkingapp.domain.model.NotificationItem
+import com.example.developernetworkingapp.ui.components.EmptyStateCard
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import com.example.developernetworkingapp.ui.util.userFacingStatusMessage
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Alignment
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
@@ -43,7 +45,7 @@ import com.example.developernetworkingapp.ui.viewmodel.NotificationsViewModel
 
 @Composable
 fun NotificationRoute(padding: PaddingValues, navController: NavController) {
-    val viewModel: NotificationsViewModel = viewModel()
+    val viewModel: NotificationsViewModel = appViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     NotificationScreen(
         padding = padding,
@@ -133,11 +135,20 @@ fun NotificationScreen(
             item {
                 PremiumInfoCard(
                     title = "Inbox",
-                    subtitle = message,
+                    subtitle = userFacingStatusMessage(message) ?: message,
                 )
             }
         }
-        items(state.content?.items ?: emptyList(), key = { it.id }) { item ->
+        val items = state.content?.items.orEmpty()
+        if (items.isEmpty()) {
+            item {
+                EmptyStateCard(
+                    title = "You're all caught up",
+                    subtitle = "New mentions, invites, and project updates will appear here.",
+                )
+            }
+        }
+        items(items, key = { it.id }) { item ->
             ElevatedCard(
                 onClick = { selectedNotification = item },
                 shape = AppDesignTokens.cardShape,

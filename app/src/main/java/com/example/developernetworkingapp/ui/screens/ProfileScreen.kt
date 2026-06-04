@@ -54,7 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.data.repository.UserRole
 import com.example.developernetworkingapp.ui.components.EnhancedCard
@@ -79,10 +79,13 @@ val ElectricGreen = Color(0xFF00FF7F)
 
 @Composable
 fun ProfileRoute(padding: PaddingValues, navController: NavController) {
-    val viewModel: ProfileViewModel = viewModel()
-    val sessionViewModel: SessionViewModel = viewModel()
+    val viewModel: ProfileViewModel = appViewModel()
+    val sessionViewModel: SessionViewModel = appViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currentUser by sessionViewModel.currentUser.collectAsStateWithLifecycle()
+
+    collectProfileNavEvents(navController)
+
     ProfileScreen(
         padding = padding,
         state = state,
@@ -91,13 +94,7 @@ fun ProfileRoute(padding: PaddingValues, navController: NavController) {
         isAdmin = currentUser?.role == UserRole.ADMIN,
         onSaveProfile = viewModel::saveProfile,
         onSyncStarted = viewModel::notifySyncStarted,
-        onLogout = {
-            viewModel.logout()
-            navController.navigate(AppRoutes.LOGIN) {
-                popUpTo(navController.graph.id) { inclusive = true }
-                launchSingleTop = true
-            }
-        }
+        onLogout = viewModel::logout,
     )
 }
 

@@ -39,12 +39,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.domain.model.ProjectBoardContent
+import com.example.developernetworkingapp.ui.components.EmptyStateCard
+import com.example.developernetworkingapp.ui.components.LoadingStateCard
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
 import com.example.developernetworkingapp.ui.components.NotificationBanner
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import com.example.developernetworkingapp.ui.util.userFacingStatusMessage
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.ProjectsUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
@@ -58,15 +61,17 @@ fun ProjectBoardRoute(
     navController: NavController,
     selectedProjectName: String = ""
 ) {
-    val viewModel: ProjectsViewModel = viewModel()
+    val viewModel: ProjectsViewModel = appViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(selectedProjectName) {
+        viewModel.setSelectedProject(selectedProjectName)
+    }
     ProjectBoardScreen(
         padding = padding,
         state = state,
         navController = navController,
-        selectedProjectName = selectedProjectName,
         events = viewModel.events,
-        onInviteDeveloper = viewModel::notifyInviteStarted
+        onInviteDeveloper = viewModel::notifyInviteStarted,
     )
 }
 
@@ -75,13 +80,10 @@ fun ProjectBoardScreen(
     padding: PaddingValues,
     state: ProjectsUiState,
     navController: NavController,
-    selectedProjectName: String,
     events: SharedFlow<ProjectsUiEvent>,
-    onInviteDeveloper: () -> Unit
+    onInviteDeveloper: () -> Unit,
 ) {
-    val content = remember(state.content, selectedProjectName) {
-        projectSpecificBoardContent(selectedProjectName, state.content)
-    }
+    val content = state.displayContent
     var selectedTask by remember { mutableStateOf<String?>(null) }
     var activeNotification by rememberSaveable { mutableStateOf<String?>(null) }
     var showInviteDialog by rememberSaveable { mutableStateOf(false) }
@@ -225,6 +227,22 @@ fun ProjectBoardScreen(
                 }
             }
         }
+        if (state.isLoading && content == null) {
+            item { LoadingStateCard("Loading project board…") }
+        }
+        if (content != null &&
+            content.todo.isEmpty() &&
+            content.inProgress.isEmpty() &&
+            content.done.isEmpty()
+        ) {
+            item {
+                EmptyStateCard(
+                    title = content.teamName,
+                    subtitle = userFacingStatusMessage(content.teamMeta)
+                        ?: "Tasks will appear here when your project workspace is active.",
+                )
+            }
+        }
         item { SectionTitle("Kanban Board") }
         item {
             ClickableTaskColumn("To Do", content?.todo ?: emptyList()) { selectedTask = it }
@@ -244,58 +262,6 @@ fun ProjectBoardScreen(
     }
 }
 
-private fun projectSpecificBoardContent(
-    selectedProjectName: String,
-    fallback: ProjectBoardContent?
-): ProjectBoardContent? {
-    val normalized = selectedProjectName.trim().lowercase()
-    return when {
-        normalized.isBlank() -> fallback
-        "devconnect mobile" in normalized -> ProjectBoardContent(
-            teamName = "DevConnect Mobile Workspace",
-            teamMeta = "6 active members • Android + Backend Sync • Sprint 9",
-            todo = listOf(
-                "Finalize chat thread unread indicators",
-                "Implement push permission onboarding copy",
-                "Design profile activity timeline card"
-            ),
-            inProgress = listOf(
-                "Realtime presence heartbeat reliability",
-                "In-app notification deep-link routing",
-                "Crash-free startup optimization pass"
-            ),
-            done = listOf(
-                "Authentication session persistence",
-                "Feed composer validation rules",
-                "Collaborator profile navigation flow"
-            )
-        )
-        "talent graph api" in normalized -> ProjectBoardContent(
-            teamName = "Talent Graph API Workspace",
-            teamMeta = "5 active members • Ranking Engine • Sprint 6",
-            todo = listOf(
-                "Document scoring-weight tuning guidelines",
-                "Add contract tests for match explanation field",
-                "Create rate-limit policy for public endpoints"
-            ),
-            inProgress = listOf(
-                "Endpoint latency optimization under load",
-                "Redis cache invalidation strategy",
-                "Integration tests for ranking consistency"
-            ),
-            done = listOf(
-                "Initial match scoring pipeline",
-                "Skill normalization dictionary",
-                "Base endpoint authentication middleware"
-            )
-        )
-        else -> fallback?.copy(
-            teamName = "${selectedProjectName.ifBlank { "Project" }} Workspace",
-            teamMeta = "Project-specific board • Planning + Delivery • Active sprint"
-        )
-    }
-}
-
 @Composable
 private fun ClickableTaskColumn(
     title: String,
@@ -309,6 +275,13 @@ private fun ClickableTaskColumn(
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
+            if (tasks.isEmpty()) {
+                Text(
+                    "No tasks in this column",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             tasks.forEach { task ->
                 ElevatedCard(
                     onClick = { onTaskClick(task) },

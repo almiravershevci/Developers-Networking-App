@@ -4,31 +4,37 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.data.repository.AuthResult
-import com.example.developernetworkingapp.di.AppContainer
+import com.example.developernetworkingapp.ui.event.AuthNavEvent
 import com.example.developernetworkingapp.ui.state.LoginUiState
 import com.example.developernetworkingapp.ui.state.SignupUiState
 import com.example.developernetworkingapp.ui.state.VerificationUiState
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class LoginViewModel(
-    private val authRepository: AuthRepository = AppContainer.authRepository
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
+    private val navEmitter = eventEmitter<AuthNavEvent>()
+    val navigationEvents: SharedFlow<AuthNavEvent> = navEmitter.events
+
     fun updateEmail(value: String) = _uiState.update {
         it.copy(form = it.form.copy(email = value), errorMessage = null, infoMessage = null)
     }
+
     fun updatePassword(value: String) = _uiState.update {
         it.copy(form = it.form.copy(password = value), errorMessage = null, infoMessage = null)
     }
+
     fun updateRememberMe(value: Boolean) = _uiState.update { it.copy(rememberMe = value) }
 
-    fun login(onSuccess: () -> Unit) {
+    fun login() {
         val state = _uiState.value
         val emailOrUsername = state.form.email.trim()
         val password = state.form.password
@@ -43,7 +49,7 @@ class LoginViewModel(
             when (val result = authRepository.login(emailOrUsername, password, state.rememberMe)) {
                 is AuthResult.Success -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = null) }
-                    onSuccess()
+                    navEmitter.emit(AuthNavEvent.NavigateToDashboard)
                 }
                 is AuthResult.Error -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
@@ -73,31 +79,39 @@ class LoginViewModel(
 }
 
 class SignupViewModel(
-    private val authRepository: AuthRepository = AppContainer.authRepository
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SignupUiState())
     val uiState: StateFlow<SignupUiState> = _uiState.asStateFlow()
 
+    private val navEmitter = eventEmitter<AuthNavEvent>()
+    val navigationEvents: SharedFlow<AuthNavEvent> = navEmitter.events
+
     fun updateName(value: String) = _uiState.update {
         it.copy(form = it.form.copy(name = value), errorMessage = null, successMessage = null)
     }
+
     fun updateUsername(value: String) = _uiState.update {
         it.copy(form = it.form.copy(username = value), errorMessage = null, successMessage = null)
     }
+
     fun updateEmail(value: String) = _uiState.update {
         it.copy(form = it.form.copy(email = value), errorMessage = null, successMessage = null)
     }
+
     fun updatePassword(value: String) = _uiState.update {
         it.copy(form = it.form.copy(password = value), errorMessage = null, successMessage = null)
     }
+
     fun updateConfirmPassword(value: String) = _uiState.update {
         it.copy(form = it.form.copy(confirmPassword = value), errorMessage = null, successMessage = null)
     }
+
     fun updateRememberMe(value: Boolean) = _uiState.update {
         it.copy(rememberMe = value, errorMessage = null, successMessage = null)
     }
 
-    fun signup(onSuccess: (String) -> Unit) {
+    fun signup() {
         val state = _uiState.value
         val form = state.form
 
@@ -138,6 +152,7 @@ class SignupViewModel(
                 )
             ) {
                 is AuthResult.Success -> {
+                    val email = form.email.trim().lowercase()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -145,7 +160,7 @@ class SignupViewModel(
                             successMessage = "Account created. Verify your email to continue.",
                         )
                     }
-                    onSuccess(form.email.trim().lowercase())
+                    navEmitter.emit(AuthNavEvent.NavigateToVerifyEmail(email))
                 }
                 is AuthResult.Error -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
@@ -165,10 +180,13 @@ class SignupViewModel(
 }
 
 class VerificationViewModel(
-    private val authRepository: AuthRepository = AppContainer.authRepository
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(VerificationUiState())
     val uiState: StateFlow<VerificationUiState> = _uiState.asStateFlow()
+
+    private val navEmitter = eventEmitter<AuthNavEvent>()
+    val navigationEvents: SharedFlow<AuthNavEvent> = navEmitter.events
 
     fun setEmail(email: String) {
         _uiState.update { it.copy(email = email, errorMessage = null) }
@@ -193,7 +211,7 @@ class VerificationViewModel(
         }
     }
 
-    fun verify(onSuccess: () -> Unit) {
+    fun verify() {
         val state = _uiState.value
         if (state.code.length != 6) {
             _uiState.update { it.copy(errorMessage = "Enter the 6-digit verification code.") }
@@ -204,7 +222,7 @@ class VerificationViewModel(
             when (val result = authRepository.verifyEmailCode(state.email, state.code)) {
                 is AuthResult.Success -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = "Email verified.") }
-                    onSuccess()
+                    navEmitter.emit(AuthNavEvent.NavigateToDashboard)
                 }
                 is AuthResult.Error -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }

@@ -21,7 +21,7 @@ data class ShortcutItem(
     val icon: ImageVector
 )
 
-object MockUiData {
+object AppShellData {
     val bottomTabs = listOf(
         NavTab("Home", AppRoutes.DASHBOARD, Icons.Outlined.Dashboard),
         NavTab("Projects", AppRoutes.PROJECTS, Icons.Outlined.Task),

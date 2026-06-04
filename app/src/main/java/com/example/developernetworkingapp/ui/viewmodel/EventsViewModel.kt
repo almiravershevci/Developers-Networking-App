@@ -3,7 +3,6 @@ package com.example.developernetworkingapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.EventsRepository
-import com.example.developernetworkingapp.di.AppContainer
 import com.example.developernetworkingapp.ui.state.EventsUiState
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -15,7 +14,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 class EventsViewModel(
-    private val repository: EventsRepository = AppContainer.eventsRepository
+    private val repository: EventsRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(EventsUiState())
     val uiState: StateFlow<EventsUiState> = _uiState.asStateFlow()

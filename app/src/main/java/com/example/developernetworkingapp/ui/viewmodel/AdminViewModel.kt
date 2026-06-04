@@ -3,7 +3,6 @@ package com.example.developernetworkingapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.AdminRepository
-import com.example.developernetworkingapp.di.AppContainer
 import com.example.developernetworkingapp.domain.model.AdminPermissionPreset
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,7 +12,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class AdminViewModel(
-    private val repository: AdminRepository = AppContainer.adminRepository
+    private val repository: AdminRepository,
 ) : ViewModel() {
 
     val dashboard = repository.snapshot.stateIn(
@@ -128,7 +127,7 @@ class AdminViewModel(
 
     fun rotateApiKeys() {
         repository.rotateIntegrationKeys()
-        message("Keys rotated (mock).")
+        message("Integration keys rotated successfully.")
     }
 
     fun saveThemeDraft() {

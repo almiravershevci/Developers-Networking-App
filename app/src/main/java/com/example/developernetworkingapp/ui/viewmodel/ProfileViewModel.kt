@@ -4,31 +4,28 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.data.repository.ProfileRepository
-import com.example.developernetworkingapp.di.AppContainer
+import com.example.developernetworkingapp.ui.event.ProfileNavEvent
 import com.example.developernetworkingapp.ui.state.ProfileUiState
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class ProfileViewModel(
-    private val repository: ProfileRepository = AppContainer.profileRepository,
-    private val authRepository: AuthRepository = AppContainer.authRepository
+    private val repository: ProfileRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
-    private val _events = MutableSharedFlow<ProfileUiEvent>(
-        replay = 0,
-        extraBufferCapacity = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
-    val events: SharedFlow<ProfileUiEvent> = _events.asSharedFlow()
+
+    private val uiEmitter = eventEmitter<ProfileUiEvent>()
+    val events: SharedFlow<ProfileUiEvent> = uiEmitter.events
+
+    private val navEmitter = eventEmitter<ProfileNavEvent>()
+    val navigationEvents: SharedFlow<ProfileNavEvent> = navEmitter.events
 
     init {
         viewModelScope.launch {
@@ -38,6 +35,7 @@ class ProfileViewModel(
 
     fun logout() {
         authRepository.logout()
+        navEmitter.emit(ProfileNavEvent.LoggedOut)
     }
 
     fun saveProfile(displayName: String, headline: String, bio: String) {
@@ -45,7 +43,7 @@ class ProfileViewModel(
             val saved = withContext(Dispatchers.IO) {
                 repository.updateProfile(displayName, headline, bio)
             }
-            emitEvent(
+            uiEmitter.emit(
                 ProfileUiEvent.ShowNotification(
                     if (saved) "Profile saved to Firestore." else "Could not save profile. Try again.",
                 ),
@@ -53,18 +51,8 @@ class ProfileViewModel(
         }
     }
 
-    fun notifyProfileSaved() {
-        emitEvent(ProfileUiEvent.ShowNotification("Profile updates saved locally."))
-    }
-
     fun notifySyncStarted() {
-        emitEvent(ProfileUiEvent.ShowNotification("GitHub sync started. Pulling latest activity."))
-    }
-
-    private fun emitEvent(event: ProfileUiEvent) {
-        viewModelScope.launch {
-            _events.emit(event)
-        }
+        uiEmitter.emit(ProfileUiEvent.ShowNotification("GitHub sync started. Pulling latest activity."))
     }
 }
 

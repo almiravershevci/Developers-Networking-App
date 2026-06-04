@@ -36,11 +36,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
+import com.example.developernetworkingapp.ui.components.EmptyStateCard
 import com.example.developernetworkingapp.ui.components.NotificationBanner
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import com.example.developernetworkingapp.ui.util.userFacingStatusMessage
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.EventsUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
@@ -50,7 +52,7 @@ import kotlinx.coroutines.flow.SharedFlow
 
 @Composable
 fun EventFeedRoute(padding: PaddingValues, navController: NavController) {
-    val viewModel: EventsViewModel = viewModel()
+    val viewModel: EventsViewModel = appViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     EventFeedScreen(
         padding = padding,
@@ -152,11 +154,20 @@ fun EventFeedScreen(
             item {
                 PremiumInfoCard(
                     title = "Events feed",
-                    subtitle = message,
+                    subtitle = userFacingStatusMessage(message) ?: message,
                 )
             }
         }
-        items(state.content?.items ?: emptyList()) { event ->
+        val events = state.content?.items.orEmpty()
+        if (events.isEmpty()) {
+            item {
+                EmptyStateCard(
+                    title = "No upcoming events",
+                    subtitle = "Hackathons and community events will be listed here as they are published.",
+                )
+            }
+        }
+        items(events) { event ->
             ElevatedCard(
                 onClick = { selectedEvent = event },
                 shape = AppDesignTokens.cardShape,
