@@ -4,7 +4,6 @@ import com.example.developernetworkingapp.data.datasource.firebase.schema.Firest
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectVisibility
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -18,8 +17,7 @@ class FirestoreSearchDataSource(
     private val projectsDataSource: FirestoreProjectsDataSource = FirestoreProjectsDataSource(),
 ) {
     fun observePublicProjects(): Flow<List<ProjectDoc>> = callbackFlow {
-        var registration: ListenerRegistration? = null
-        registration = db.collection(FirestorePaths.PROJECTS)
+        val registration = db.collection(FirestorePaths.PROJECTS)
             .whereEqualTo("visibility", ProjectVisibility.PUBLIC)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -36,7 +34,7 @@ class FirestoreSearchDataSource(
                     .sortedByDescending { it.updatedAt?.toDate()?.time ?: 0L }
                 trySend(projects)
             }
-        awaitClose { registration?.remove() }
+        awaitClose { registration.remove() }
     }
 
     suspend fun fetchPublicProjectsOnce(): List<ProjectDoc> =

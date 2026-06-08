@@ -4,6 +4,7 @@ const { paginateQuery, parseLimit } = require('../lib/pagination');
 const { asyncHandler } = require('../lib/asyncHandler');
 const { ApiError } = require('../lib/errors');
 const { mapInboxNotification } = require('../lib/serializers');
+const { sendJsonWithEtag } = require('../lib/etag');
 const { validate, paginationQuerySchema } = require('../middleware/validate');
 
 const router = express.Router();
@@ -27,7 +28,7 @@ router.get(
     });
 
     const notifications = docs.map(mapInboxNotification);
-    res.json({
+    sendJsonWithEtag(req, res, {
       notifications,
       unreadCount: notifications.filter((item) => !item.read).length,
       pagination,

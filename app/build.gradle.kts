@@ -7,15 +7,13 @@ plugins {
 android {
     namespace = "com.example.developernetworkingapp"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
         applicationId = "com.example.developernetworkingapp"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -44,10 +42,15 @@ android {
         compose = true
         buildConfig = true
     }
+    lint {
+        abortOnError = true
+        warningsAsErrors = true
+    }
 }
 
 kotlin {
     compilerOptions {
+        allWarningsAsErrors.set(true)
         freeCompilerArgs.add("-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi")
     }
 }

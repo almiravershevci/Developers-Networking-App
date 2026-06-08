@@ -3,7 +3,6 @@ package com.example.developernetworkingapp.data.datasource.firebase
 import com.example.developernetworkingapp.data.datasource.firebase.schema.FirestorePaths
 import com.example.developernetworkingapp.data.datasource.firebase.schema.InboxNotificationDoc
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -17,8 +16,7 @@ class FirestoreNotificationsDataSource(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
     fun observeInboxForUser(recipientUserId: String): Flow<List<InboxNotificationDoc>> = callbackFlow {
-        var registration: ListenerRegistration? = null
-        registration = db.collection(FirestorePaths.INBOX)
+        val registration = db.collection(FirestorePaths.INBOX)
             .whereEqualTo("recipientUserId", recipientUserId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -35,7 +33,7 @@ class FirestoreNotificationsDataSource(
                     .sortedByDescending { it.createdAt?.toDate()?.time ?: 0L }
                 trySend(items)
             }
-        awaitClose { registration?.remove() }
+        awaitClose { registration.remove() }
     }
 
     suspend fun markNotificationRead(notificationId: String) {

@@ -78,40 +78,49 @@ router.post(
   writeLimiter,
   asyncHandler(async (req, res) => {
     const uid = req.user.uid;
-    const snap = await getMatchRequestOrThrow(req.params.requestId);
-    const data = snap.data();
+    const requestRef = db.collection('matchRequests').doc(req.params.requestId);
 
-    if (data.toUserId !== uid) {
-      throw new ApiError(403, 'forbidden', 'Only the recipient can accept.');
-    }
-    if (data.workflowStatus !== MatchWorkflow.PENDING) {
-      throw new ApiError(409, 'conflict', 'Request already resolved.');
-    }
+    const result = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(requestRef);
+      if (!snap.exists) {
+        throw new ApiError(404, 'not_found', 'Match request not found.');
+      }
+      const data = snap.data();
+      if (data.toUserId !== uid) {
+        throw new ApiError(403, 'forbidden', 'Only the recipient can accept.');
+      }
+      if (data.workflowStatus !== MatchWorkflow.PENDING) {
+        throw new ApiError(409, 'conflict', 'Request already resolved.');
+      }
 
-    await snap.ref.update({
-      workflowStatus: MatchWorkflow.ACCEPTED,
-      resolvedAt: FieldValue.serverTimestamp(),
+      tx.update(requestRef, {
+        workflowStatus: MatchWorkflow.ACCEPTED,
+        resolvedAt: FieldValue.serverTimestamp(),
+      });
+
+      const conversationId = directConversationId(data.toUserId, data.fromUserId);
+      const conversationRef = db.collection('conversations').doc(conversationId);
+      const conversationSnap = await tx.get(conversationRef);
+      if (!conversationSnap.exists) {
+        tx.set(conversationRef, {
+          schemaVersion: 1,
+          conversationKind: 'direct',
+          title: null,
+          projectId: null,
+          participantIds: [data.toUserId, data.fromUserId],
+          createdBy: data.toUserId,
+          lastMessagePreview: 'Match accepted — say hello!',
+          lastMessageAt: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      }
+
+      return { conversationId };
     });
 
-    const conversationId = directConversationId(data.toUserId, data.fromUserId);
-    const conversationRef = db.collection('conversations').doc(conversationId);
-    if (!(await conversationRef.get()).exists) {
-      await conversationRef.set({
-        schemaVersion: 1,
-        conversationKind: 'direct',
-        title: null,
-        projectId: null,
-        participantIds: [data.toUserId, data.fromUserId],
-        createdBy: data.toUserId,
-        lastMessagePreview: 'Match accepted — say hello!',
-        lastMessageAt: FieldValue.serverTimestamp(),
-        createdAt: FieldValue.serverTimestamp(),
-      });
-    }
-
     res.json({
-      request: mapMatchRequest(await snap.ref.get()),
-      conversationId,
+      request: mapMatchRequest(await requestRef.get()),
+      conversationId: result.conversationId,
     });
   }),
 );

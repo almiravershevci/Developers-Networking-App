@@ -7,7 +7,6 @@ import com.example.developernetworkingapp.data.datasource.firebase.schema.Messag
 import com.example.developernetworkingapp.data.datasource.firebase.schema.MessageKind
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -20,8 +19,7 @@ class FirestoreChatDataSource(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
     fun observeConversationsForUser(userId: String): Flow<List<ConversationDoc>> = callbackFlow {
-        var registration: ListenerRegistration? = null
-        registration = db.collection(FirestorePaths.CONVERSATIONS)
+        val registration = db.collection(FirestorePaths.CONVERSATIONS)
             .whereArrayContains("participantIds", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -37,12 +35,11 @@ class FirestoreChatDataSource(
                 }.orEmpty()
                 trySend(conversations)
             }
-        awaitClose { registration?.remove() }
+        awaitClose { registration.remove() }
     }
 
     fun observeMessages(conversationId: String): Flow<List<MessageDoc>> = callbackFlow {
-        var registration: ListenerRegistration? = null
-        registration = db.collection(FirestorePaths.CONVERSATIONS)
+        val registration = db.collection(FirestorePaths.CONVERSATIONS)
             .document(conversationId)
             .collection(FirestorePaths.MESSAGES)
             .addSnapshotListener { snapshot, error ->
@@ -60,7 +57,7 @@ class FirestoreChatDataSource(
                     }.orEmpty()
                 trySend(messages)
             }
-        awaitClose { registration?.remove() }
+        awaitClose { registration.remove() }
     }
 
     suspend fun fetchMessagesOnce(conversationId: String): List<MessageDoc> {
