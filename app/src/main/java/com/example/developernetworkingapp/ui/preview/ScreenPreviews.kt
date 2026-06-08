@@ -14,7 +14,10 @@ import com.example.developernetworkingapp.domain.model.ProfileContent
 import com.example.developernetworkingapp.domain.model.ProjectBoardContent
 import com.example.developernetworkingapp.domain.model.SearchContent
 import com.example.developernetworkingapp.domain.model.SearchResult
+import com.example.developernetworkingapp.data.datasource.firebase.schema.TaskBoardColumn
+import com.example.developernetworkingapp.data.datasource.firebase.schema.TaskPriority
 import com.example.developernetworkingapp.domain.model.TaskContent
+import com.example.developernetworkingapp.domain.model.TaskItem
 import com.example.developernetworkingapp.ui.screens.ChatScreen
 import com.example.developernetworkingapp.ui.screens.DashboardScreen
 import com.example.developernetworkingapp.ui.screens.EventFeedScreen
@@ -94,7 +97,10 @@ fun DashboardScreenPreview() {
                 onComposerTextChange = {},
                 onComposerStackChange = {},
                 onComposerBackendNeedChange = {},
-                onComposerSpotsInputChange = {}
+                onComposerSpotsInputChange = {},
+                onSendMatchInvite = { _, _ -> },
+                onAcceptMatchRequest = {},
+                onDeclineMatchRequest = {},
             )
         }
     }
@@ -302,12 +308,31 @@ fun TaskManagementScreenPreview() {
                 state = TasksUiState(
                     content = TaskContent(
                         items = listOf(
-                            "Implement authentication module",
-                            "Write database migration scripts",
-                            "Create API documentation",
-                            "Design UI components library",
-                            "Set up CI/CD pipeline"
-                        )
+                            TaskItem(
+                                id = "preview_1",
+                                title = "Implement authentication module",
+                                statusLabel = "In Progress",
+                                boardColumn = TaskBoardColumn.IN_PROGRESS,
+                                priority = TaskPriority.HIGH,
+                                assigneeLabel = "You",
+                            ),
+                            TaskItem(
+                                id = "preview_2",
+                                title = "Write database migration scripts",
+                                statusLabel = "To Do",
+                                boardColumn = TaskBoardColumn.TODO,
+                                priority = TaskPriority.MEDIUM,
+                                assigneeLabel = "Sara",
+                            ),
+                            TaskItem(
+                                id = "preview_3",
+                                title = "Create API documentation",
+                                statusLabel = "Done",
+                                boardColumn = TaskBoardColumn.DONE,
+                                priority = TaskPriority.LOW,
+                                assigneeLabel = "Omar",
+                            ),
+                        ),
                     )
                 ),
                 navController = rememberNavController()

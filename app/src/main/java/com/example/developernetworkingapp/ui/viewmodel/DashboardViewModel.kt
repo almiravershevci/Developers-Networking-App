@@ -3,6 +3,7 @@ package com.example.developernetworkingapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.DashboardRepository
+import com.example.developernetworkingapp.data.repository.MatchRepository
 import com.example.developernetworkingapp.domain.model.ProjectPost
 import com.example.developernetworkingapp.ui.state.DashboardUiState
 import com.example.developernetworkingapp.ui.state.FeedPostState
@@ -19,6 +20,7 @@ import kotlin.math.absoluteValue
 
 class DashboardViewModel(
     private val repository: DashboardRepository,
+    private val matchRepository: MatchRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -33,6 +35,20 @@ class DashboardViewModel(
 
     init {
         loadDashboard()
+        observeMatchRequests()
+    }
+
+    private fun observeMatchRequests() {
+        viewModelScope.launch {
+            matchRepository.observeIncomingRequests().collect { requests ->
+                _uiState.update { it.copy(incomingMatchRequests = requests) }
+            }
+        }
+        viewModelScope.launch {
+            matchRepository.observeOutgoingRequests().collect { requests ->
+                _uiState.update { it.copy(outgoingMatchRequests = requests) }
+            }
+        }
     }
 
     fun loadDashboard() {
@@ -170,6 +186,46 @@ class DashboardViewModel(
                 "Omar: I can support API integration if backend endpoints are ready."
             )
         )
+    }
+
+    fun sendMatchInvite(toUserId: String, message: String?) {
+        if (toUserId.isBlank()) {
+            notify("Couldn't send invite — collaborator profile is missing.")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(matchActionInFlight = "send") }
+            val result = matchRepository.sendMatchRequest(toUserId, message)
+            _uiState.update { it.copy(matchActionInFlight = null) }
+            result.fold(
+                onSuccess = { notify("✓ Match invite sent. They'll see it in pending requests.") },
+                onFailure = { notify(it.message ?: "Couldn't send match invite.") },
+            )
+        }
+    }
+
+    fun acceptMatchRequest(requestId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(matchActionInFlight = requestId) }
+            val result = matchRepository.acceptRequest(requestId)
+            _uiState.update { it.copy(matchActionInFlight = null) }
+            result.fold(
+                onSuccess = { notify("✓ Match accepted — direct chat thread is ready.") },
+                onFailure = { notify(it.message ?: "Couldn't accept match request.") },
+            )
+        }
+    }
+
+    fun declineMatchRequest(requestId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(matchActionInFlight = requestId) }
+            val result = matchRepository.declineRequest(requestId)
+            _uiState.update { it.copy(matchActionInFlight = null) }
+            result.fold(
+                onSuccess = { notify("Match request declined.") },
+                onFailure = { notify(it.message ?: "Couldn't decline match request.") },
+            )
+        }
     }
 
     private fun notify(message: String) {

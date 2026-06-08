@@ -73,6 +73,7 @@ class DashboardRepositoryFirestore(
             modules = defaultModules(),
             matches = suggestions.map { suggestion ->
                 CollaboratorMatch(
+                    suggestedUserId = suggestion.suggestedUserId,
                     name = profilesById[suggestion.suggestedUserId]?.displayName ?: "Developer",
                     stack = suggestion.stackSummary,
                     matchScore = suggestion.matchScore,

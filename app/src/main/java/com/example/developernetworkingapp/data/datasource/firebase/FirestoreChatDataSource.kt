@@ -1,6 +1,7 @@
 package com.example.developernetworkingapp.data.datasource.firebase
 
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ConversationDoc
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ConversationKind
 import com.example.developernetworkingapp.data.datasource.firebase.schema.FirestorePaths
 import com.example.developernetworkingapp.data.datasource.firebase.schema.MessageDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.MessageKind
@@ -87,6 +88,33 @@ class FirestoreChatDataSource(
         return snap.toObject(ConversationDoc::class.java)?.copy(id = snap.id)
     }
 
+    suspend fun ensureDirectConversation(
+        currentUserId: String,
+        peerUserId: String,
+    ): String {
+        require(currentUserId.isNotBlank() && peerUserId.isNotBlank())
+        require(currentUserId != peerUserId)
+
+        val conversationId = directConversationId(currentUserId, peerUserId)
+        val ref = db.collection(FirestorePaths.CONVERSATIONS).document(conversationId)
+        val existing = ref.get().await()
+        if (existing.exists()) return conversationId
+
+        val payload = mapOf(
+            "schemaVersion" to 1,
+            "conversationKind" to ConversationKind.DIRECT,
+            "title" to null,
+            "projectId" to null,
+            "participantIds" to listOf(currentUserId, peerUserId),
+            "createdBy" to currentUserId,
+            "lastMessagePreview" to "Match accepted — say hello!",
+            "lastMessageAt" to FieldValue.serverTimestamp(),
+            "createdAt" to FieldValue.serverTimestamp(),
+        )
+        ref.set(payload).await()
+        return conversationId
+    }
+
     suspend fun sendTextMessage(
         conversationId: String,
         senderId: String,
@@ -151,3 +179,8 @@ class FirestoreChatDataSource(
 
 fun messageSortKey(doc: com.google.firebase.firestore.DocumentSnapshot): Long =
     doc.readTimestamp("createdAt")?.toDate()?.time ?: 0L
+
+fun directConversationId(userA: String, userB: String): String {
+    val sorted = listOf(userA, userB).sorted()
+    return "direct_${sorted[0]}_${sorted[1]}"
+}

@@ -7,15 +7,19 @@ import com.example.developernetworkingapp.data.datasource.firebase.authStateChan
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectTaskDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.TaskBoardColumn
 import com.example.developernetworkingapp.domain.model.TaskContent
+import com.example.developernetworkingapp.domain.model.TaskItem
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 
 /**
- * Task list screen — loads tasks from the same Firestore project as the Kanban board.
+ * Task list microservice — realtime reads and member-gated writes for project tasks.
  */
 class TasksRepositoryFirestore(
     private val projectsDataSource: FirestoreProjectsDataSource = FirestoreProjectsDataSource(),
@@ -25,27 +29,91 @@ class TasksRepositoryFirestore(
 
     override fun observeTasks(): Flow<TaskContent> =
         firebaseAuth.authStateChanges().flatMapLatest { firebaseUser ->
-            flow {
-                val items = when {
-                    firebaseUser == null -> emptyList()
-                    !firebaseUser.isEmailVerified -> emptyList()
-                    else -> runCatching { loadTaskLines(firebaseUser.uid) }.getOrDefault(emptyList())
-                }
-                emit(TaskContent(items = items))
+            when {
+                firebaseUser == null -> flowOf(
+                    TaskContent(statusMessage = "Sign in to view your project tasks."),
+                )
+                !firebaseUser.isEmailVerified -> flowOf(
+                    TaskContent(statusMessage = "Verify your email to load tasks."),
+                )
+                else -> observeTasksForUser(firebaseUser.uid)
             }
         }.flowOn(Dispatchers.IO)
 
-    private suspend fun loadTaskLines(currentUserId: String): List<String> {
-        val projectId = resolveProjectId(currentUserId)
-        val tasks = projectsDataSource.fetchProjectTasks(projectId)
-        val assigneeIds = tasks.mapNotNull { it.assigneeUserId }.distinct()
-        val profiles = runCatching {
-            userDataSource.fetchUserProfiles(assigneeIds)
-        }.getOrDefault(emptyMap())
+    override suspend fun createTask(
+        title: String,
+        priority: String,
+        assigneeUserId: String?,
+        boardColumn: String,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val uid = requireSignedInUser() ?: return@withContext authRequiredFailure()
+        runCatching {
+            val projectId = resolveProjectId(uid)
+            projectsDataSource.createProjectTask(
+                projectId = projectId,
+                createdByUserId = uid,
+                title = title,
+                priority = priority,
+                assigneeUserId = assigneeUserId,
+                boardColumn = boardColumn,
+            )
+            Unit
+        }.toTaskResult("create task")
+    }
 
-        return tasks.map { task ->
-            formatTaskLine(task, currentUserId, profiles[task.assigneeUserId]?.displayName)
+    override suspend fun moveTask(taskId: String, boardColumn: String): Result<Unit> =
+        mutateTask(taskId) { projectId ->
+            projectsDataSource.updateTaskBoardColumn(projectId, taskId, boardColumn)
         }
+
+    override suspend fun updateTask(
+        taskId: String,
+        title: String?,
+        priority: String?,
+        assigneeUserId: String?,
+    ): Result<Unit> = mutateTask(taskId) { projectId ->
+        projectsDataSource.updateProjectTask(
+            projectId = projectId,
+            taskId = taskId,
+            title = title,
+            priority = priority,
+            assigneeUserId = assigneeUserId,
+        )
+    }
+
+    override suspend fun deleteTask(taskId: String): Result<Unit> =
+        mutateTask(taskId) { projectId ->
+            projectsDataSource.deleteProjectTask(projectId, taskId)
+        }
+
+    private suspend fun mutateTask(
+        taskId: String,
+        block: suspend (projectId: String) -> Unit,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val uid = requireSignedInUser() ?: return@withContext authRequiredFailure()
+        runCatching {
+            val projectId = resolveProjectId(uid)
+            block(projectId)
+        }.toTaskResult("update task")
+    }
+
+    private fun observeTasksForUser(uid: String): Flow<TaskContent> = flow {
+        val projectId = resolveProjectId(uid)
+        projectsDataSource.observeProjectTasks(projectId).collect { tasks ->
+            val assigneeIds = tasks.mapNotNull { it.assigneeUserId }.distinct()
+            val profiles = runCatching {
+                userDataSource.fetchUserProfiles(assigneeIds)
+            }.getOrDefault(emptyMap())
+            emit(
+                TaskContent(
+                    items = tasks.map { task ->
+                        mapToTaskItem(task, uid, profiles[task.assigneeUserId]?.displayName)
+                    },
+                ),
+            )
+        }
+    }.catch { error ->
+        emit(taskErrorContent(error))
     }
 
     private suspend fun resolveProjectId(uid: String): String {
@@ -55,26 +123,71 @@ class TasksRepositoryFirestore(
         return DEFAULT_PROJECT_ID
     }
 
-    private fun formatTaskLine(
+    private fun requireSignedInUser(): String? {
+        val user = firebaseAuth.currentUser ?: return null
+        if (!user.isEmailVerified) return null
+        return user.uid
+    }
+
+    private fun authRequiredFailure(): Result<Unit> =
+        Result.failure(IllegalStateException("Sign in with a verified email to manage tasks."))
+
+    private fun <T> Result<T>.toTaskResult(action: String): Result<Unit> = fold(
+        onSuccess = { Result.success(Unit) },
+        onFailure = { error ->
+            val detail = error.message.orEmpty()
+            val message = when {
+                detail.contains("PERMISSION_DENIED", ignoreCase = true) -> {
+                    val uid = firebaseAuth.currentUser?.uid ?: "unknown"
+                    "Cannot $action. Add projects/proj_devconnect_mobile/members/$uid " +
+                        "in Firestore (run: npm run project:add-me in firestore/)."
+                }
+                else -> "Cannot $action. $detail"
+            }
+            Result.failure(IllegalStateException(message, error))
+        },
+    )
+
+    private fun taskErrorContent(error: Throwable): TaskContent {
+        val detail = error.message.orEmpty()
+        val message = when {
+            detail.contains("PERMISSION_DENIED", ignoreCase = true) ->
+                "Tasks blocked by rules. Publish firestore.rules and join the project as a member."
+            detail.contains("FAILED_PRECONDITION", ignoreCase = true) ||
+                detail.contains("index", ignoreCase = true) ->
+                "Firestore needs a tasks index. Deploy firestore.indexes.json, then retry."
+            else -> "Couldn't load tasks. ($detail)"
+        }
+        return TaskContent(statusMessage = message)
+    }
+
+    private fun mapToTaskItem(
         task: ProjectTaskDoc,
         currentUserId: String,
         assigneeName: String?,
-    ): String {
-        val assignee = when {
+    ): TaskItem {
+        val assigneeLabel = when {
             task.assigneeUserId == null -> "Unassigned"
             task.assigneeUserId == currentUserId -> "You"
             !assigneeName.isNullOrBlank() -> assigneeName
             else -> "Teammate"
         }
-        val column = when (task.boardColumn) {
-            TaskBoardColumn.TODO -> "To Do"
-            TaskBoardColumn.IN_PROGRESS -> "In Progress"
-            TaskBoardColumn.DONE -> "Done"
-            TaskBoardColumn.BLOCKED -> "Blocked"
-            else -> task.boardColumn
-        }
-        val priority = task.priority.replaceFirstChar { it.uppercase() }
-        return "${task.title} - $priority - Assignee: $assignee - $column"
+        return TaskItem(
+            id = task.id,
+            title = task.title,
+            statusLabel = boardColumnLabel(task.boardColumn),
+            boardColumn = task.boardColumn,
+            priority = task.priority,
+            assigneeLabel = assigneeLabel,
+        )
+    }
+
+    private fun boardColumnLabel(boardColumn: String): String = when (boardColumn) {
+        TaskBoardColumn.TODO -> "To Do"
+        TaskBoardColumn.IN_PROGRESS -> "In Progress"
+        TaskBoardColumn.DONE -> "Done"
+        TaskBoardColumn.BLOCKED -> "Blocked"
+        else -> boardColumn
     }
 
     private companion object {

@@ -4,17 +4,22 @@ import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.data.repository.ProjectsRepository
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreProjectsDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreUserDataSource
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectDoc
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectMemberDoc
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectTaskDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.TaskBoardColumn
+import com.example.developernetworkingapp.data.datasource.firebase.schema.UserProfileDoc
 import com.example.developernetworkingapp.domain.model.ProjectBoardContent
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 
 /**
- * Projects board (Kanban) backed by Firestore project + tasks subcollection.
+ * Projects board (Kanban) backed by Firestore project + realtime tasks subcollection.
  */
 class ProjectsRepositoryFirestore(
     private val authRepository: AuthRepository,
@@ -25,31 +30,39 @@ class ProjectsRepositoryFirestore(
 
     override fun observeProjects(): Flow<ProjectBoardContent> =
         authRepository.currentUser.flatMapLatest {
-            flow {
-                val firebaseUser = firebaseAuth.currentUser
-                val content = when {
-                    firebaseUser == null -> signedOutBoard()
-                    !firebaseUser.isEmailVerified -> signedOutBoard()
-                    else -> runCatching { loadPrimaryProjectBoard(firebaseUser.uid) }
-                        .getOrElse { errorBoard(it) }
-                }
-                emit(content)
+            val firebaseUser = firebaseAuth.currentUser
+            when {
+                firebaseUser == null -> flowOf(signedOutBoard())
+                !firebaseUser.isEmailVerified -> flowOf(signedOutBoard())
+                else -> observePrimaryProjectBoard(firebaseUser.uid)
             }
         }.flowOn(Dispatchers.IO)
 
-    private suspend fun loadPrimaryProjectBoard(uid: String): ProjectBoardContent {
+    private fun observePrimaryProjectBoard(uid: String): Flow<ProjectBoardContent> = flow {
         val projectId = resolvePrimaryProjectId(uid)
         val project = projectsDataSource.fetchProject(projectId)
-            ?: throw IllegalStateException("Project $projectId not found. Run the Firestore seed.")
+        if (project == null) {
+            emit(errorBoard(IllegalStateException("Project $projectId not found. Run the Firestore seed.")))
+            return@flow
+        }
 
-        val tasks = runCatching { projectsDataSource.fetchProjectTasks(projectId) }
-            .getOrDefault(emptyList())
         val members = runCatching { projectsDataSource.fetchProjectMembers(projectId) }
             .getOrDefault(emptyList())
         val memberProfiles = runCatching {
             userDataSource.fetchUserProfiles(members.map { it.memberUserId })
         }.getOrDefault(emptyMap())
 
+        projectsDataSource.observeProjectTasks(projectId).collect { tasks ->
+            emit(buildBoardContent(project, members, memberProfiles, tasks))
+        }
+    }
+
+    private fun buildBoardContent(
+        project: ProjectDoc,
+        members: List<ProjectMemberDoc>,
+        memberProfiles: Map<String, UserProfileDoc>,
+        tasks: List<ProjectTaskDoc>,
+    ): ProjectBoardContent {
         val memberNames = members.mapNotNull { memberProfiles[it.memberUserId]?.displayName }
         val teamMeta = buildString {
             append("${project.memberCount} members")

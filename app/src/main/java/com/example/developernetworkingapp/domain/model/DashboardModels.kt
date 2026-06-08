@@ -12,6 +12,7 @@ data class FeatureModule(
 )
 
 data class CollaboratorMatch(
+    val suggestedUserId: String = "",
     val name: String,
     val stack: String,
     val matchScore: Int

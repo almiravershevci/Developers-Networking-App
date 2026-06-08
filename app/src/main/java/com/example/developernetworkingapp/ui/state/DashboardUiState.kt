@@ -1,6 +1,7 @@
 package com.example.developernetworkingapp.ui.state
 
 import com.example.developernetworkingapp.domain.model.DashboardContent
+import com.example.developernetworkingapp.domain.model.MatchRequest
 import com.example.developernetworkingapp.domain.model.ProjectPost
 
 data class FeedPostState(
@@ -17,6 +18,9 @@ data class DashboardUiState(
     val isLoading: Boolean = true,
     val content: DashboardContent? = null,
     val feedPosts: List<FeedPostState> = emptyList(),
+    val incomingMatchRequests: List<MatchRequest> = emptyList(),
+    val outgoingMatchRequests: List<MatchRequest> = emptyList(),
+    val matchActionInFlight: String? = null,
     val composerText: String = "",
     val composerStack: String = "",
     val composerBackendNeed: String = "",

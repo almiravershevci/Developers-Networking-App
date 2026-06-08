@@ -65,6 +65,7 @@ import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.domain.model.ActivityItem
 import com.example.developernetworkingapp.domain.model.CollaboratorMatch
+import com.example.developernetworkingapp.domain.model.MatchRequest
 import com.example.developernetworkingapp.domain.model.EventHighlight
 import com.example.developernetworkingapp.ui.state.FeedPostState
 import com.example.developernetworkingapp.ui.components.EmptyStateCard
@@ -109,7 +110,10 @@ fun DashboardRoute(
         onComposerTextChange = viewModel::updateComposerText,
         onComposerStackChange = viewModel::updateComposerStack,
         onComposerBackendNeedChange = viewModel::updateComposerBackendNeed,
-        onComposerSpotsInputChange = viewModel::updateComposerSpotsInput
+        onComposerSpotsInputChange = viewModel::updateComposerSpotsInput,
+        onSendMatchInvite = viewModel::sendMatchInvite,
+        onAcceptMatchRequest = viewModel::acceptMatchRequest,
+        onDeclineMatchRequest = viewModel::declineMatchRequest,
     )
 }
 
@@ -130,7 +134,10 @@ fun DashboardScreen(
     onComposerTextChange: (String) -> Unit,
     onComposerStackChange: (String) -> Unit,
     onComposerBackendNeedChange: (String) -> Unit,
-    onComposerSpotsInputChange: (String) -> Unit
+    onComposerSpotsInputChange: (String) -> Unit,
+    onSendMatchInvite: (String, String?) -> Unit = { _, _ -> },
+    onAcceptMatchRequest: (String) -> Unit = {},
+    onDeclineMatchRequest: (String) -> Unit = {},
 ) {
     val content = state.content
     var showInviteDialog by rememberSaveable { mutableStateOf(false) }
@@ -170,7 +177,14 @@ fun DashboardScreen(
     if (showInviteDialog && selectedCollaborator != null) {
         InviteCollaboratorDialog(
             collaborator = selectedCollaborator!!,
-            onDismissRequest = { showInviteDialog = false; selectedCollaborator = null }
+            isSending = state.matchActionInFlight == "send",
+            onDismissRequest = { showInviteDialog = false; selectedCollaborator = null },
+            onSendInvite = { message ->
+                val collaborator = selectedCollaborator!!
+                onSendMatchInvite(collaborator.suggestedUserId, message)
+                showInviteDialog = false
+                selectedCollaborator = null
+            },
         )
     }
 
@@ -299,6 +313,17 @@ fun DashboardScreen(
                 subtitle = module.subtitle,
                 onLearnMoreClick = { navController.navigate(moduleLearnMoreRoute(module.title, module.subtitle)) }
             )
+        }
+        if (state.incomingMatchRequests.isNotEmpty()) {
+            item { SectionTitle("Pending Match Requests") }
+            items(state.incomingMatchRequests, key = { it.id }) { request ->
+                PendingMatchRequestCard(
+                    request = request,
+                    isResolving = state.matchActionInFlight == request.id,
+                    onAccept = { onAcceptMatchRequest(request.id) },
+                    onDecline = { onDeclineMatchRequest(request.id) },
+                )
+            }
         }
         item { SectionTitle("Suggested Collaborators") }
         items(content?.matches ?: emptyList()) { match ->
@@ -821,6 +846,53 @@ private fun InteractiveGradientCard(
 }
 
 @Composable
+private fun PendingMatchRequestCard(
+    request: MatchRequest,
+    isResolving: Boolean,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = AppDesignTokens.cardShape,
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "${request.fromDisplayName} wants to collaborate",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            request.message?.takeIf { it.isNotBlank() }?.let { message ->
+                Text(message, style = MaterialTheme.typography.bodyMedium)
+            }
+            Text(
+                text = request.relativeTime,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onAccept,
+                    enabled = !isResolving,
+                ) {
+                    Text(if (isResolving) "Working…" else "Accept")
+                }
+                TextButton(
+                    onClick = onDecline,
+                    enabled = !isResolving,
+                ) {
+                    Text("Decline")
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun MatchCard(
     title: String,
     subtitle: String,
@@ -1083,7 +1155,9 @@ private fun MessageOwnerDialog(
 @Composable
 private fun InviteCollaboratorDialog(
     collaborator: CollaboratorMatch,
-    onDismissRequest: () -> Unit
+    isSending: Boolean,
+    onDismissRequest: () -> Unit,
+    onSendInvite: (String?) -> Unit,
 ) {
     var inviteMessage by rememberSaveable { mutableStateOf("") }
     var selectedRole by rememberSaveable { mutableStateOf("Backend Developer") }
@@ -1122,12 +1196,24 @@ private fun InviteCollaboratorDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onDismissRequest) {
-                Text("Send Invite")
+            Button(
+                onClick = {
+                    val message = buildString {
+                        append("Role: $selectedRole")
+                        if (inviteMessage.isNotBlank()) {
+                            append("\n")
+                            append(inviteMessage.trim())
+                        }
+                    }.takeIf { it.isNotBlank() }
+                    onSendInvite(message)
+                },
+                enabled = !isSending && collaborator.suggestedUserId.isNotBlank(),
+            ) {
+                Text(if (isSending) "Sending…" else "Send Invite")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
+            TextButton(onClick = onDismissRequest, enabled = !isSending) {
                 Text("Cancel")
             }
         }

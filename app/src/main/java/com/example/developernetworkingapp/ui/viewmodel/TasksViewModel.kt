@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.NotificationDispatcher
 import com.example.developernetworkingapp.data.repository.TasksRepository
+import com.example.developernetworkingapp.data.datasource.firebase.schema.TaskBoardColumn
 import com.example.developernetworkingapp.ui.state.TasksUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class TasksViewModel(
@@ -19,14 +21,57 @@ class TasksViewModel(
 
     init {
         viewModelScope.launch {
-            repository.observeTasks().collect { _uiState.value = TasksUiState(it) }
+            repository.observeTasks().collect { content ->
+                _uiState.update { current ->
+                    current.copy(content = content, updatingTaskId = null)
+                }
+            }
         }
+    }
+
+    fun moveTaskToStatus(taskId: String, statusLabel: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(updatingTaskId = taskId, actionError = null) }
+            repository.moveTask(taskId, statusLabelToBoardColumn(statusLabel))
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            updatingTaskId = null,
+                            actionError = error.message ?: "Could not update task status.",
+                        )
+                    }
+                }
+        }
+    }
+
+    fun createTask(title: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(actionError = null) }
+            repository.createTask(title = title)
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(actionError = error.message ?: "Could not create task.")
+                    }
+                }
+        }
+    }
+
+    fun clearActionError() {
+        _uiState.update { it.copy(actionError = null) }
     }
 
     fun remindForTask(taskTitle: String) {
         notificationDispatcher.showLocalNotification(
             title = "Task reminder set",
-            message = taskTitle.take(80)
+            message = taskTitle.take(80),
         )
+    }
+
+    private fun statusLabelToBoardColumn(statusLabel: String): String = when (statusLabel) {
+        "To Do" -> TaskBoardColumn.TODO
+        "In Progress" -> TaskBoardColumn.IN_PROGRESS
+        "Done" -> TaskBoardColumn.DONE
+        "Blocked" -> TaskBoardColumn.BLOCKED
+        else -> TaskBoardColumn.TODO
     }
 }
