@@ -21,7 +21,9 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - run: npm audit --audit-level=high
       - run: npm test
+      - run: docker build -t devconnect-api:ci .
 
   functions:
     name: Cloud Functions build
@@ -37,7 +39,7 @@ jobs:
           cache: npm
           cache-dependency-path: functions/package-lock.json
       - run: npm ci
-      - run: npm run build
+      - run: npm run test
 
   firestore-rules:
     name: Firestore security rules
@@ -67,5 +69,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      # ubuntu-latest ships platforms/android-37.0; minorApiLevel=0 in build.gradle.kts maps to it
       - run: chmod +x gradlew
-      - run: ./gradlew assembleDebug --no-daemon
+      - run: ./gradlew assembleDebug lintDebug --no-daemon

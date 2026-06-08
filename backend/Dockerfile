@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
-COPY app.js index.js ./
+COPY app.js index.js openapi.yaml ./
 COPY lib ./lib
 COPY middleware ./middleware
 COPY routes ./routes

@@ -9,7 +9,6 @@ import com.example.developernetworkingapp.data.datasource.firebase.schema.TaskBo
 import com.example.developernetworkingapp.data.datasource.firebase.schema.TaskPriority
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.DocumentReference
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -72,8 +71,7 @@ class FirestoreProjectsDataSource(
     }
 
     fun observeProjectTasks(projectId: String): Flow<List<ProjectTaskDoc>> = callbackFlow {
-        var registration: ListenerRegistration? = null
-        registration = tasksCollection(projectId)
+        val registration = tasksCollection(projectId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -85,7 +83,7 @@ class FirestoreProjectsDataSource(
                     .sortedByDescending { it.updatedAt?.toDate()?.time ?: 0L }
                 trySend(tasks)
             }
-        awaitClose { registration?.remove() }
+        awaitClose { registration.remove() }
     }
 
     // endregion

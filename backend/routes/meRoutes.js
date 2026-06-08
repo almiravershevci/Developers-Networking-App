@@ -1,5 +1,6 @@
 const express = require('express');
 const { db } = require('../lib/firestore');
+const { FieldValue } = require('../lib/serializers');
 const { asyncHandler } = require('../lib/asyncHandler');
 const { mapUserProfile } = require('../lib/serializers');
 const { writeLimiter } = require('../middleware/rateLimit');
@@ -27,7 +28,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const { displayName, headline, bio } = req.validated;
-    const payload = { updatedAt: new Date() };
+    const payload = { updatedAt: FieldValue.serverTimestamp() };
 
     if (displayName !== undefined) payload.displayName = displayName;
     if (headline !== undefined) payload.headline = headline;

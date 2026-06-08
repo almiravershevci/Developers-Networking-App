@@ -21,6 +21,18 @@ See [ui/ARCHITECTURE.md](app/src/main/java/com/example/developernetworkingapp/ui
 
 Mobile microservices talk to **Firestore**; the **analytics microservice** is the self-hosted Node REST layer reading the same shared Firebase project (works for every teammate).
 
+```mermaid
+flowchart LR
+  Android[Android App] --> Firestore[(Firestore)]
+  Android --> Auth[Firebase Auth]
+  Firestore --> Functions[Cloud Functions]
+  Functions --> FCM[FCM Push]
+  BFF[Node REST BFF] --> Firestore
+  Android -. optional .-> BFF
+```
+
+Production docs: [docs/SECURITY.md](docs/SECURITY.md) · [docs/SLO.md](docs/SLO.md) · [docs/EVENT_BUS.md](docs/EVENT_BUS.md) · [docs/API_CHANGELOG.md](docs/API_CHANGELOG.md)
+
 ## Presentation demo flow (5 minutes)
 
 1. **Sign up / log in** — Create an account or use a seeded test user.

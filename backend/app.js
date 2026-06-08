@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const helmet = require('helmet');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 
@@ -10,6 +11,8 @@ const { requestLogger } = require('./middleware/requestLogger');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const { mountApiRoutes } = require('./lib/mountApi');
 const { publicLimiter } = require('./middleware/rateLimit');
+const { legacyApiDeprecationHeaders } = require('./middleware/deprecationHeaders');
+const { metricsMiddleware, prometheusText } = require('./lib/metrics');
 const { db, projectId, admin } = require('./lib/firestore');
 
 const API_VERSION = 'v1';
@@ -47,8 +50,13 @@ function createApp(options = {}) {
   const app = express();
 
   app.disable('x-powered-by');
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
   app.use(express.json({ limit: '256kb' }));
   app.use(cors(buildCorsOptions()));
+  app.use(metricsMiddleware);
   app.use(requestLogger);
 
   const openapiPath = path.join(__dirname, 'openapi.yaml');
@@ -75,6 +83,10 @@ function createApp(options = {}) {
   app.use('/docs', publicLimiter, swaggerUi.serve, swaggerUi.setup(openapiDocument, {
     customSiteTitle: 'DevConnect API',
   }));
+
+  app.get('/metrics', (_req, res) => {
+    res.type('text/plain; version=0.0.4').send(prometheusText());
+  });
 
   app.get('/health', async (req, res) => {
     const checks = {
@@ -117,6 +129,7 @@ function createApp(options = {}) {
   });
 
   mountApiRoutes(app, `/api/${API_VERSION}`, auth, requireAdmin);
+  app.use('/api', legacyApiDeprecationHeaders);
   mountApiRoutes(app, '/api', auth, requireAdmin);
 
   app.use(notFoundHandler);
