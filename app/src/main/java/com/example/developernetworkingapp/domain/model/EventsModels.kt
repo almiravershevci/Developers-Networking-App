@@ -1,9 +1,12 @@
 package com.example.developernetworkingapp.domain.model
 
+data class EventItem(
+    val id: String,
+    val displayLine: String,
+    val isRegistered: Boolean = false,
+)
+
 data class EventContent(
-    /** Display lines for the events list (title + summary). */
-    val items: List<String> = emptyList(),
-    /** Parallel Firestore document ids (same order as [items]). */
-    val eventIds: List<String> = emptyList(),
+    val items: List<EventItem> = emptyList(),
     val statusMessage: String? = null,
 )

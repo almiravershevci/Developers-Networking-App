@@ -75,6 +75,8 @@ Existing accounts created before deploy still need **one** `npm run team:sync-ac
 | Chat | User in conversation `participantIds` (auto or `team:sync-access`) |
 | Alerts / inbox | Cloud Functions deployed + assignee set on tasks |
 | Push notifications (FCM) | Functions deployed + user signed in with notifications allowed + `fcmTokens` on `users/{uid}` |
+| Event RSVP | Signed in + rules deployed + optional Functions for `participantCount` |
+| Dashboard Node API line | `backend/` running locally or deployed; same Firebase project + Auth token |
 | Match invites | Any verified user → any other user (real Auth UIDs) |
 | Dashboard stats | `userStats` doc exists (Functions or seed) |
 

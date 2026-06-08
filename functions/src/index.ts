@@ -1,6 +1,6 @@
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions/v1";
-import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
+import { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import {
   ActivityVerb,
   boardColumnLabel,
@@ -176,6 +176,54 @@ export const onMessageCreated = onDocumentCreated(
 /**
  * Push transport: FCM tray notification when any inbox row is created (server or admin).
  */
+/**
+ * RSVP automation: participantCount is server-maintained (clients cannot update events).
+ */
+export const onEventRegistrationCreated = onDocumentCreated(
+  {
+    document: "events/{eventId}/registrations/{userId}",
+    region: "us-central1",
+  },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+    const status = String(data.status ?? "");
+    if (status !== "going") return;
+
+    const eventId = event.params.eventId;
+    await db.collection("events").doc(eventId).set(
+      {
+        participantCount: FieldValue.increment(1),
+      },
+      { merge: true },
+    );
+
+    functions.logger.info("onEventRegistrationCreated", { eventId, userId: event.params.userId });
+  },
+);
+
+export const onEventRegistrationDeleted = onDocumentDeleted(
+  {
+    document: "events/{eventId}/registrations/{userId}",
+    region: "us-central1",
+  },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+    const status = String(data.status ?? "");
+    if (status !== "going") return;
+
+    const eventId = event.params.eventId;
+    await db.collection("events").doc(eventId).set(
+      {
+        participantCount: FieldValue.increment(-1),
+      },
+      { merge: true },
+    );
+    functions.logger.info("onEventRegistrationDeleted", { eventId, userId: event.params.userId });
+  },
+);
+
 export const onInboxCreated = onDocumentCreated(
   {
     document: "inbox/{notificationId}",

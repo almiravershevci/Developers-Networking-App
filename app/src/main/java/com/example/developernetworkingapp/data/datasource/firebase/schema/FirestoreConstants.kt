@@ -89,6 +89,11 @@ object EventStatus {
     const val CANCELLED = "cancelled"
 }
 
+object EventRegistrationStatus {
+    const val GOING = "going"
+    const val WAITLIST = "waitlist"
+}
+
 object NotificationKind {
     const val TASK_UPDATE = "task_update"
     const val MESSAGE = "message"

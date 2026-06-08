@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
 import com.example.developernetworkingapp.domain.model.ChatContent
 import com.example.developernetworkingapp.domain.model.EventContent
+import com.example.developernetworkingapp.domain.model.EventItem
 import com.example.developernetworkingapp.domain.model.NotificationContent
 import com.example.developernetworkingapp.domain.model.NotificationItem
 import com.example.developernetworkingapp.domain.model.ProfileContent
@@ -141,11 +142,11 @@ fun EventFeedScreenPreview() {
                 state = EventsUiState(
                     content = EventContent(
                         items = listOf(
-                            "Local Hackathon 2026",
-                            "Spring Mobile Dev Sprint",
-                            "DroidCon 2026",
-                            "AI Bootcamp Series"
-                        )
+                            EventItem("preview_1", "Local Hackathon 2026"),
+                            EventItem("preview_2", "Spring Mobile Dev Sprint", isRegistered = true),
+                            EventItem("preview_3", "DroidCon 2026"),
+                            EventItem("preview_4", "AI Bootcamp Series"),
+                        ),
                     )
                 ),
                 navController = rememberNavController(),

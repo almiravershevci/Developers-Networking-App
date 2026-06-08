@@ -1,74 +1,65 @@
 const express = require('express');
+const { db, projectId } = require('../lib/firestore');
+
 const router = express.Router();
 
-// Importimi i modeleve të nevojshme
-const User = require('../models/User');
-const Project = require('../models/Project');
-const Task = require('../models/Task');
-const Message = require('../models/Message');
-const MatchRequest = require('../models/MatchRequest');
+function greetingForHour(displayName) {
+  const hour = new Date().getHours();
+  const salutation =
+    hour >= 5 && hour <= 11
+      ? 'Good morning'
+      : hour >= 12 && hour <= 16
+        ? 'Good afternoon'
+        : hour >= 17 && hour <= 21
+          ? 'Good evening'
+          : 'Hello';
+  return `${salutation}, ${displayName}`;
+}
 
-// Rruga për marrjen e të dhënave të dashboard-it
-router.get('/data', async (req, res) => {
-    try {
-        // ID-ja e përdoruesit merret nga token-i (përmes middleware-it)
-        const userId = req.user.id;
+/**
+ * Analytics microservice — aggregates from shared Firestore (same data as mobile app).
+ * GET /api/dashboard/stats
+ */
+router.get('/stats', async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const [userSnap, statsSnap] = await Promise.all([
+      db.collection('users').doc(uid).get(),
+      db.collection('userStats').doc(uid).get(),
+    ]);
 
-        // 1. Gjej të dhënat e përdoruesit
-        const user = await User.findById(userId);
-        const userName = user ? user.name : "Përdorues";
+    const displayName = userSnap.exists
+      ? String(userSnap.get('displayName') || 'Developer').trim() || 'Developer'
+      : 'Developer';
 
-        // 2. Definimi i datave për llogaritjet
-        const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+    const stats = statsSnap.exists
+      ? {
+          activeProjectsCount: Number(statsSnap.get('activeProjectsCount') || 0),
+          openTasksCount: Number(statsSnap.get('openTasksCount') || 0),
+          unreadMessagesCount: Number(statsSnap.get('unreadMessagesCount') || 0),
+          pendingMatchRequestsCount: Number(statsSnap.get('pendingMatchRequestsCount') || 0),
+          collaborationsCount: Number(statsSnap.get('collaborationsCount') || 0),
+          ratingAggregate: statsSnap.get('ratingAggregate') ?? null,
+        }
+      : {
+          activeProjectsCount: 0,
+          openTasksCount: 0,
+          unreadMessagesCount: 0,
+          pendingMatchRequestsCount: 0,
+          collaborationsCount: 0,
+          ratingAggregate: null,
+        };
 
-        // 3. Ekzekutimi i të gjitha numërimeve paralelisht
-        const [
-            projectCount,
-            openTaskCount,
-            unreadCount,
-            matchCount,
-            newProjectsThisWeek,
-            highPriorityCount,
-            mentionsCount,
-            newMatchesToday
-        ] = await Promise.all([
-            Project.countDocuments({ userId: userId }),
-            Task.countDocuments({ userId: userId, status: 'open' }),
-            Message.countDocuments({ receiverId: userId, read: false }),
-            MatchRequest.countDocuments({ receiverId: userId, status: 'pending' }),
-            Project.countDocuments({ userId: userId, createdAt: { $gte: oneWeekAgo } }),
-            Task.countDocuments({ userId: userId, status: 'open', priority: 'high' }),
-            Message.countDocuments({ receiverId: userId, read: false, type: 'mention' }),
-            MatchRequest.countDocuments({ receiverId: userId, status: 'pending', createdAt: { $gte: today } })
-        ]);
-
-        // 4. Kthimi i përgjigjes JSON
-        res.json({
-            welcomeMessage: `Good evening, ${userName}`,
-            activeProjects: {
-                count: projectCount,
-                subText: `+${newProjectsThisWeek} this week`
-            },
-            openTasks: {
-                count: openTaskCount,
-                subText: `${highPriorityCount} high priority`
-            },
-            unreadMessages: {
-                count: unreadCount,
-                subText: `${mentionsCount} mentions`
-            },
-            matchRequests: {
-                count: matchCount,
-                subText: `+${newMatchesToday} today`
-            }
-        });
-
-    } catch (err) {
-        console.error("Dashboard error:", err);
-        res.status(500).json({ error: "Gabim gjatë ngarkimit të dashboard-it." });
-    }
+    res.json({
+      welcomeMessage: greetingForHour(displayName),
+      stats,
+      source: 'firestore',
+      projectId,
+    });
+  } catch (error) {
+    console.error('Dashboard stats error:', error);
+    res.status(500).json({ error: 'Failed to load dashboard stats.' });
+  }
 });
 
 module.exports = router;

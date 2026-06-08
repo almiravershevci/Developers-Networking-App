@@ -222,7 +222,8 @@ fun DashboardScreen(
                 } else {
                     "Discover collaborators, projects, and events tailored to you"
                 },
-                progress = "Your creator feed, matching engine, and live project discovery are active",
+                progress = content?.analyticsSourceLine
+                    ?: "Your creator feed, matching engine, and live project discovery are active",
             )
         }
         if (state.isLoading && content == null) {

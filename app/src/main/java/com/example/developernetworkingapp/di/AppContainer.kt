@@ -1,6 +1,10 @@
 package com.example.developernetworkingapp.di
 
 import android.content.Context
+import com.example.developernetworkingapp.data.datasource.remote.DashboardRemoteDataSource
+import com.example.developernetworkingapp.data.datasource.remote.DevConnectApi
+import com.example.developernetworkingapp.data.datasource.remote.DevConnectApiConfig
+import com.example.developernetworkingapp.data.datasource.remote.FirebaseAuthInterceptor
 import com.example.developernetworkingapp.data.datasource.remote.TechTrendsApi
 import com.example.developernetworkingapp.data.repository.ApiTechTrendsRepository
 import com.example.developernetworkingapp.data.repository.AdminRepository
@@ -49,7 +53,10 @@ object AppContainer {
         get() = notificationDispatcherImpl
 
     val dashboardRepository: DashboardRepository by lazy {
-        DashboardRepositoryFirestore(authRepository = authRepository)
+        DashboardRepositoryFirestore(
+            authRepository = authRepository,
+            remoteDataSource = dashboardRemoteDataSource,
+        )
     }
     val projectsRepository: ProjectsRepository by lazy {
         ProjectsRepositoryFirestore(authRepository = authRepository)
@@ -69,6 +76,22 @@ object AppContainer {
     }
     val techTrendsRepository: TechTrendsRepository by lazy { ApiTechTrendsRepository(techTrendsApi) }
     val adminRepository: AdminRepository by lazy { AdminRepositoryFirestore() }
+
+    private val devConnectApi: DevConnectApi by lazy {
+        val client = OkHttpClient.Builder()
+            .addInterceptor(FirebaseAuthInterceptor())
+            .build()
+        Retrofit.Builder()
+            .baseUrl(DevConnectApiConfig.BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(DevConnectApi::class.java)
+    }
+
+    private val dashboardRemoteDataSource: DashboardRemoteDataSource by lazy {
+        DashboardRemoteDataSource(devConnectApi)
+    }
 
     private val techTrendsApi: TechTrendsApi by lazy {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }

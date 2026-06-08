@@ -10,6 +10,17 @@ Android app for developer collaboration: project boards, realtime chat, talent s
 
 See [ui/ARCHITECTURE.md](app/src/main/java/com/example/developernetworkingapp/ui/ARCHITECTURE.md) for layer rules.
 
+### Microservices & REST APIs (course requirement)
+
+| Service | Transport | Purpose |
+|---------|-----------|---------|
+| Firestore repositories | Firebase SDK | Primary data (tasks, chat, events, inbox, …) |
+| Cloud Functions | Event triggers | Inbox, activity, stats, FCM push, RSVP counts |
+| **Node analytics API** | `backend/` Express + Retrofit `DevConnectApi` | Dashboard stats + projects aggregates (Firebase Auth JWT) |
+| **Hacker News trends** | `TechTrendsApi` → [Algolia HN REST](https://hn.algolia.com/api/v1/) | Search tab live API trends |
+
+Mobile microservices talk to **Firestore**; the **analytics microservice** is the self-hosted Node REST layer reading the same shared Firebase project (works for every teammate).
+
 ## Presentation demo flow (5 minutes)
 
 1. **Sign up / log in** — Create an account or use a seeded test user.
@@ -26,6 +37,18 @@ See [ui/ARCHITECTURE.md](app/src/main/java/com/example/developernetworkingapp/ui
 Details: [docs/TEAM_SETUP_AFTER_PULL.md](docs/TEAM_SETUP_AFTER_PULL.md)
 
 **Backend lead:** deploy rules/indexes/functions + `cd firestore && npm run team:sync-access` so Tasks and Chat work for every Auth user.
+
+### Optional: Node analytics API (local)
+
+```powershell
+$env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\serviceAccount.json"
+$env:FIREBASE_PROJECT_ID="developers-networking-app"
+cd backend
+npm install
+npm start
+```
+
+Android emulator uses `http://10.0.2.2:5000/` (`DevConnectApiConfig.kt`). Deploy to Render/Railway for HTTPS and update the base URL once for the whole team.
 
 ## Build & run
 

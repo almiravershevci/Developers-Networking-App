@@ -52,6 +52,8 @@ data class DashboardContent(
     val greeting: String,
     val heroTitle: String,
     val heroSubtitle: String,
+    /** Set when Node analytics API responds (hybrid microservice). */
+    val analyticsSourceLine: String? = null,
     val stats: List<DashboardStat>,
     val modules: List<FeatureModule>,
     val matches: List<CollaboratorMatch>,

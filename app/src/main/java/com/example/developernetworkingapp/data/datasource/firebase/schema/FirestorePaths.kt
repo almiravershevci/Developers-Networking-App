@@ -15,6 +15,7 @@ object FirestorePaths {
     const val MESSAGES = "messages"
     const val MATCH_REQUESTS = "matchRequests"
     const val EVENTS = "events"
+    const val REGISTRATIONS = "registrations"
     const val INBOX = "inbox"
     const val ACTIVITY = "activity"
     const val NEWS_HIGHLIGHTS = "newsHighlights"
@@ -49,6 +50,11 @@ object FirestorePaths {
     fun matchRequest(requestId: String) = "$MATCH_REQUESTS/$requestId"
 
     fun event(eventId: String) = "$EVENTS/$eventId"
+
+    fun eventRegistrations(eventId: String) = "${event(eventId)}/$REGISTRATIONS"
+
+    fun eventRegistration(eventId: String, userId: String) =
+        "${eventRegistrations(eventId)}/$userId"
 
     fun inboxNotification(notificationId: String) = "$INBOX/$notificationId"
 

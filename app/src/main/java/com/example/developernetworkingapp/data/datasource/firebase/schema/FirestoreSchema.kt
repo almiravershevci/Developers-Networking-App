@@ -165,6 +165,14 @@ data class EventDoc(
     val eventStatus: String = EventStatus.SCHEDULED,
 )
 
+data class EventRegistrationDoc(
+    @DocumentId val id: String = "",
+    val schemaVersion: Int = 1,
+    val userId: String = "",
+    val status: String = EventRegistrationStatus.GOING,
+    @ServerTimestamp val registeredAt: Timestamp? = null,
+)
+
 // endregion
 
 // region inbox & activity feed

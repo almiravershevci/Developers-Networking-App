@@ -1,31 +1,30 @@
+require('dotenv').config();
+
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
+
+const firebaseAuth = require('./middleware/firebaseAuth');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const projectRoutes = require('./routes/projectRoutes');
 
 const app = express();
 
 app.use(express.json());
 app.use(cors());
 
-// Importimi i të gjitha rrugëve
-const userRoutes = require('./routes/userRoutes');
-const projectRoutes = require('./routes/projectRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const authMiddleware = require('./middleware/auth'); // Importo middleware-in
-
-// Përdorimi i rrugëve
-app.get('/', (req, res) => {
-    res.send('Serveri i Developers Networking App po punon!');
+app.get('/', (_req, res) => {
+  res.json({
+    service: 'DevConnect Analytics API',
+    project: process.env.FIREBASE_PROJECT_ID || 'developers-networking-app',
+    routes: ['/api/dashboard/stats', '/api/projects'],
+    auth: 'Firebase ID token (Authorization: Bearer)',
+  });
 });
 
-app.use('/api/users', userRoutes);
-app.use('/api/projects', projectRoutes);
+app.use('/api/dashboard', firebaseAuth, dashboardRoutes);
+app.use('/api/projects', firebaseAuth, projectRoutes);
 
-// KËTU është rregullimi për Dashboard-in:
-// E përdorim vetëm një herë dhe e mbrojmë me authMiddleware
-app.use('/api/dashboard', authMiddleware, dashboardRoutes);
-
-const PORT = 5000;
+const PORT = Number(process.env.PORT || 5000);
 app.listen(PORT, () => {
-    console.log(`Serveri u startua në http://localhost:${PORT}`);
+  console.log(`DevConnect API listening on http://localhost:${PORT}`);
 });

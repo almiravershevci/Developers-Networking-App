@@ -44,6 +44,7 @@ import com.example.developernetworkingapp.ui.components.PremiumInfoCard
 import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.util.userFacingStatusMessage
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
+import com.example.developernetworkingapp.domain.model.EventItem
 import com.example.developernetworkingapp.ui.state.EventsUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.EventsUiEvent
@@ -59,7 +60,9 @@ fun EventFeedRoute(padding: PaddingValues, navController: NavController) {
         state = state,
         navController = navController,
         events = viewModel.events,
-        onJoinEvent = viewModel::notifyEventJoined
+        onJoinEvent = viewModel::notifyEventJoined,
+        onRegisterForEvent = viewModel::registerForEvent,
+        onUnregisterFromEvent = viewModel::unregisterFromEvent,
     )
 }
 
@@ -69,9 +72,11 @@ fun EventFeedScreen(
     state: EventsUiState,
     navController: NavController,
     events: SharedFlow<EventsUiEvent>,
-    onJoinEvent: (String) -> Unit
+    onJoinEvent: (String) -> Unit,
+    onRegisterForEvent: (String, String) -> Unit = { _, _ -> },
+    onUnregisterFromEvent: (String, String) -> Unit = { _, _ -> },
 ) {
-    var selectedEvent by remember { mutableStateOf<String?>(null) }
+    var selectedEvent by remember { mutableStateOf<EventItem?>(null) }
     var activeNotification by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(events) {
@@ -96,13 +101,13 @@ fun EventFeedScreen(
             title = { Text("Event Details") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(event, style = MaterialTheme.typography.titleMedium)
+                    Text(event.displayLine, style = MaterialTheme.typography.titleMedium)
                     Text("Team matching, challenges, leaderboard, and mentorship channels included.")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         AssistChip(onClick = {
                             navController.navigate(
                                 AppRoutes.detailRoute(
-                                    title = "$event Leaderboard",
+                                    title = "${event.displayLine} Leaderboard",
                                     subtitle = "Rankings",
                                     description = "Live team rankings, score updates, and challenge completion metrics for this event.",
                                     sourceRoute = AppRoutes.EVENTS
@@ -112,7 +117,7 @@ fun EventFeedScreen(
                         AssistChip(onClick = {
                             navController.navigate(
                                 AppRoutes.detailRoute(
-                                    title = "$event Challenges",
+                                    title = "${event.displayLine} Challenges",
                                     subtitle = "Challenge tracks",
                                     description = "Challenge briefs, judging criteria, and submission windows for all active tracks.",
                                     sourceRoute = AppRoutes.EVENTS
@@ -123,11 +128,28 @@ fun EventFeedScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    onJoinEvent(event)
-                    selectedEvent = null
-                    navController.navigate(AppRoutes.CHAT)
-                }) { Text("Join event") }
+                val registering = state.registrationInFlight == event.id
+                if (event.isRegistered) {
+                    Button(
+                        onClick = {
+                            onUnregisterFromEvent(event.id, event.displayLine)
+                            selectedEvent = null
+                        },
+                        enabled = !registering,
+                    ) {
+                        Text(if (registering) "Working…" else "Unregister")
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            onRegisterForEvent(event.id, event.displayLine)
+                            selectedEvent = null
+                        },
+                        enabled = !registering,
+                    ) {
+                        Text(if (registering) "Working…" else "Register")
+                    }
+                }
             },
             dismissButton = { TextButton(onClick = { selectedEvent = null }) { Text("Close") } }
         )
@@ -158,8 +180,8 @@ fun EventFeedScreen(
                 )
             }
         }
-        val events = state.content?.items.orEmpty()
-        if (events.isEmpty()) {
+        val eventItems = state.content?.items.orEmpty()
+        if (eventItems.isEmpty()) {
             item {
                 EmptyStateCard(
                     title = "No upcoming events",
@@ -167,27 +189,45 @@ fun EventFeedScreen(
                 )
             }
         }
-        items(events) { event ->
+        items(eventItems, key = { it.id }) { event ->
+            val registering = state.registrationInFlight == event.id
             ElevatedCard(
                 onClick = { selectedEvent = event },
                 shape = AppDesignTokens.cardShape,
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
                 Column(modifier = Modifier.padding(AppDesignTokens.cardInnerPadding), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(event, style = MaterialTheme.typography.titleMedium)
-                    Text("Team matching by skills, location, and availability is active.", style = MaterialTheme.typography.bodyMedium)
+                    Text(event.displayLine, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (event.isRegistered) "You are registered for this event." else "Team matching by skills, location, and availability is active.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = {
                             navController.navigate(
                                 AppRoutes.detailRoute(
-                                    title = event,
+                                    title = event.displayLine,
                                     subtitle = "Event Overview",
                                     description = "Complete event brief:\n• Full timeline and submission windows\n• Challenge tracks with judging criteria\n• Mentor office hours and team matching notes\n• Participant activity and leaderboard trends\n• Recommended preparation checklist before joining\n\nUse this page as the single source of truth for planning and execution during the event.",
                                     sourceRoute = AppRoutes.EVENTS
                                 )
                             )
                         }) { Text("View details") }
-                        TextButton(onClick = { selectedEvent = event }) { Text("Join now") }
+                        if (event.isRegistered) {
+                            TextButton(
+                                onClick = { onUnregisterFromEvent(event.id, event.displayLine) },
+                                enabled = !registering,
+                            ) {
+                                Text(if (registering) "Working…" else "Unregister")
+                            }
+                        } else {
+                            Button(
+                                onClick = { onRegisterForEvent(event.id, event.displayLine) },
+                                enabled = !registering,
+                            ) {
+                                Text(if (registering) "Working…" else "Register")
+                            }
+                        }
                     }
                 }
             }

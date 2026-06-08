@@ -3,6 +3,9 @@ package com.example.developernetworkingapp.data.repository.impl
 import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.data.repository.DashboardRepository
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreDashboardDataSource
+import com.example.developernetworkingapp.data.datasource.remote.DashboardRemoteDataSource
+import com.example.developernetworkingapp.data.datasource.remote.DashboardStatsPayloadDto
+import com.example.developernetworkingapp.data.datasource.remote.DevConnectApiConfig
 import com.example.developernetworkingapp.data.datasource.firebase.formatRelativeTime
 import com.example.developernetworkingapp.data.datasource.firebase.schema.UserStatsDoc
 import com.example.developernetworkingapp.domain.model.ActivityItem
@@ -28,6 +31,7 @@ import kotlinx.coroutines.flow.flowOn
 class DashboardRepositoryFirestore(
     private val authRepository: AuthRepository,
     private val dataSource: FirestoreDashboardDataSource = FirestoreDashboardDataSource(),
+    private val remoteDataSource: DashboardRemoteDataSource? = null,
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
 ) : DashboardRepository {
 
@@ -65,7 +69,7 @@ class DashboardRepositoryFirestore(
         val activity = runCatching { dataSource.fetchRecentActivity(uid) }.getOrDefault(emptyList())
         val events = runCatching { dataSource.fetchUpcomingEvents() }.getOrDefault(emptyList())
 
-        return DashboardContent(
+        val firestoreContent = DashboardContent(
             greeting = greetingForHour(displayName),
             heroTitle = "Your network is active",
             heroSubtitle = heroSubtitle(statsDoc),
@@ -109,7 +113,28 @@ class DashboardRepositoryFirestore(
                 ActivityItem(title = item.summary, time = formatRelativeTime(item.createdAt))
             },
         )
+        return overlayRemoteAnalytics(firestoreContent)
     }
+
+    private suspend fun overlayRemoteAnalytics(content: DashboardContent): DashboardContent {
+        if (!DevConnectApiConfig.ENABLED || remoteDataSource == null) return content
+        val remote = runCatching { remoteDataSource.fetchDashboardStats() }.getOrNull() ?: return content
+        val stats = remote.stats
+        return content.copy(
+            greeting = remote.welcomeMessage.takeIf { it.isNotBlank() } ?: content.greeting,
+            heroSubtitle = "${stats.collaborationsCount} collaborations · ${stats.unreadMessagesCount} unread " +
+                "messages · ${stats.pendingMatchRequestsCount} pending matches",
+            stats = buildStatsFromRemote(stats),
+            analyticsSourceLine = "Analytics microservice · Node REST (${remote.source})",
+        )
+    }
+
+    private fun buildStatsFromRemote(stats: DashboardStatsPayloadDto): List<DashboardStat> = listOf(
+        DashboardStat("Active Projects", stats.activeProjectsCount.toString(), "Node API aggregate"),
+        DashboardStat("Open Tasks", stats.openTasksCount.toString(), "Across projects"),
+        DashboardStat("Unread Messages", stats.unreadMessagesCount.toString(), "Check Chat"),
+        DashboardStat("Match Requests", stats.pendingMatchRequestsCount.toString(), "Pending invites"),
+    )
 
     private fun buildStats(statsDoc: UserStatsDoc?): List<DashboardStat> {
         if (statsDoc == null) {
