@@ -117,8 +117,9 @@ class DashboardRepositoryFirestore(
     }
 
     private suspend fun overlayRemoteAnalytics(content: DashboardContent): DashboardContent {
-        if (!DevConnectApiConfig.ENABLED || remoteDataSource == null) return content
-        val remote = runCatching { remoteDataSource.fetchDashboardStats() }.getOrNull() ?: return content
+        if (!DevConnectApiConfig.ENABLED) return content
+        val remoteApi = remoteDataSource ?: return content
+        val remote = runCatching { remoteApi.fetchDashboardStats() }.getOrNull() ?: return content
         val stats = remote.stats
         return content.copy(
             greeting = remote.welcomeMessage.takeIf { it.isNotBlank() } ?: content.greeting,

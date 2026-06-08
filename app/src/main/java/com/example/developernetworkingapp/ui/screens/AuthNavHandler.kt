@@ -14,7 +14,7 @@ import com.example.developernetworkingapp.ui.viewmodel.VerificationViewModel
 import kotlinx.coroutines.flow.merge
 
 @Composable
-fun collectAuthNavEvents(navController: NavController) {
+fun CollectAuthNavEvents(navController: NavController) {
     val loginViewModel: LoginViewModel = appViewModel()
     val signupViewModel: SignupViewModel = appViewModel()
     val verificationViewModel: VerificationViewModel = appViewModel()
@@ -47,7 +47,7 @@ fun collectAuthNavEvents(navController: NavController) {
 }
 
 @Composable
-fun collectProfileNavEvents(navController: NavController) {
+fun CollectProfileNavEvents(navController: NavController) {
     val profileViewModel: ProfileViewModel = appViewModel()
 
     LaunchedEffect(profileViewModel, navController) {
