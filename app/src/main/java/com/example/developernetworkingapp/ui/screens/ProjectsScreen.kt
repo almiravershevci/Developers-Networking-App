@@ -228,7 +228,7 @@ fun ProjectBoardScreen(
             }
         }
         if (state.isLoading && content == null) {
-            item { LoadingStateCard("Loading project board…") }
+            item { LoadingStateCard(message = "Loading project board…") }
         }
         if (content != null &&
             content.todo.isEmpty() &&

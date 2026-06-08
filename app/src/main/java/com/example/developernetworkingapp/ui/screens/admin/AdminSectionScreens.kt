@@ -28,11 +28,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import android.content.ClipData
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.developernetworkingapp.domain.model.AdminPermissionPreset
 import com.example.developernetworkingapp.domain.model.AdminProjectRow
@@ -111,7 +114,7 @@ fun AdminUsersSection(viewModel: AdminViewModel) {
         )
     }
 
-    val clipboard = LocalClipboardManager.current
+    val copyToClipboard = rememberCopyToClipboardHandler()
 
     LazyColumn(
         modifier = Modifier
@@ -175,7 +178,7 @@ fun AdminUsersSection(viewModel: AdminViewModel) {
             OutlinedButton(
                 onClick = {
                     val csv = viewModel.bulkExportUsersCsv()
-                    clipboard.setText(AnnotatedString(csv))
+                    copyToClipboard(csv)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Bulk export users (CSV)") }
@@ -412,7 +415,7 @@ fun AdminMessagingSection(viewModel: AdminViewModel) {
 
 @Composable
 fun AdminAnalyticsSection(viewModel: AdminViewModel) {
-    val clipboard = LocalClipboardManager.current
+    val copyToClipboard = rememberCopyToClipboardHandler()
 
     LazyColumn(
         modifier = Modifier
@@ -453,7 +456,7 @@ fun AdminAnalyticsSection(viewModel: AdminViewModel) {
             FilledTonalButton(
                 onClick = {
                     val csv = viewModel.exportAnalyticsCsv()
-                    clipboard.setText(AnnotatedString(csv))
+                    copyToClipboard(csv)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -721,6 +724,19 @@ fun AdminAccessSection(viewModel: AdminViewModel) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun rememberCopyToClipboardHandler(): (String) -> Unit {
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    return { text ->
+        scope.launch {
+            clipboard.setClipEntry(
+                ClipEntry(ClipData.newPlainText("devconnect", text))
+            )
         }
     }
 }

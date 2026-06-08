@@ -1,6 +1,7 @@
 package com.example.developernetworkingapp.data.local
 
 import android.content.Context
+import androidx.core.content.edit
 import com.example.developernetworkingapp.ui.state.SettingsUiState
 
 class SettingsStore(context: Context) {
@@ -15,13 +16,13 @@ class SettingsStore(context: Context) {
     )
 
     fun save(state: SettingsUiState) {
-        prefs.edit()
-            .putBoolean(KEY_PUSH, state.pushEnabled)
-            .putBoolean(KEY_EMAIL, state.emailDigests)
-            .putBoolean(KEY_PROFILE_PUBLIC, state.profilePublic)
-            .putBoolean(KEY_ANALYTICS, state.analyticsOptIn)
-            .putString(KEY_VERSION, state.appVersion)
-            .apply()
+        prefs.edit {
+            putBoolean(KEY_PUSH, state.pushEnabled)
+            putBoolean(KEY_EMAIL, state.emailDigests)
+            putBoolean(KEY_PROFILE_PUBLIC, state.profilePublic)
+            putBoolean(KEY_ANALYTICS, state.analyticsOptIn)
+            putString(KEY_VERSION, state.appVersion)
+        }
     }
 
     companion object {

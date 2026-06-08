@@ -84,7 +84,7 @@ fun ProfileRoute(padding: PaddingValues, navController: NavController) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currentUser by sessionViewModel.currentUser.collectAsStateWithLifecycle()
 
-    collectProfileNavEvents(navController)
+    CollectProfileNavEvents(navController)
 
     ProfileScreen(
         padding = padding,
