@@ -8,8 +8,8 @@ You must be in **participantIds** on a conversation or Firestore rules block rea
 
 1. Open [Firebase Console](https://console.firebase.google.com/) → your project.
 2. **Build** → **Authentication** → **Users**.
-3. Find your account (e.g. `jonamulaku@gmail.com`).
-4. Copy the **User UID** (long string like `K2Otw4clRpfzGrjFHPW62jmkEmC3`).
+3. Find your account (your teammate email).
+4. Copy the **User UID** (long string — unique per account).
 
 Keep this UID for the steps below.
 
@@ -127,10 +127,15 @@ That is usually **Firestore rules blocking the inbox query**, not a network prob
 
 ---
 
-## Your account from earlier setup
+## Whole-team shortcut (recommended)
 
-If you still use **Jona** (`jonamulaku@gmail.com`), your UID was documented as:
+Backend lead runs once (adds **all** Auth users to chats + project):
 
-`K2Otw4clRpfzGrjFHPW62jmkEmC3`
+```powershell
+$env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\serviceAccount.json"
+$env:FIREBASE_PROJECT_ID="developers-networking-app"
+cd firestore
+npm run team:sync-access
+```
 
-Confirm in Authentication → Users; if it matches, use that value in Step 2.
+See `docs/TEAM_SETUP_AFTER_PULL.md`.

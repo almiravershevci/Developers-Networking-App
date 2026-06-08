@@ -20,9 +20,16 @@ See [ui/ARCHITECTURE.md](app/src/main/java/com/example/developernetworkingapp/ui
 6. **Profile & Settings** — Edit profile; settings persist locally (notifications, privacy toggles).
 7. **Admin** (admin role only) — Open from profile; full admin console with user/project/content tools.
 
+## Team setup
+
+**Teammates:** pull → sync Gradle → sign up → verify email → run.  
+Details: [docs/TEAM_SETUP_AFTER_PULL.md](docs/TEAM_SETUP_AFTER_PULL.md)
+
+**Backend lead:** deploy rules/indexes/functions + `cd firestore && npm run team:sync-access` so Tasks and Chat work for every Auth user.
+
 ## Build & run
 
-**Requirements:** Android Studio, JDK 11+, `google-services.json` in `app/`.
+**Requirements:** Android Studio, JDK 17+, `google-services.json` in `app/` (already in repo).
 
 ```bash
 ./gradlew assembleDebug

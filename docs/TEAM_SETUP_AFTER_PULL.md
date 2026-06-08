@@ -1,52 +1,102 @@
-# After you pull — teammate checklist
+# Team setup — works for everyone (not just one developer)
 
-Follow this so Android Studio builds with **no compile errors**.
+Everyone uses the **same shared Firebase project** (`developers-networking-app`).  
+No personal UIDs, no “only works on my machine” steps.
 
-## 1. Sync the project
+---
 
-1. Open the repo in **Android Studio** (latest stable).
-2. **File → Sync Project with Gradle Files**.
-3. Wait until sync finishes (no red errors in the Build tool window).
+## What every teammate does (5 minutes)
 
-## 2. Required files (already in git)
+1. **Pull** the repo and open in Android Studio.
+2. **Sync Gradle** — `app/google-services.json` is already in git (same Firebase app for all).
+3. **Sign up** in the app with your own email (or use an account a lead created for you).
+4. **Verify your email** — many features are gated until verified.
+5. **Run the app** — you should see Dashboard, Tasks, Chat, Alerts, etc.
 
-| File | Purpose |
-|------|---------|
-| `app/google-services.json` | Firebase Android config — **must exist** for Auth + Firestore |
-| `gradle/libs.versions.toml` | Dependency versions |
+That is it for normal developers. You do **not** need a service account JSON to build or run the app.
 
-You do **not** need a local Firebase setup just to **compile**. You need Firebase Console + seed data to **run** features (chat, inbox, etc.).
+---
 
-## 3. Build once
+## What the team lead / backend dev does once (shared infrastructure)
 
-- **Build → Make Project**, or run the **app** configuration on an emulator/device.
+These steps affect the **whole team**, not one person:
 
-If sync fails:
+| Step | Command / action | Who |
+|------|------------------|-----|
+| Blaze plan (Cloud Functions) | [Upgrade project](https://console.firebase.google.com/project/developers-networking-app/usage/details) | Lead (once) |
+| Deploy Firestore rules | `firebase deploy --only firestore:rules` | Backend lead |
+| Deploy indexes | `firebase deploy --only firestore:indexes` | Backend lead |
+| Deploy Cloud Functions | `firebase deploy --only functions` | Backend lead |
+| Seed demo data (optional) | `cd firestore && npm run seed` | Backend lead |
+| **Sync access for all Auth users** | `cd firestore && npm run team:sync-access` | Backend lead |
 
-- Install **JDK 17** (Android Studio bundles one: use *Settings → Build → Gradle → Gradle JDK* → Embedded JDK).
-- Install Android SDK **API 36** if prompted.
+### Service account (maintainers only)
 
-## 4. Runtime (Firestore data)
+- Download from Firebase Console → Project settings → Service accounts.
+- Store in **1Password / team vault** — **never commit** `*firebase-adminsdk*.json` to git.
+- Each maintainer sets locally:
 
-The app talks to the shared Firebase project in `google-services.json`.
+```powershell
+$env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\serviceAccount.json"
+$env:FIREBASE_PROJECT_ID="developers-networking-app"
+cd firestore
+npm install
+npm run team:sync-access
+```
 
-- Publish rules: copy `firestore/RULES_PASTE_IN_CONSOLE.rules` into Firebase Console → Firestore → Rules → **Publish**.
-- Optional seed: see `firestore/README.txt`.
-- Use your own Auth account; link seed docs to your UID (chat `participantIds`, inbox `recipientUserId`) — see `docs/BACKEND_ENGINEER_GUIDE.md`.
+`team:sync-access` adds **every** Firebase Auth user to:
 
-## 5. Data layer layout (if you edit backend code)
+- `projects/proj_devconnect_mobile/members/{uid}` → Tasks / Kanban writes work
+- Showcase `conversations/*` `participantIds` → Chat inbox works
+
+Run it again whenever a **new teammate signs up** (until Cloud Functions are deployed).
+
+---
+
+## Automatic onboarding (after Functions deploy)
+
+When `onUserCreate` is deployed, **new signups** automatically get:
+
+- `userStats/{uid}` (zeros)
+- Welcome `inbox` notification
+- `collaboratorSuggestions` (from public profiles)
+- Showcase **project member** + **chat** access
+
+Existing accounts created before deploy still need **one** `npm run team:sync-access`.
+
+---
+
+## Per-feature expectations (whole team)
+
+| Feature | Works for everyone when… |
+|---------|---------------------------|
+| Login / signup | `google-services.json` in repo |
+| Tasks / Kanban move | User is project member (auto or `team:sync-access`) |
+| Chat | User in conversation `participantIds` (auto or `team:sync-access`) |
+| Alerts / inbox | Cloud Functions deployed + assignee set on tasks |
+| Match invites | Any verified user → any other user (real Auth UIDs) |
+| Dashboard stats | `userStats` doc exists (Functions or seed) |
+
+**Demo seed UIDs** (`demo_alex_uid`, etc.) are sample rows only. Your real account uses **your** Auth UID — that is correct.
+
+---
+
+## Build troubleshooting
+
+1. **JDK 17** — Android Studio → Settings → Build → Gradle → Embedded JDK.
+2. **Sync fails** — File → Invalidate Caches → Restart.
+3. **PERMISSION_DENIED on tasks** — Lead runs `npm run team:sync-access`.
+4. **Empty Chat** — Verify email, then lead runs `team:sync-access` or redeploy Functions.
+5. **No inbox after task move** — Deploy Functions; task must have an `assigneeUserId`.
+
+---
+
+## Data layer layout (if you edit backend code)
 
 ```
-data/repository/           ← interfaces (AuthRepository, ChatRepository, …)
-data/repository/impl/      ← Firestore implementations — import parent interfaces explicitly
+data/repository/           ← interfaces
+data/repository/impl/      ← Firestore implementations
 data/datasource/firebase/  ← Firestore + Auth IO
-data/datasource/remote/    ← Retrofit APIs
 ```
 
-Implementations in `repository.impl` **must** import `com.example.developernetworkingapp.data.repository.*` (subpackages do not inherit parent types).
-
-## 6. Still broken?
-
-1. **File → Invalidate Caches → Invalidate and Restart**
-2. Delete `.gradle` in the project root and sync again
-3. Confirm you pulled **all** changes (including **deleted** old paths under `data/firestore/` and `data/remote/`)
+Implementations in `repository.impl` must import `com.example.developernetworkingapp.data.repository.*` explicitly.

@@ -9,6 +9,8 @@
 .cxx
 local.properties
 /firestore/node_modules
+/functions/node_modules
+/functions/lib
 /backend/node_modules
 **/firebase-adminsdk*.json
 **/serviceAccount*.json

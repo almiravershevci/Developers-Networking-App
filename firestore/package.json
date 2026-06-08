@@ -12,7 +12,9 @@
     "project:add-me": "node add-project-member.mjs",
     "project:add-me:dry": "node add-project-member.mjs --dry-run",
     "project:add-all-auth": "node add-all-auth-members.mjs",
-    "project:add-all-auth:dry": "node add-all-auth-members.mjs --dry-run"
+    "project:add-all-auth:dry": "node add-all-auth-members.mjs --dry-run",
+    "team:sync-access": "node sync-team-access.mjs",
+    "team:sync-access:dry": "node sync-team-access.mjs --dry-run"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0"
