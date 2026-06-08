@@ -14,9 +14,21 @@
     "project:add-all-auth": "node add-all-auth-members.mjs",
     "project:add-all-auth:dry": "node add-all-auth-members.mjs --dry-run",
     "team:sync-access": "node sync-team-access.mjs",
-    "team:sync-access:dry": "node sync-team-access.mjs --dry-run"
+    "team:sync-access:dry": "node sync-team-access.mjs --dry-run",
+    "test:rules": "firebase emulators:exec --config ../firebase.json --only firestore \"node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.cjs --runInBand\"",
+    "test": "npm run test:rules"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.1.0",
+    "firebase-tools": "^13.29.1",
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {}
   }
 }

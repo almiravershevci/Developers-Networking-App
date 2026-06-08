@@ -20,6 +20,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Emulator → host machine. Override in release once Node API is deployed.
+        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5000/\"")
     }
 
     buildTypes {
@@ -29,6 +32,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Team lead: replace with Render/Railway HTTPS URL after deploy (see docs/PRODUCTION_DEPLOYMENT.md)
+            buildConfigField("String", "API_BASE_URL", "\"https://devconnect-api.onrender.com/\"")
         }
     }
     compileOptions {
@@ -37,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
