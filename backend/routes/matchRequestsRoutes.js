@@ -6,69 +6,56 @@ const {
   directConversationId,
   mapMatchRequest,
 } = require('../lib/serializers');
-const { sendError } = require('../lib/errors');
+const { asyncHandler } = require('../lib/asyncHandler');
+const { ApiError } = require('../lib/errors');
+const { writeLimiter } = require('../middleware/rateLimit');
+const { validate, createMatchRequestSchema } = require('../middleware/validate');
 
 const router = express.Router();
 
-async function fetchMatchRequestOr404(requestId, res) {
+async function getMatchRequestOrThrow(requestId) {
   const snap = await db.collection('matchRequests').doc(requestId).get();
   if (!snap.exists) {
-    sendError(res, 404, 'Match request not found.', 'not_found');
-    return null;
+    throw new ApiError(404, 'not_found', 'Match request not found.');
   }
   return snap;
 }
 
-/**
- * GET /api/match-requests/incoming — MatchRepository.observeIncomingRequests.
- */
-router.get('/incoming', async (req, res) => {
-  try {
+router.get(
+  '/incoming',
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const snap = await db
       .collection('matchRequests')
       .where('toUserId', '==', uid)
       .where('workflowStatus', '==', MatchWorkflow.PENDING)
       .get();
-    const requests = snap.docs.map(mapMatchRequest);
-    res.json({ requests, source: 'firestore' });
-  } catch (error) {
-    console.error('GET incoming match requests error:', error);
-    sendError(res, 500, 'Failed to load incoming match requests.');
-  }
-});
+    res.json({ requests: snap.docs.map(mapMatchRequest), source: 'firestore' });
+  }),
+);
 
-/**
- * GET /api/match-requests/outgoing
- */
-router.get('/outgoing', async (req, res) => {
-  try {
+router.get(
+  '/outgoing',
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const snap = await db
       .collection('matchRequests')
       .where('fromUserId', '==', uid)
       .where('workflowStatus', '==', MatchWorkflow.PENDING)
       .get();
-    const requests = snap.docs.map(mapMatchRequest);
-    res.json({ requests, source: 'firestore' });
-  } catch (error) {
-    console.error('GET outgoing match requests error:', error);
-    sendError(res, 500, 'Failed to load outgoing match requests.');
-  }
-});
+    res.json({ requests: snap.docs.map(mapMatchRequest), source: 'firestore' });
+  }),
+);
 
-/**
- * POST /api/match-requests — sendMatchRequest.
- */
-router.post('/', async (req, res) => {
-  try {
+router.post(
+  '/',
+  writeLimiter,
+  validate(createMatchRequestSchema),
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
-    const { toUserId, message } = req.body || {};
-    if (!toUserId || typeof toUserId !== 'string') {
-      return sendError(res, 400, 'toUserId is required.', 'validation_error');
-    }
+    const { toUserId, message } = req.validated;
     if (toUserId === uid) {
-      return sendError(res, 400, 'Cannot invite yourself.', 'validation_error');
+      throw new ApiError(400, 'validation_error', 'Cannot invite yourself.');
     }
 
     const ref = db.collection('matchRequests').doc();
@@ -77,34 +64,28 @@ router.post('/', async (req, res) => {
       fromUserId: uid,
       toUserId,
       workflowStatus: MatchWorkflow.PENDING,
-      message: typeof message === 'string' ? message.trim() || null : null,
+      message: message?.trim() || null,
       createdAt: FieldValue.serverTimestamp(),
       resolvedAt: null,
     });
 
-    const created = await ref.get();
-    res.status(201).json({ request: mapMatchRequest(created) });
-  } catch (error) {
-    console.error('POST match request error:', error);
-    sendError(res, 500, 'Failed to send match request.');
-  }
-});
+    res.status(201).json({ request: mapMatchRequest(await ref.get()) });
+  }),
+);
 
-/**
- * POST /api/match-requests/:requestId/accept
- */
-router.post('/:requestId/accept', async (req, res) => {
-  try {
+router.post(
+  '/:requestId/accept',
+  writeLimiter,
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
-    const snap = await fetchMatchRequestOr404(req.params.requestId, res);
-    if (!snap) return;
-
+    const snap = await getMatchRequestOrThrow(req.params.requestId);
     const data = snap.data();
+
     if (data.toUserId !== uid) {
-      return sendError(res, 403, 'Only the recipient can accept.', 'forbidden');
+      throw new ApiError(403, 'forbidden', 'Only the recipient can accept.');
     }
     if (data.workflowStatus !== MatchWorkflow.PENDING) {
-      return sendError(res, 409, 'Request already resolved.', 'conflict');
+      throw new ApiError(409, 'conflict', 'Request already resolved.');
     }
 
     await snap.ref.update({
@@ -114,8 +95,7 @@ router.post('/:requestId/accept', async (req, res) => {
 
     const conversationId = directConversationId(data.toUserId, data.fromUserId);
     const conversationRef = db.collection('conversations').doc(conversationId);
-    const existing = await conversationRef.get();
-    if (!existing.exists) {
+    if (!(await conversationRef.get()).exists) {
       await conversationRef.set({
         schemaVersion: 1,
         conversationKind: 'direct',
@@ -129,32 +109,26 @@ router.post('/:requestId/accept', async (req, res) => {
       });
     }
 
-    const updated = await snap.ref.get();
     res.json({
-      request: mapMatchRequest(updated),
+      request: mapMatchRequest(await snap.ref.get()),
       conversationId,
     });
-  } catch (error) {
-    console.error('POST accept match error:', error);
-    sendError(res, 500, 'Failed to accept match request.');
-  }
-});
+  }),
+);
 
-/**
- * POST /api/match-requests/:requestId/decline
- */
-router.post('/:requestId/decline', async (req, res) => {
-  try {
+router.post(
+  '/:requestId/decline',
+  writeLimiter,
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
-    const snap = await fetchMatchRequestOr404(req.params.requestId, res);
-    if (!snap) return;
-
+    const snap = await getMatchRequestOrThrow(req.params.requestId);
     const data = snap.data();
+
     if (data.toUserId !== uid) {
-      return sendError(res, 403, 'Only the recipient can decline.', 'forbidden');
+      throw new ApiError(403, 'forbidden', 'Only the recipient can decline.');
     }
     if (data.workflowStatus !== MatchWorkflow.PENDING) {
-      return sendError(res, 409, 'Request already resolved.', 'conflict');
+      throw new ApiError(409, 'conflict', 'Request already resolved.');
     }
 
     await snap.ref.update({
@@ -162,12 +136,8 @@ router.post('/:requestId/decline', async (req, res) => {
       resolvedAt: FieldValue.serverTimestamp(),
     });
 
-    const updated = await snap.ref.get();
-    res.json({ request: mapMatchRequest(updated) });
-  } catch (error) {
-    console.error('POST decline match error:', error);
-    sendError(res, 500, 'Failed to decline match request.');
-  }
-});
+    res.json({ request: mapMatchRequest(await snap.ref.get()) });
+  }),
+);
 
 module.exports = router;

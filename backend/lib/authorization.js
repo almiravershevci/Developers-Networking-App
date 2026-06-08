@@ -1,4 +1,5 @@
 const { db } = require('./firestore');
+const { ApiError } = require('./errors');
 
 /**
  * Mirrors Firestore rules `canReadProjectDoc` — Admin SDK bypasses rules,
@@ -34,26 +35,17 @@ async function canReadProject(projectId, uid) {
   return { allowed: false, reason: 'forbidden', projectSnap };
 }
 
-/**
- * Express helper — sends 404/403 and returns false when denied.
- */
-async function assertCanReadProject(projectId, uid, res) {
+async function requireProjectReadAccess(projectId, uid) {
   const access = await canReadProject(projectId, uid);
 
   if (access.reason === 'not_found') {
-    res.status(404).json({ error: 'not_found', message: 'Project not found.' });
-    return false;
+    throw new ApiError(404, 'not_found', 'Project not found.');
   }
-
   if (!access.allowed) {
-    res.status(403).json({
-      error: 'forbidden',
-      message: 'You do not have access to this project.',
-    });
-    return false;
+    throw new ApiError(403, 'forbidden', 'You do not have access to this project.');
   }
 
-  return true;
+  return access.projectSnap;
 }
 
-module.exports = { canReadProject, assertCanReadProject };
+module.exports = { canReadProject, requireProjectReadAccess };

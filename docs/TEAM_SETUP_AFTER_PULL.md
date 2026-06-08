@@ -13,7 +13,10 @@ No personal UIDs, no “only works on my machine” steps.
 4. **Verify your email** — many features are gated until verified.
 5. **Run the app** — you should see Dashboard, Tasks, Chat, Alerts, etc.
 
-That is it for normal developers. You do **not** need a service account JSON to build or run the app.
+That is it for normal developers. You do **not** need:
+- A service account JSON to build or run the app
+- The Node backend running (`backend/npm start`) — dashboard uses Firestore directly
+- Render or any hosted REST API
 
 ---
 
@@ -76,7 +79,7 @@ Existing accounts created before deploy still need **one** `npm run team:sync-ac
 | Alerts / inbox | Cloud Functions deployed + assignee set on tasks |
 | Push notifications (FCM) | Functions deployed + user signed in with notifications allowed + `fcmTokens` on `users/{uid}` |
 | Event RSVP | Signed in + rules deployed + optional Functions for `participantCount` |
-| Dashboard Node API line | `backend/` running locally or deployed; same Firebase project + Auth token |
+| Dashboard Node API line | **Optional** — `DevConnectApiConfig.ENABLED = false` by default; stats from Firestore |
 | Match invites | Any verified user → any other user (real Auth UIDs) |
 | Dashboard stats | `userStats` doc exists (Functions or seed) |
 
@@ -92,6 +95,7 @@ Existing accounts created before deploy still need **one** `npm run team:sync-ac
 4. **Empty Chat** — Verify email, then lead runs `team:sync-access` or redeploy Functions.
 5. **No inbox after task move** — Deploy Functions; task must have an `assigneeUserId`.
 6. **No push in tray** — Allow notifications (Android 13+), sign in + verify email, redeploy Functions (`onInboxCreated`). Check `users/{uid}.fcmTokens` in Firestore.
+7. **Logcat "Dashboard REST stats unavailable"** — Harmless if you see it; REST is disabled by default (`DevConnectApiConfig.ENABLED = false`). Lead can set `ENABLED = true` when running `backend/npm start`.
 
 ### Verify FCM (any teammate)
 

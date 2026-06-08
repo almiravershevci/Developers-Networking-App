@@ -1,46 +1,68 @@
-jest.mock('../../lib/firestore', () => ({
-  db: {
-    collection: jest.fn().mockReturnValue({
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({ empty: true, docs: [] }),
-    }),
-  },
-  projectId: 'developers-networking-app',
-  admin: { auth: jest.fn() },
-}));
+jest.mock('../../lib/firestore', () => {
+  const { createFirestoreMock } = require('../helpers/mockFirestore');
+  const db = createFirestoreMock();
+  return {
+    db,
+    projectId: 'developers-networking-app',
+    admin: {
+      auth: jest.fn(() => ({
+        listUsers: jest.fn().mockResolvedValue({ users: [] }),
+        verifyIdToken: jest.fn(),
+      })),
+    },
+  };
+});
 
 jest.mock('../../lib/authorization', () => ({
-  assertCanReadProject: jest.fn(),
+  requireProjectReadAccess: jest.fn(),
   canReadProject: jest.fn(),
 }));
 
 const request = require('supertest');
 const { createApp } = require('../../app');
 const { createTestAuthMiddleware } = require('../helpers/testUtils');
-const { assertCanReadProject } = require('../../lib/authorization');
+const { requireProjectReadAccess } = require('../../lib/authorization');
+const { ApiError } = require('../../lib/errors');
 
 describe('DevConnect API', () => {
   const app = createApp({ authMiddleware: createTestAuthMiddleware('user-a') });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   test('GET / returns service metadata', async () => {
     const res = await request(app).get('/');
     expect(res.status).toBe(200);
     expect(res.body.service).toBe('DevConnect API');
-    expect(Array.isArray(res.body.routes)).toBe(true);
-    expect(res.body.routes.length).toBeGreaterThan(15);
+    expect(res.body.version).toBe('v1');
+    expect(res.body.documentation).toBe('/docs');
   });
 
   test('GET /health returns ok when Firestore is reachable', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ok');
-    expect(res.body.firestore).toBe('connected');
+    expect(res.body.checks.firestore).toBe('connected');
+  });
+
+  test('GET /openapi.yaml returns OpenAPI spec', async () => {
+    const res = await request(app).get('/openapi.yaml');
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('openapi:');
+    expect(res.text).toContain('/api/v1/');
+  });
+
+  test('GET /api/v1/me returns profile payload', async () => {
+    const res = await request(app).get('/api/v1/me');
+    expect(res.status).toBe(200);
+    expect(res.body.uid).toBe('user-a');
   });
 
   test('protected routes reject unauthenticated requests', async () => {
     const unauthenticatedApp = createApp({
       authMiddleware: (_req, res) =>
-        res.status(401).json({ error: 'Missing Firebase ID token' }),
+        res.status(401).json({ error: 'unauthorized', message: 'Missing Firebase ID token.' }),
     });
 
     const res = await request(unauthenticatedApp).get('/api/me');
@@ -48,13 +70,9 @@ describe('DevConnect API', () => {
   });
 
   test('GET /api/projects/:id returns 403 when authorization denies access', async () => {
-    assertCanReadProject.mockImplementation(async (_projectId, _uid, res) => {
-      res.status(403).json({
-        error: 'forbidden',
-        message: 'You do not have access to this project.',
-      });
-      return false;
-    });
+    requireProjectReadAccess.mockRejectedValue(
+      new ApiError(403, 'forbidden', 'You do not have access to this project.'),
+    );
 
     const res = await request(app).get('/api/projects/proj_secret');
     expect(res.status).toBe(403);
@@ -62,14 +80,23 @@ describe('DevConnect API', () => {
   });
 
   test('GET /api/projects/:id/tasks returns 404 when project is missing', async () => {
-    assertCanReadProject.mockImplementation(async (_projectId, _uid, res) => {
-      res.status(404).json({ error: 'not_found', message: 'Project not found.' });
-      return false;
-    });
+    requireProjectReadAccess.mockRejectedValue(
+      new ApiError(404, 'not_found', 'Project not found.'),
+    );
 
     const res = await request(app).get('/api/projects/missing/tasks');
     expect(res.status).toBe(404);
     expect(res.body.error).toBe('not_found');
+  });
+
+  test('GET /api/dashboard/stats legacy Android route is mounted', async () => {
+    const res = await request(app).get('/api/dashboard/stats');
+    expect(res.status).not.toBe(404);
+  });
+
+  test('GET /api/projects legacy Android route is mounted', async () => {
+    const res = await request(app).get('/api/projects');
+    expect(res.status).not.toBe(404);
   });
 
   test('unknown routes return structured 404', async () => {

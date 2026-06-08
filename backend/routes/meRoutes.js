@@ -1,15 +1,15 @@
 const express = require('express');
 const { db } = require('../lib/firestore');
+const { asyncHandler } = require('../lib/asyncHandler');
 const { mapUserProfile } = require('../lib/serializers');
-const { sendError } = require('../lib/errors');
+const { writeLimiter } = require('../middleware/rateLimit');
+const { validate, patchMeSchema } = require('../middleware/validate');
 
 const router = express.Router();
 
-/**
- * GET /api/me — current user profile (Auth + Firestore users/{uid}).
- */
-router.get('/', async (req, res) => {
-  try {
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const userSnap = await db.collection('users').doc(uid).get();
     res.json({
@@ -17,38 +17,25 @@ router.get('/', async (req, res) => {
       email: req.user.email,
       profile: mapUserProfile(userSnap),
     });
-  } catch (error) {
-    console.error('GET /api/me error:', error);
-    sendError(res, 500, 'Failed to load profile.');
-  }
-});
+  }),
+);
 
-/**
- * PATCH /api/me — update profile fields mirrored in ProfileRepository.
- */
-router.patch('/', async (req, res) => {
-  try {
+router.patch(
+  '/',
+  writeLimiter,
+  validate(patchMeSchema),
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
-    const { displayName, headline, bio } = req.body || {};
-    const payload = {};
+    const { displayName, headline, bio } = req.validated;
+    const payload = { updatedAt: new Date() };
 
-    if (typeof displayName === 'string') payload.displayName = displayName.trim();
-    if (typeof headline === 'string') payload.headline = headline.trim();
-    if (typeof bio === 'string') payload.bio = bio.trim();
+    if (displayName !== undefined) payload.displayName = displayName;
+    if (headline !== undefined) payload.headline = headline;
+    if (bio !== undefined) payload.bio = bio;
 
-    if (Object.keys(payload).length === 0) {
-      return sendError(res, 400, 'Provide displayName, headline, or bio.', 'validation_error');
-    }
-
-    payload.updatedAt = new Date();
     await db.collection('users').doc(uid).set(payload, { merge: true });
-
-    const userSnap = await db.collection('users').doc(uid).get();
-    res.json({ profile: mapUserProfile(userSnap) });
-  } catch (error) {
-    console.error('PATCH /api/me error:', error);
-    sendError(res, 500, 'Failed to update profile.');
-  }
-});
+    res.json({ profile: mapUserProfile(await db.collection('users').doc(uid).get()) });
+  }),
+);
 
 module.exports = router;
