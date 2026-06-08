@@ -1,15 +1,16 @@
 const express = require('express');
 const { db } = require('../lib/firestore');
 const { FieldValue, mapConversation, mapMessage } = require('../lib/serializers');
-const { sendError } = require('../lib/errors');
+const { asyncHandler } = require('../lib/asyncHandler');
+const { ApiError } = require('../lib/errors');
+const { writeLimiter } = require('../middleware/rateLimit');
+const { validate, sendMessageSchema } = require('../middleware/validate');
 
 const router = express.Router();
 
-/**
- * GET /api/conversations — ChatRepository.observeChat (snapshot).
- */
-router.get('/', async (req, res) => {
-  try {
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const snap = await db
       .collection('conversations')
@@ -25,26 +26,22 @@ router.get('/', async (req, res) => {
       });
 
     res.json({ conversations, source: 'firestore' });
-  } catch (error) {
-    console.error('GET /api/conversations error:', error);
-    sendError(res, 500, 'Failed to load conversations.');
-  }
-});
+  }),
+);
 
-/**
- * GET /api/conversations/:conversationId/messages
- */
-router.get('/:conversationId/messages', async (req, res) => {
-  try {
+router.get(
+  '/:conversationId/messages',
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const { conversationId } = req.params;
     const conversationSnap = await db.collection('conversations').doc(conversationId).get();
+
     if (!conversationSnap.exists) {
-      return sendError(res, 404, 'Conversation not found.', 'not_found');
+      throw new ApiError(404, 'not_found', 'Conversation not found.');
     }
     const participants = conversationSnap.get('participantIds') || [];
     if (!participants.includes(uid)) {
-      return sendError(res, 403, 'Not a participant.', 'forbidden');
+      throw new ApiError(403, 'forbidden', 'Not a participant.');
     }
 
     const messagesSnap = await db
@@ -62,32 +59,26 @@ router.get('/:conversationId/messages', async (req, res) => {
       });
 
     res.json({ messages, source: 'firestore' });
-  } catch (error) {
-    console.error('GET messages error:', error);
-    sendError(res, 500, 'Failed to load messages.');
-  }
-});
+  }),
+);
 
-/**
- * POST /api/conversations/:conversationId/messages — ChatRepository.sendMessage.
- */
-router.post('/:conversationId/messages', async (req, res) => {
-  try {
+router.post(
+  '/:conversationId/messages',
+  writeLimiter,
+  validate(sendMessageSchema),
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const { conversationId } = req.params;
-    const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
-    if (!body) {
-      return sendError(res, 400, 'Message body is required.', 'validation_error');
-    }
+    const { body } = req.validated;
 
     const conversationRef = db.collection('conversations').doc(conversationId);
     const conversationSnap = await conversationRef.get();
     if (!conversationSnap.exists) {
-      return sendError(res, 404, 'Conversation not found.', 'not_found');
+      throw new ApiError(404, 'not_found', 'Conversation not found.');
     }
     const participants = conversationSnap.get('participantIds') || [];
     if (!participants.includes(uid)) {
-      return sendError(res, 403, 'Not a participant.', 'forbidden');
+      throw new ApiError(403, 'forbidden', 'Not a participant.');
     }
 
     const messageRef = conversationRef.collection('messages').doc();
@@ -105,12 +96,8 @@ router.post('/:conversationId/messages', async (req, res) => {
       lastMessageAt: FieldValue.serverTimestamp(),
     });
 
-    const created = await messageRef.get();
-    res.status(201).json({ message: mapMessage(created) });
-  } catch (error) {
-    console.error('POST message error:', error);
-    sendError(res, 500, 'Failed to send message.');
-  }
-});
+    res.status(201).json({ message: mapMessage(await messageRef.get()) });
+  }),
+);
 
 module.exports = router;

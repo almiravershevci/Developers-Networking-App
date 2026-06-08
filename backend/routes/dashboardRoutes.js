@@ -1,5 +1,6 @@
 const express = require('express');
 const { db, projectId } = require('../lib/firestore');
+const { asyncHandler } = require('../lib/asyncHandler');
 
 const router = express.Router();
 
@@ -16,12 +17,9 @@ function greetingForHour(displayName) {
   return `${salutation}, ${displayName}`;
 }
 
-/**
- * Analytics microservice — aggregates from shared Firestore (same data as mobile app).
- * GET /api/dashboard/stats
- */
-router.get('/stats', async (req, res) => {
-  try {
+router.get(
+  '/stats',
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const [userSnap, statsSnap] = await Promise.all([
       db.collection('users').doc(uid).get(),
@@ -56,10 +54,7 @@ router.get('/stats', async (req, res) => {
       source: 'firestore',
       projectId,
     });
-  } catch (error) {
-    console.error('Dashboard stats error:', error);
-    res.status(500).json({ error: 'Failed to load dashboard stats.' });
-  }
-});
+  }),
+);
 
 module.exports = router;

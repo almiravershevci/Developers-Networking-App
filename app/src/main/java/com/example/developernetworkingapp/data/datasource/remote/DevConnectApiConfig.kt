@@ -11,5 +11,6 @@ import com.example.developernetworkingapp.BuildConfig
  */
 object DevConnectApiConfig {
     val BASE_URL: String = BuildConfig.API_BASE_URL
-    const val ENABLED = true
+    /** Firestore is the primary dashboard source — REST is optional (lead demo only). */
+    const val ENABLED = false
 }

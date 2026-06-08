@@ -1,0 +1,430 @@
+openapi: 3.0.3
+info:
+  title: DevConnect REST API
+  version: 1.0.0
+  description: |
+    Firebase-authenticated BFF over Firestore for the Developers Networking App.
+
+    **Hybrid architecture:** Android uses the Firestore SDK for realtime features (chat, tasks, match).
+    This REST layer provides analytics snapshots, admin tools, and Postman-friendly contracts.
+
+    Preferred base path: `/api/v1`. Legacy `/api/*` aliases remain for the Android app
+    (`GET /api/dashboard/stats`, `GET /api/projects`) without requiring frontend changes.
+  contact:
+    name: DevConnect Team
+
+servers:
+  - url: http://localhost:5000
+    description: Local development
+  - url: https://devconnect-api.onrender.com
+    description: Production (optional — Render)
+
+tags:
+  - name: System
+  - name: Profile
+  - name: Dashboard
+  - name: Projects
+  - name: Events
+  - name: Inbox
+  - name: Match Requests
+  - name: Conversations
+  - name: Admin
+
+components:
+  securitySchemes:
+    FirebaseBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase Auth ID token
+
+  schemas:
+    ApiError:
+      type: object
+      required: [error, message, code]
+      properties:
+        error:
+          type: string
+          example: validation_error
+        message:
+          type: string
+        code:
+          type: string
+        requestId:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              message:
+                type: string
+
+    Pagination:
+      type: object
+      properties:
+        limit:
+          type: integer
+        hasMore:
+          type: boolean
+        nextCursor:
+          type: string
+          nullable: true
+          description: Opaque cursor token for the next page
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        headline:
+          type: string
+        bio:
+          type: string
+        skillTags:
+          type: array
+          items:
+            type: string
+
+    DashboardStats:
+      type: object
+      properties:
+        welcomeMessage:
+          type: string
+        stats:
+          type: object
+          properties:
+            activeProjectsCount:
+              type: integer
+            openTasksCount:
+              type: integer
+            unreadMessagesCount:
+              type: integer
+            pendingMatchRequestsCount:
+              type: integer
+            collaborationsCount:
+              type: integer
+        source:
+          type: string
+          example: firestore
+
+security:
+  - FirebaseBearer: []
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Deep health check
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+        '503':
+          description: Firestore unavailable
+
+  /openapi.yaml:
+    get:
+      tags: [System]
+      summary: OpenAPI specification
+      security: []
+      responses:
+        '200':
+          description: YAML document
+
+  /api/v1/me:
+    get:
+      tags: [Profile]
+      summary: Current user profile
+      responses:
+        '200':
+          description: Profile payload
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      tags: [Profile]
+      summary: Update profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                headline:
+                  type: string
+                bio:
+                  type: string
+      responses:
+        '200':
+          description: Updated profile
+        '400':
+          description: Validation error
+
+  /api/v1/dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard analytics aggregate
+      description: |
+        Reads `userStats/{uid}` maintained by Cloud Functions.
+        Mobile app uses Firestore directly; this endpoint is the REST overlay.
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+
+  /api/v1/projects:
+    get:
+      tags: [Projects]
+      summary: List recruiting public projects
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            maximum: 50
+        - in: query
+          name: cursor
+          schema:
+            type: string
+        - in: query
+          name: stack
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated project list
+
+  /api/v1/projects/{projectId}:
+    get:
+      tags: [Projects]
+      summary: Project detail
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+
+  /api/v1/projects/{projectId}/tasks:
+    get:
+      tags: [Projects]
+      summary: Project tasks snapshot
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tasks
+
+  /api/v1/events:
+    get:
+      tags: [Events]
+      summary: Events calendar
+      responses:
+        '200':
+          description: Events list
+
+  /api/v1/events/{eventId}/registrations/me:
+    post:
+      tags: [Events]
+      summary: RSVP to event
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [going, waitlist]
+      responses:
+        '201':
+          description: Registered
+    delete:
+      tags: [Events]
+      summary: Cancel RSVP
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Unregistered
+
+  /api/v1/inbox:
+    get:
+      tags: [Inbox]
+      summary: Notifications inbox
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: cursor
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated inbox
+
+  /api/v1/inbox/{notificationId}/read:
+    patch:
+      tags: [Inbox]
+      summary: Mark notification read
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated notification
+
+  /api/v1/match-requests/incoming:
+    get:
+      tags: [Match Requests]
+      summary: Pending incoming match invites
+      description: Mobile app uses Firestore SDK realtime listeners; REST is BFF snapshot.
+      responses:
+        '200':
+          description: Requests
+
+  /api/v1/match-requests:
+    post:
+      tags: [Match Requests]
+      summary: Send match request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [toUserId]
+              properties:
+                toUserId:
+                  type: string
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Created
+
+  /api/v1/match-requests/{requestId}/accept:
+    post:
+      tags: [Match Requests]
+      summary: Accept match request
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Accepted
+
+  /api/v1/conversations:
+    get:
+      tags: [Conversations]
+      summary: Conversation list snapshot
+      responses:
+        '200':
+          description: Conversations
+
+  /api/v1/conversations/{conversationId}/messages:
+    get:
+      tags: [Conversations]
+      summary: Messages in conversation
+      parameters:
+        - in: path
+          name: conversationId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Messages
+    post:
+      tags: [Conversations]
+      summary: Send message
+      parameters:
+        - in: path
+          name: conversationId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+      responses:
+        '201':
+          description: Message sent
+
+  /api/v1/admin/inbox/broadcast:
+    post:
+      tags: [Admin]
+      summary: Admin broadcast notification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body]
+              properties:
+                title:
+                  type: string
+                body:
+                  type: string
+                audience:
+                  oneOf:
+                    - type: string
+                      enum: [all]
+                    - type: string
+                    - type: array
+                      items:
+                        type: string
+      responses:
+        '201':
+          description: Broadcast queued
