@@ -74,6 +74,7 @@ Existing accounts created before deploy still need **one** `npm run team:sync-ac
 | Tasks / Kanban move | User is project member (auto or `team:sync-access`) |
 | Chat | User in conversation `participantIds` (auto or `team:sync-access`) |
 | Alerts / inbox | Cloud Functions deployed + assignee set on tasks |
+| Push notifications (FCM) | Functions deployed + user signed in with notifications allowed + `fcmTokens` on `users/{uid}` |
 | Match invites | Any verified user → any other user (real Auth UIDs) |
 | Dashboard stats | `userStats` doc exists (Functions or seed) |
 
@@ -88,6 +89,14 @@ Existing accounts created before deploy still need **one** `npm run team:sync-ac
 3. **PERMISSION_DENIED on tasks** — Lead runs `npm run team:sync-access`.
 4. **Empty Chat** — Verify email, then lead runs `team:sync-access` or redeploy Functions.
 5. **No inbox after task move** — Deploy Functions; task must have an `assigneeUserId`.
+6. **No push in tray** — Allow notifications (Android 13+), sign in + verify email, redeploy Functions (`onInboxCreated`). Check `users/{uid}.fcmTokens` in Firestore.
+
+### Verify FCM (any teammate)
+
+1. Sign in, verify email, allow notification permission.
+2. Firestore → `users/{your-uid}` → `fcmTokens` should contain a token after app launch.
+3. Background the app → have a teammate move a task assigned to you (or send a chat).
+4. Tray notification appears; **Alerts** tab still loads from Firestore `inbox` (repository unchanged).
 
 ---
 

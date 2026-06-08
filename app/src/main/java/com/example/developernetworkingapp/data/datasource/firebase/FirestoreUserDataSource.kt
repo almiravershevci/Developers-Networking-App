@@ -5,6 +5,7 @@ import com.example.developernetworkingapp.data.datasource.firebase.schema.Profil
 import com.example.developernetworkingapp.data.datasource.firebase.schema.UserProfileDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.UsernameRegistryDoc
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
@@ -100,6 +101,21 @@ class FirestoreUserDataSource(
                     "displayName" to displayName.trim(),
                     "headline" to headline.trim(),
                     "bio" to bio.trim(),
+                    "updatedAt" to Timestamp.now(),
+                ),
+                SetOptions.merge(),
+            )
+            .await()
+    }
+
+    suspend fun upsertFcmToken(uid: String, token: String) {
+        val trimmed = token.trim()
+        require(uid.isNotBlank() && trimmed.isNotEmpty())
+
+        db.collection(FirestorePaths.USERS).document(uid)
+            .set(
+                mapOf(
+                    "fcmTokens" to FieldValue.arrayUnion(trimmed),
                     "updatedAt" to Timestamp.now(),
                 ),
                 SetOptions.merge(),

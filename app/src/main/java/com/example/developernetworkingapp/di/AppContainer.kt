@@ -29,6 +29,7 @@ import com.example.developernetworkingapp.data.repository.ProjectsRepository
 import com.example.developernetworkingapp.data.repository.SearchRepository
 import com.example.developernetworkingapp.data.repository.TasksRepository
 import com.example.developernetworkingapp.data.repository.TechTrendsRepository
+import com.example.developernetworkingapp.notifications.FcmTokenRegistrar
 import com.example.developernetworkingapp.notifications.LocalNotificationDispatcher
 import com.example.developernetworkingapp.notifications.NotificationChannels
 import okhttp3.OkHttpClient
@@ -41,6 +42,7 @@ object AppContainer {
     private lateinit var notificationDispatcherImpl: NotificationDispatcher
     private lateinit var chatMuteStoreImpl: ChatMuteStore
     private lateinit var settingsStoreImpl: SettingsStore
+    private lateinit var fcmTokenRegistrar: FcmTokenRegistrar
     val authRepository: AuthRepository
         get() = authRepo
     val notificationDispatcher: NotificationDispatcher
@@ -86,6 +88,8 @@ object AppContainer {
             chatMuteStoreImpl = ChatMuteStore(context)
             settingsStoreImpl = SettingsStore(context)
             NotificationChannels.ensureCreated(context)
+            fcmTokenRegistrar = FcmTokenRegistrar(context)
+            fcmTokenRegistrar.start()
         }
     }
 }

@@ -29,6 +29,8 @@ data class UserProfileDoc(
     val portfolioLinks: PortfolioLinksDoc? = null,
     val profileVisibility: String = ProfileVisibility.PUBLIC,
     val gitInsightsSummary: String? = null,
+    /** Device tokens for FCM push — each teammate device appends its own token. */
+    val fcmTokens: List<String> = emptyList(),
     @ServerTimestamp val createdAt: Timestamp? = null,
     @ServerTimestamp val updatedAt: Timestamp? = null,
     val lastActiveAt: Timestamp? = null,

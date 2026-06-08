@@ -18,6 +18,7 @@ import {
   fetchUserDisplayName,
   FieldValue,
 } from "./lib/firestoreHelpers";
+import { sendPushForInbox } from "./lib/fcm";
 import { onboardTeammate } from "./lib/teamAccess";
 
 admin.initializeApp();
@@ -168,6 +169,39 @@ export const onMessageCreated = onDocumentCreated(
       conversationId,
       messageId: event.params.messageId,
       recipientCount: recipients.length,
+    });
+  },
+);
+
+/**
+ * Push transport: FCM tray notification when any inbox row is created (server or admin).
+ */
+export const onInboxCreated = onDocumentCreated(
+  {
+    document: "inbox/{notificationId}",
+    region: "us-central1",
+  },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const recipientUserId = String(data.recipientUserId ?? "");
+    const title = String(data.title ?? "DevConnect");
+    const body = String(data.body ?? "");
+    if (!recipientUserId || !body.trim()) return;
+
+    const sent = await sendPushForInbox(recipientUserId, {
+      inboxId: event.params.notificationId,
+      title,
+      body,
+      deepLink: typeof data.deepLink === "string" ? data.deepLink : null,
+      notificationKind: typeof data.notificationKind === "string" ? data.notificationKind : undefined,
+    });
+
+    functions.logger.info("onInboxCreated push dispatch", {
+      notificationId: event.params.notificationId,
+      recipientUserId,
+      devicesNotified: sent,
     });
   },
 );
