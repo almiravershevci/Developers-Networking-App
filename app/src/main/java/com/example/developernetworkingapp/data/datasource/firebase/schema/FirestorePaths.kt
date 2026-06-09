@@ -14,6 +14,7 @@ object FirestorePaths {
     const val CONVERSATIONS = "conversations"
     const val MESSAGES = "messages"
     const val MATCH_REQUESTS = "matchRequests"
+    const val PROJECT_JOIN_REQUESTS = "projectJoinRequests"
     const val EVENTS = "events"
     const val REGISTRATIONS = "registrations"
     const val INBOX = "inbox"

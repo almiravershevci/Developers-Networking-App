@@ -11,12 +11,10 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
-    function adminProfile() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
     function isAdmin() {
-      return signedIn() && adminProfile().accountRole == 'admin';
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountRole == 'admin';
     }
 
     function projectData(projectId) {
@@ -25,6 +23,16 @@ service cloud.firestore {
 
     function isProjectMember(projectId, uid) {
       return exists(/databases/$(database)/documents/projects/$(projectId)/members/$(uid));
+    }
+
+    // Use resource.data (not get()) so list queries like
+    // where ownerUserId == auth.uid and where visibility == 'public' are allowed.
+    function canReadProject() {
+      return resource.data.visibility == 'public'
+        || resource.data.visibility == 'unlisted'
+        || resource.data.ownerUserId == request.auth.uid
+        || (resource.data.visibility == 'private'
+            && isProjectMember(resource.id, request.auth.uid));
     }
 
     function canReadProjectDoc(projectId) {
@@ -94,7 +102,7 @@ service cloud.firestore {
     }
 
     match /projects/{projectId} {
-      allow read: if signedIn() && canReadProjectDoc(projectId);
+      allow read: if signedIn() && (isAdmin() || canReadProject());
       allow create: if signedIn()
         && request.resource.data.ownerUserId == request.auth.uid
         && request.resource.data.schemaVersion is int;
@@ -103,7 +111,13 @@ service cloud.firestore {
 
       match /members/{memberId} {
         allow read: if signedIn() && canReadProjectDoc(projectId);
-        allow create: if signedIn() && canManageProject(projectId);
+        allow create: if signedIn() && (
+          canManageProject(projectId)
+          || (
+            memberId == request.auth.uid
+            && getAfter(/databases/$(database)/documents/projects/$(projectId)).data.ownerUserId == request.auth.uid
+          )
+        );
         allow update: if signedIn() && canManageProject(projectId);
         allow delete: if signedIn() && (
             canManageProject(projectId)
@@ -115,7 +129,8 @@ service cloud.firestore {
         allow read: if signedIn() && canReadProjectDoc(projectId);
         allow create, update: if signedIn() && canReadProjectDoc(projectId)
           && (
-            canManageProject(projectId)
+            projectData(projectId).ownerUserId == request.auth.uid
+            || canManageProject(projectId)
             || isProjectMember(projectId, request.auth.uid)
           );
         allow delete: if signedIn() && canManageProject(projectId);
@@ -142,6 +157,13 @@ service cloud.firestore {
     match /events/{eventId} {
       allow read: if signedIn();
       allow create, update, delete: if isAdmin();
+
+      match /registrations/{userId} {
+        allow read: if signedIn();
+        allow create: if signedIn() && userId == request.auth.uid;
+        allow delete: if signedIn() && userId == request.auth.uid;
+        allow update: if false;
+      }
     }
 
     match /inbox/{notificationId} {
@@ -181,10 +203,53 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /projectJoinRequests/{requestId} {
+      allow read: if isAdmin()
+        || (signedIn()
+            && (resource.data.fromUserId == request.auth.uid
+                || resource.data.toUserId == request.auth.uid));
+      allow create: if signedIn()
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.schemaVersion is int;
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.toUserId == request.auth.uid);
+      allow delete: if false;
+    }
+
     match /collaboratorSuggestions/{docId} {
       allow read: if signedIn()
         && resource.data.viewerUserId == request.auth.uid;
       allow create, update, delete: if false;
+    }
+
+    match /supportTickets/{ticketId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.submitterUserId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.submitterUserId == request.auth.uid
+        && request.resource.data.schemaVersion is int;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /contentReports/{reportId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.reporterUserId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.reporterUserId == request.auth.uid
+        && request.resource.data.schemaVersion is int;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /productFeedback/{feedbackId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /platformConfig/{docId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     match /{document=**} {

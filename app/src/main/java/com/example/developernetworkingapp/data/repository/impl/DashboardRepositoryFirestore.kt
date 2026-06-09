@@ -3,11 +3,15 @@ package com.example.developernetworkingapp.data.repository.impl
 import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.data.repository.DashboardRepository
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreDashboardDataSource
+import com.example.developernetworkingapp.data.datasource.firebase.FirestoreProjectJoinDataSource
+import com.example.developernetworkingapp.data.datasource.firebase.FirestoreProjectsDataSource
+import com.example.developernetworkingapp.domain.model.ProjectJoinStatus
 import com.example.developernetworkingapp.data.datasource.remote.DashboardRemoteDataSource
 import com.example.developernetworkingapp.data.datasource.remote.DashboardStatsPayloadDto
 import com.example.developernetworkingapp.data.datasource.remote.DevConnectApiConfig
 import com.example.developernetworkingapp.data.datasource.firebase.formatRelativeTime
 import com.example.developernetworkingapp.data.datasource.firebase.schema.UserStatsDoc
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectDoc
 import com.example.developernetworkingapp.domain.model.ActivityItem
 import com.example.developernetworkingapp.domain.model.CollaboratorMatch
 import com.example.developernetworkingapp.domain.model.DashboardContent
@@ -22,6 +26,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -34,12 +41,21 @@ import kotlinx.coroutines.withTimeoutOrNull
 class DashboardRepositoryFirestore(
     private val authRepository: AuthRepository,
     private val dataSource: FirestoreDashboardDataSource = FirestoreDashboardDataSource(),
+    private val projectsDataSource: FirestoreProjectsDataSource = FirestoreProjectsDataSource(),
+    private val joinDataSource: FirestoreProjectJoinDataSource = FirestoreProjectJoinDataSource(),
     private val remoteDataSource: DashboardRemoteDataSource? = null,
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
 ) : DashboardRepository {
 
+    private val refreshTick = MutableStateFlow(0)
+
+    override fun invalidateDashboard() {
+        refreshTick.value += 1
+    }
+
     override fun observeDashboardContent(): Flow<DashboardContent> =
-        authRepository.currentUser.flatMapLatest { authUser ->
+        combine(authRepository.currentUser, refreshTick) { authUser, _ -> authUser }
+            .flatMapLatest { authUser ->
             flow {
                 val uid = firebaseAuth.currentUser?.uid
                 val content = when {
@@ -50,6 +66,9 @@ class DashboardRepositoryFirestore(
                 emit(content)
             }
         }.flowOn(Dispatchers.IO)
+            .catch {
+                emit(signedOutDashboardContent())
+            }
 
     private suspend fun loadDashboard(uid: String, fallbackName: String): DashboardContent = coroutineScope {
         val profileDeferred = async {
@@ -97,10 +116,18 @@ class DashboardRepositoryFirestore(
             dataSource.fetchUserProfiles(ids)
         }.getOrDefault(emptyMap())
 
-        var projects = recruitingProjectsDeferred.await()
-        if (projects.isEmpty()) {
-            projects = ownedProjectsDeferred.await()
-        }
+        val memberProjectIds = runCatching {
+            projectsDataSource.fetchMemberProjectIds(uid)
+        }.getOrDefault(emptySet())
+        val pendingProjectIds = runCatching {
+            joinDataSource.fetchPendingProjectIds(uid)
+        }.getOrDefault(emptySet())
+
+        val projects = mergeProjectLists(
+            recruiting = recruitingProjectsDeferred.await(),
+            owned = ownedProjectsDeferred.await(),
+            memberIds = memberProjectIds,
+        )
         val ownersById = runCatching {
             dataSource.fetchUserProfiles(projects.map { it.ownerUserId })
         }.getOrDefault(emptyMap())
@@ -146,12 +173,20 @@ class DashboardRepositoryFirestore(
             },
             projectPosts = projects.map { project ->
                 ProjectPost(
+                    projectId = project.id,
+                    ownerUserId = project.ownerUserId,
                     title = project.title,
                     stack = project.primaryStackLabel.ifBlank { project.stackTags.firstOrNull().orEmpty() },
                     description = project.description,
                     owner = ownersById[project.ownerUserId]?.displayName ?: "Project owner",
                     openRoles = project.openRoleLabels,
                     spotsLeft = project.spotsOpen.coerceAtLeast(0),
+                    joinStatus = resolveJoinStatus(
+                        project = project,
+                        viewerId = uid,
+                        memberProjectIds = memberProjectIds,
+                        pendingProjectIds = pendingProjectIds,
+                    ),
                 )
             },
             events = events.map { event ->
@@ -234,6 +269,37 @@ class DashboardRepositoryFirestore(
         FeatureModule("Smart Tasks", "Project tasks synced to your stack"),
         FeatureModule("Live Events", "Hackathons and community sessions"),
     )
+
+    private fun mergeProjectLists(
+        recruiting: List<ProjectDoc>,
+        owned: List<ProjectDoc>,
+        memberIds: Set<String> = emptySet(),
+    ): List<ProjectDoc> {
+        val byId = LinkedHashMap<String, ProjectDoc>()
+        owned.forEach { project ->
+            if (project.id.isNotBlank()) byId[project.id] = project
+        }
+        recruiting.forEach { project ->
+            if (project.id.isNotBlank()) byId.putIfAbsent(project.id, project)
+        }
+        return byId.values
+            .sortedByDescending { project ->
+                project.updatedAt?.toDate()?.time ?: project.createdAt?.toDate()?.time ?: 0L
+            }
+            .take(24)
+    }
+
+    private fun resolveJoinStatus(
+        project: ProjectDoc,
+        viewerId: String,
+        memberProjectIds: Set<String>,
+        pendingProjectIds: Set<String>,
+    ): ProjectJoinStatus = when {
+        project.ownerUserId == viewerId -> ProjectJoinStatus.OWNER
+        memberProjectIds.contains(project.id) -> ProjectJoinStatus.MEMBER
+        pendingProjectIds.contains(project.id) -> ProjectJoinStatus.PENDING
+        else -> ProjectJoinStatus.AVAILABLE
+    }
 
     private companion object {
         const val REMOTE_STATS_TIMEOUT_MS = 3_000L

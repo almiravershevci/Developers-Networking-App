@@ -27,8 +27,7 @@ class FirestoreDashboardDataSource(
 ) {
     suspend fun fetchUserStats(userId: String): UserStatsDoc? {
         val snap = db.collection(FirestorePaths.USER_STATS).document(userId).get().await()
-        if (!snap.exists()) return null
-        return snap.toObject(UserStatsDoc::class.java)?.copy(userId = snap.id)
+        return snap.toUserStatsDocSafe()
     }
 
     suspend fun fetchCollaboratorSuggestions(viewerUserId: String): List<CollaboratorSuggestionDoc> {
@@ -79,27 +78,43 @@ class FirestoreDashboardDataSource(
     }
 
     suspend fun fetchRecruitingProjects(): List<ProjectDoc> {
-        val snap = db.collection(FirestorePaths.PROJECTS)
+        val ordered = runCatching {
+            db.collection(FirestorePaths.PROJECTS)
+                .whereEqualTo("visibility", ProjectVisibility.PUBLIC)
+                .orderBy("updatedAt", Query.Direction.DESCENDING)
+                .limit(24)
+                .get()
+                .await()
+        }.getOrNull()
+        val snap = ordered ?: db.collection(FirestorePaths.PROJECTS)
             .whereEqualTo("visibility", ProjectVisibility.PUBLIC)
-            .whereEqualTo("lifecycleStatus", ProjectLifecycle.RECRUITING)
-            .orderBy("updatedAt", Query.Direction.DESCENDING)
-            .limit(6)
+            .limit(24)
             .get()
             .await()
-        return snap.documents.mapNotNull { doc ->
-            doc.toObject(ProjectDoc::class.java)?.copy(id = doc.id)
-        }
+        return snap.documents.mapNotNull { doc -> doc.toProjectDocSafe() }
+            .sortedByDescending { project ->
+                project.updatedAt?.toDate()?.time ?: project.createdAt?.toDate()?.time ?: 0L
+            }
     }
 
     suspend fun fetchOwnedProjects(ownerUserId: String, limit: Long = 6): List<ProjectDoc> {
-        val snap = db.collection(FirestorePaths.PROJECTS)
+        val ordered = runCatching {
+            db.collection(FirestorePaths.PROJECTS)
+                .whereEqualTo("ownerUserId", ownerUserId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(limit)
+                .get()
+                .await()
+        }.getOrNull()
+        val snap = ordered ?: db.collection(FirestorePaths.PROJECTS)
             .whereEqualTo("ownerUserId", ownerUserId)
             .limit(limit)
             .get()
             .await()
-        return snap.documents.mapNotNull { doc ->
-            doc.toObject(ProjectDoc::class.java)?.copy(id = doc.id)
-        }
+        return snap.documents.mapNotNull { doc -> doc.toProjectDocSafe() }
+            .sortedByDescending { project ->
+                project.createdAt?.toDate()?.time ?: 0L
+            }
     }
 
     suspend fun fetchPublicUsersExcluding(viewerUserId: String, limit: Long = 6): List<UserProfileDoc> {
@@ -109,7 +124,7 @@ class FirestoreDashboardDataSource(
             .get()
             .await()
         return snap.documents
-            .mapNotNull { doc -> doc.toObject(UserProfileDoc::class.java)?.copy(id = doc.id) }
+            .mapNotNull { doc -> doc.toUserProfileDocSafe() }
             .filter { it.id != viewerUserId }
             .take(limit.toInt())
     }

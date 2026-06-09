@@ -25,12 +25,15 @@ data class ProjectHighlight(
 )
 
 data class ProjectPost(
+    val projectId: String = "",
+    val ownerUserId: String = "",
     val title: String,
     val stack: String,
     val description: String,
     val owner: String,
     val openRoles: List<String>,
-    val spotsLeft: Int
+    val spotsLeft: Int,
+    val joinStatus: ProjectJoinStatus = ProjectJoinStatus.AVAILABLE,
 )
 
 data class EventHighlight(

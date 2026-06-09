@@ -31,8 +31,7 @@ class FirestoreProjectsDataSource(
 
     suspend fun fetchProject(projectId: String): ProjectDoc? {
         val snap = db.collection(FirestorePaths.PROJECTS).document(projectId).get().await()
-        if (!snap.exists()) return null
-        return snap.toObject(ProjectDoc::class.java)?.copy(id = snap.id)
+        return snap.toProjectDocSafe()
     }
 
     suspend fun fetchPublicProjects(limit: Long = 12): List<ProjectDoc> {
@@ -41,20 +40,62 @@ class FirestoreProjectsDataSource(
             .limit(limit)
             .get()
             .await()
-        return snap.documents.mapNotNull { doc ->
-            doc.toObject(ProjectDoc::class.java)?.copy(id = doc.id)
+        return snap.documents.mapNotNull { doc -> doc.toProjectDocSafe() }
+    }
+
+    suspend fun fetchPublicFeedProjects(limit: Long = 24): List<ProjectDoc> {
+        val ordered = runCatching {
+            db.collection(FirestorePaths.PROJECTS)
+                .whereEqualTo("visibility", ProjectVisibility.PUBLIC)
+                .orderBy("updatedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .limit(limit)
+                .get()
+                .await()
+        }.getOrNull()
+        val snap = ordered ?: db.collection(FirestorePaths.PROJECTS)
+            .whereEqualTo("visibility", ProjectVisibility.PUBLIC)
+            .limit(limit)
+            .get()
+            .await()
+        return snap.documents.mapNotNull { doc -> doc.toProjectDocSafe() }
+            .sortedByDescending { project ->
+                project.updatedAt?.toDate()?.time ?: project.createdAt?.toDate()?.time ?: 0L
+            }
+    }
+
+    suspend fun fetchMemberProjectIds(memberUserId: String): Set<String> {
+        val snap = runCatching {
+            db.collectionGroup(FirestorePaths.MEMBERS)
+                .whereEqualTo("memberUserId", memberUserId)
+                .limit(20)
+                .get()
+                .await()
+        }.getOrElse {
+            return emptySet()
         }
+        return snap.documents.mapNotNull { doc ->
+            doc.reference.parent.parent?.id
+        }.toSet()
     }
 
     suspend fun fetchOwnedProjects(ownerUserId: String): List<ProjectDoc> {
-        val snap = db.collection(FirestorePaths.PROJECTS)
+        val ordered = runCatching {
+            db.collection(FirestorePaths.PROJECTS)
+                .whereEqualTo("ownerUserId", ownerUserId)
+                .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .limit(5)
+                .get()
+                .await()
+        }.getOrNull()
+        val snap = ordered ?: db.collection(FirestorePaths.PROJECTS)
             .whereEqualTo("ownerUserId", ownerUserId)
             .limit(5)
             .get()
             .await()
-        return snap.documents.mapNotNull { doc ->
-            doc.toObject(ProjectDoc::class.java)?.copy(id = doc.id)
-        }
+        return snap.documents.mapNotNull { doc -> doc.toProjectDocSafe() }
+            .sortedByDescending { project ->
+                project.createdAt?.toDate()?.time ?: 0L
+            }
     }
 
     suspend fun fetchProjectMembers(projectId: String): List<ProjectMemberDoc> {
@@ -77,7 +118,7 @@ class FirestoreProjectsDataSource(
         val registration = tasksCollection(projectId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 val tasks = snapshot?.documents
@@ -113,6 +154,7 @@ class FirestoreProjectsDataSource(
             .ifEmpty { listOf("General") }
 
         val projectRef = db.collection(FirestorePaths.PROJECTS).document()
+        val memberRef = projectRef.collection(FirestorePaths.MEMBERS).document(ownerUserId)
         val projectPayload = mapOf(
             "schemaVersion" to ProjectDoc().schemaVersion,
             "title" to trimmedTitle,
@@ -135,28 +177,56 @@ class FirestoreProjectsDataSource(
             "updatedAt" to FieldValue.serverTimestamp(),
         )
         projectRef.set(projectPayload).await()
-
-        projectRef.collection(FirestorePaths.MEMBERS).document(ownerUserId).set(
+        memberRef.set(
             mapOf(
                 "memberRole" to MemberRole.OWNER,
+                "memberUserId" to ownerUserId,
                 "joinedAt" to FieldValue.serverTimestamp(),
             ),
         ).await()
 
-        val starterTasks = listOf(
+        listOf(
             "Define MVP scope",
             "Set up repository & CI",
             "Invite collaborators",
-        )
-        starterTasks.forEach { taskTitle ->
-            createProjectTask(
-                projectId = projectRef.id,
-                createdByUserId = ownerUserId,
-                title = taskTitle,
-            )
+        ).forEach { taskTitle ->
+            runCatching {
+                createProjectTask(
+                    projectId = projectRef.id,
+                    createdByUserId = ownerUserId,
+                    title = taskTitle,
+                )
+            }
         }
 
         return projectRef.id
+    }
+
+    suspend fun addProjectMember(
+        projectId: String,
+        memberUserId: String,
+        memberRole: String = MemberRole.CONTRIBUTOR,
+    ) {
+        require(projectId.isNotBlank()) { "projectId is required" }
+        require(memberUserId.isNotBlank()) { "memberUserId is required" }
+        val memberRef = projectRef(projectId).collection(FirestorePaths.MEMBERS).document(memberUserId)
+        memberRef.set(
+            mapOf(
+                "memberRole" to memberRole,
+                "memberUserId" to memberUserId,
+                "joinedAt" to FieldValue.serverTimestamp(),
+            ),
+        ).await()
+        val project = fetchProject(projectId) ?: return
+        val newCount = project.memberCount + 1
+        val newSpots = (project.spotsOpen - 1).coerceAtLeast(0)
+        projectRef(projectId).update(
+            mapOf(
+                "memberCount" to newCount,
+                "spotsOpen" to newSpots,
+                "updatedAt" to FieldValue.serverTimestamp(),
+            ),
+        ).await()
     }
 
     // endregion
