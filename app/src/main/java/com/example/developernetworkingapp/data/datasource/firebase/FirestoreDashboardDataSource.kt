@@ -92,6 +92,7 @@ class FirestoreDashboardDataSource(
             .get()
             .await()
         return snap.documents.mapNotNull { doc -> doc.toProjectDocSafe() }
+            .filter { project -> project.lifecycleStatus != ProjectLifecycle.ARCHIVED }
             .sortedByDescending { project ->
                 project.updatedAt?.toDate()?.time ?: project.createdAt?.toDate()?.time ?: 0L
             }

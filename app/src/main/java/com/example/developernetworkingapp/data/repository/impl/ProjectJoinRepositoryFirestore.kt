@@ -1,6 +1,6 @@
 package com.example.developernetworkingapp.data.repository.impl
 
-import com.example.developernetworkingapp.data.datasource.firebase.FirestoreAdminDataSource
+import com.example.developernetworkingapp.data.datasource.firebase.FirestoreInboxDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreProjectJoinDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreProjectsDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreUserDataSource
@@ -24,7 +24,7 @@ class ProjectJoinRepositoryFirestore(
     private val joinDataSource: FirestoreProjectJoinDataSource = FirestoreProjectJoinDataSource(),
     private val projectsDataSource: FirestoreProjectsDataSource = FirestoreProjectsDataSource(),
     private val userDataSource: FirestoreUserDataSource = FirestoreUserDataSource(),
-    private val adminDataSource: FirestoreAdminDataSource = FirestoreAdminDataSource(),
+    private val inboxDataSource: FirestoreInboxDataSource = FirestoreInboxDataSource(),
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
 ) : ProjectJoinRepository {
 
@@ -80,7 +80,7 @@ class ProjectJoinRepositoryFirestore(
                 requestedRole = requestedRole,
                 message = message,
             )
-            adminDataSource.createInboxNotification(
+            inboxDataSource.createNotification(
                 recipientUserId = ownerUserId,
                 title = "New project join request",
                 body = "Someone wants to join \"$projectTitle\". Review it on your dashboard.",
@@ -124,20 +124,20 @@ class ProjectJoinRepositoryFirestore(
                         ?.displayName
                         ?.ifBlank { "A collaborator" }
                         ?: "A collaborator"
-                    adminDataSource.createInboxNotification(
+                    inboxDataSource.createNotification(
                         recipientUserId = request.fromUserId,
                         title = "Welcome to ${request.projectTitle}",
                         body = "Your join request was accepted. You are now a member of this project workspace.",
                         deepLink = "/projects",
                     )
-                    adminDataSource.createInboxNotification(
+                    inboxDataSource.createNotification(
                         recipientUserId = uid,
                         title = "${applicantName} joined ${request.projectTitle}",
                         body = "They can now see project tasks assigned to them.",
                         deepLink = "/projects",
                     )
                 } else {
-                    adminDataSource.createInboxNotification(
+                    inboxDataSource.createNotification(
                         recipientUserId = request.fromUserId,
                         title = "Join request update",
                         body = "Your request to join \"${request.projectTitle}\" was declined.",

@@ -3,6 +3,7 @@ package com.example.developernetworkingapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.NotificationDispatcher
+import com.example.developernetworkingapp.data.repository.ProjectsRepository
 import com.example.developernetworkingapp.data.repository.TasksRepository
 import com.example.developernetworkingapp.data.datasource.firebase.schema.TaskBoardColumn
 import com.example.developernetworkingapp.ui.state.TasksUiState
@@ -14,6 +15,7 @@ import kotlinx.coroutines.launch
 
 class TasksViewModel(
     private val repository: TasksRepository,
+    private val projectsRepository: ProjectsRepository,
     private val notificationDispatcher: NotificationDispatcher,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TasksUiState())
@@ -24,6 +26,21 @@ class TasksViewModel(
             repository.observeTasks().collect { content ->
                 _uiState.update { current ->
                     current.copy(content = content, updatingTaskId = null)
+                }
+            }
+        }
+        viewModelScope.launch {
+            projectsRepository.observeProjects().collect { board ->
+                _uiState.update {
+                    it.copy(
+                        projectId = board.projectId,
+                        isProjectOwner = board.isOwner,
+                        assignableMembers = if (board.isOwner) {
+                            board.members.filter { member -> member.role != "owner" }
+                        } else {
+                            emptyList()
+                        },
+                    )
                 }
             }
         }
@@ -57,6 +74,7 @@ class TasksViewModel(
                 priority = priority,
                 boardColumn = boardColumn,
                 assigneeUserId = assigneeUserId,
+                projectId = _uiState.value.projectId.takeIf { it.isNotBlank() },
             )
                 .onSuccess {
                     _uiState.update { it.copy(isCreatingTask = false, createTaskError = null) }

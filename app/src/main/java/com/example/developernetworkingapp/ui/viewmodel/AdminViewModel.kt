@@ -63,6 +63,15 @@ class AdminViewModel(
         message("Project archived.")
     }
 
+    fun removeProjectFromFeed(id: String, reason: String) {
+        if (reason.isBlank()) {
+            message("Enter a reason before removing a project from the feed.")
+            return
+        }
+        repository.removeProjectFromFeed(id, reason)
+        message("Project removed from feed. Owner was notified.")
+    }
+
     fun updateProject(id: String, name: String, techSummary: String) {
         repository.updateProject(id, name, techSummary)
         message("Project saved.")

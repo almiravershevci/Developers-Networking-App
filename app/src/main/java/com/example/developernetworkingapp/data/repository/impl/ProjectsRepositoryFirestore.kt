@@ -156,9 +156,7 @@ class ProjectsRepositoryFirestore(
         val visibleTasks = if (isOwner) {
             tasks
         } else {
-            tasks.filter { task ->
-                task.assigneeUserId == null || task.assigneeUserId == viewerUserId
-            }
+            tasks.filter { task -> task.assigneeUserId == viewerUserId }
         }
         val todo = visibleTasks.filter { it.boardColumn == TaskBoardColumn.TODO }.map { it.title }
         val inProgress = visibleTasks.filter { it.boardColumn == TaskBoardColumn.IN_PROGRESS }.map { it.title }

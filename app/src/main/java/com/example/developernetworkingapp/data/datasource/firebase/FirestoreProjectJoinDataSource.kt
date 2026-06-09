@@ -54,6 +54,16 @@ class FirestoreProjectJoinDataSource(
         return snap.toProjectJoinRequestDoc()
     }
 
+    suspend fun fetchAllPending(limit: Long = 40): List<ProjectJoinRequestDoc> {
+        val snap = db.collection(FirestorePaths.PROJECT_JOIN_REQUESTS)
+            .whereEqualTo("workflowStatus", MatchWorkflow.PENDING)
+            .limit(limit)
+            .get()
+            .await()
+        return snap.documents.mapNotNull { doc -> doc.toProjectJoinRequestDoc() }
+            .sortedByDescending { it.createdAt?.toDate()?.time ?: 0L }
+    }
+
     suspend fun fetchPendingForProject(projectId: String, applicantUserId: String): ProjectJoinRequestDoc? {
         val snap = db.collection(FirestorePaths.PROJECT_JOIN_REQUESTS)
             .whereEqualTo("projectId", projectId)

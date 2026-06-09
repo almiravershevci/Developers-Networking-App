@@ -2,6 +2,8 @@ package com.example.developernetworkingapp.data.repository.impl
 
 import com.example.developernetworkingapp.data.repository.AdminRepository
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreAdminDataSource
+import com.example.developernetworkingapp.data.datasource.firebase.FirestoreInboxDataSource
+import com.example.developernetworkingapp.data.datasource.firebase.FirestoreProjectJoinDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ReportStatus
 import com.example.developernetworkingapp.data.datasource.firebase.schema.TicketStatus
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreUserDataSource
@@ -19,6 +21,7 @@ import com.example.developernetworkingapp.domain.model.AdminUserRow
 import com.example.developernetworkingapp.domain.model.AdminUserStatus
 import com.example.developernetworkingapp.domain.model.AuditLogEntry
 import com.example.developernetworkingapp.domain.model.ContentQueueItem
+import com.example.developernetworkingapp.domain.model.ProjectJoinQueueRow
 import com.example.developernetworkingapp.domain.model.ContentReportRow
 import com.example.developernetworkingapp.domain.model.OutboundNotificationRow
 import com.example.developernetworkingapp.domain.model.PlatformSettingsSnapshot
@@ -44,6 +47,8 @@ import java.util.UUID
  */
 class AdminRepositoryFirestore(
     private val adminDataSource: FirestoreAdminDataSource = FirestoreAdminDataSource(),
+    private val joinDataSource: FirestoreProjectJoinDataSource = FirestoreProjectJoinDataSource(),
+    private val inboxDataSource: FirestoreInboxDataSource = FirestoreInboxDataSource(),
     private val userDataSource: FirestoreUserDataSource = FirestoreUserDataSource(),
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
 ) : AdminRepository {
@@ -137,6 +142,28 @@ class AdminRepositoryFirestore(
                     primaryStackLabel = projectStackOrBlank(projectId),
                     lifecycleStatus = ProjectLifecycle.ARCHIVED,
                 )
+            }
+        }
+    }
+
+    override fun removeProjectFromFeed(projectId: String, reason: String) {
+        scope.launch {
+            runAdminAction("Removed project $projectId from feed: ${reason.trim()}") {
+                val adminUid = firebaseAuth.currentUser?.uid.orEmpty()
+                val project = adminDataSource.fetchProject(projectId)
+                adminDataSource.removeProjectFromFeed(
+                    projectId = projectId,
+                    reason = reason,
+                    adminUserId = adminUid,
+                )
+                project?.ownerUserId?.takeIf { it.isNotBlank() }?.let { ownerId ->
+                    inboxDataSource.createNotification(
+                        recipientUserId = ownerId,
+                        title = "Project removed from feed",
+                        body = "Your project \"${project.title}\" was removed. Reason: ${reason.trim()}",
+                        deepLink = "/projects",
+                    )
+                }
             }
         }
     }
@@ -330,6 +357,7 @@ class AdminRepositoryFirestore(
             val users = runCatching { adminDataSource.fetchDirectoryUsers() }.getOrDefault(emptyList())
             val projects = runCatching { adminDataSource.fetchDirectoryProjects() }.getOrDefault(emptyList())
             val pendingMatches = runCatching { adminDataSource.fetchPendingMatchRequests() }.getOrDefault(emptyList())
+            val pendingJoins = runCatching { joinDataSource.fetchAllPending() }.getOrDefault(emptyList())
             val inbox = runCatching { adminDataSource.fetchRecentInbox() }.getOrDefault(emptyList())
             val tickets = runCatching { adminDataSource.fetchSupportTickets() }.getOrDefault(emptyList())
             val reports = runCatching { adminDataSource.fetchContentReports() }.getOrDefault(emptyList())
@@ -348,6 +376,9 @@ class AdminRepositoryFirestore(
             val ownerProfiles = runCatching {
                 userDataSource.fetchUserProfiles(projects.map { it.ownerUserId }.distinct())
             }.getOrDefault(emptyMap())
+            val joinApplicantProfiles = runCatching {
+                userDataSource.fetchUserProfiles(pendingJoins.map { it.fromUserId }.distinct())
+            }.getOrDefault(emptyMap())
 
             val adminUid = firebaseAuth.currentUser?.uid.orEmpty()
             val adminProfile = userDataSource.fetchUserProfile(adminUid)
@@ -360,6 +391,17 @@ class AdminRepositoryFirestore(
                         project.toAdminProjectRow(ownerProfiles[project.ownerUserId]?.displayName)
                     },
                     contentQueue = pendingMatches.map { it.toQueueItem() },
+                    projectJoinQueue = pendingJoins.map { request ->
+                        ProjectJoinQueueRow(
+                            id = request.id,
+                            projectTitle = request.projectTitle,
+                            applicantLabel = joinApplicantProfiles[request.fromUserId]?.displayName
+                                ?: request.fromUserId.take(8),
+                            requestedRole = request.requestedRole,
+                            ownerUserId = request.toUserId,
+                            relativeTime = formatRelativeTime(request.createdAt),
+                        )
+                    },
                     reports = reports.map { it.toReportRow() },
                     outboundNotifications = (localOutbound + inbox.map { it.toOutboundRow() }).take(20),
                     tickets = tickets.map { it.toTicketRow() },

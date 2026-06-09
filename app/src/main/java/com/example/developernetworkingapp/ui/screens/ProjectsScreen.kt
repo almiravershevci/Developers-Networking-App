@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -52,6 +53,7 @@ import com.example.developernetworkingapp.ui.util.userFacingStatusMessage
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.ProjectsUiState
 import com.example.developernetworkingapp.ui.components.CreateTaskDialog
+import com.example.developernetworkingapp.ui.components.ProjectJoinRequestCard
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.ProjectsUiEvent
 import com.example.developernetworkingapp.ui.viewmodel.ProjectsViewModel
@@ -76,6 +78,8 @@ fun ProjectBoardRoute(
         onInviteDeveloper = viewModel::notifyInviteStarted,
         onCreateProject = viewModel::createProject,
         onCreateTask = viewModel::createTask,
+        onAcceptProjectJoinRequest = viewModel::acceptProjectJoinRequest,
+        onDeclineProjectJoinRequest = viewModel::declineProjectJoinRequest,
         onDismissCreateProject = viewModel::clearCreateProjectError,
         onDismissCreateTask = viewModel::clearCreateTaskError,
     )
@@ -90,6 +94,8 @@ fun ProjectBoardScreen(
     onInviteDeveloper: () -> Unit,
     onCreateProject: (String, String, String) -> Unit,
     onCreateTask: (String, String, String, String?) -> Unit,
+    onAcceptProjectJoinRequest: (String) -> Unit = {},
+    onDeclineProjectJoinRequest: (String) -> Unit = {},
     onDismissCreateProject: () -> Unit,
     onDismissCreateTask: () -> Unit,
 ) {
@@ -258,7 +264,7 @@ fun ProjectBoardScreen(
             ) {
                 SectionTitle("Project Workspace")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (content?.isOwner != false) {
+                    if (content?.isOwner == true) {
                         Button(onClick = { showCreateTaskDialog = true }) {
                             Text("Add task")
                         }
@@ -287,6 +293,17 @@ fun ProjectBoardScreen(
                         TextButton(onClick = { showInviteDialog = true }) { Text("Invite dev") }
                     }
                 }
+            }
+        }
+        if (content?.isOwner == true && state.incomingProjectJoinRequests.isNotEmpty()) {
+            item { SectionTitle("Join requests for your project") }
+            items(state.incomingProjectJoinRequests, key = { it.id }) { request ->
+                ProjectJoinRequestCard(
+                    request = request,
+                    isResolving = state.projectJoinActionInFlight == request.id,
+                    onAccept = { onAcceptProjectJoinRequest(request.id) },
+                    onDecline = { onDeclineProjectJoinRequest(request.id) },
+                )
             }
         }
         if (state.isLoading && content == null) {

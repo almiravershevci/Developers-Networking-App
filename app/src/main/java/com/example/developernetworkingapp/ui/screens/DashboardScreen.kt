@@ -77,6 +77,7 @@ import com.example.developernetworkingapp.ui.components.ErrorStateCard
 import com.example.developernetworkingapp.ui.components.GradientHeroCard
 import com.example.developernetworkingapp.ui.components.LoadingStateCard
 import com.example.developernetworkingapp.ui.components.NotificationBanner
+import com.example.developernetworkingapp.ui.components.ProjectJoinRequestCard
 import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.data.ShortcutItem
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
@@ -306,6 +307,17 @@ fun DashboardScreen(
         }
         item { SectionTitle("Quick Access") }
         item { ShortcutRow(shortcuts = shortcuts, navController = navController) }
+        if (state.incomingProjectJoinRequests.isNotEmpty()) {
+            item { SectionTitle("Project Join Requests — review here") }
+            items(state.incomingProjectJoinRequests, key = { it.id }) { request ->
+                ProjectJoinRequestCard(
+                    request = request,
+                    isResolving = state.projectJoinActionInFlight == request.id,
+                    onAccept = { onAcceptProjectJoinRequest(request.id) },
+                    onDecline = { onDeclineProjectJoinRequest(request.id) },
+                )
+            }
+        }
         item { SectionTitle("Recruiting Projects") }
         if (state.feedPosts.isEmpty() && !state.isLoading) {
             item {
@@ -337,17 +349,6 @@ fun DashboardScreen(
                     )
                 },
             )
-        }
-        if (state.incomingProjectJoinRequests.isNotEmpty()) {
-            item { SectionTitle("Project Join Requests") }
-            items(state.incomingProjectJoinRequests, key = { it.id }) { request ->
-                PendingProjectJoinRequestCard(
-                    request = request,
-                    isResolving = state.projectJoinActionInFlight == request.id,
-                    onAccept = { onAcceptProjectJoinRequest(request.id) },
-                    onDecline = { onDeclineProjectJoinRequest(request.id) },
-                )
-            }
         }
         item { SectionTitle("Feature Modules") }
         items(content?.modules ?: emptyList()) { module ->
@@ -875,52 +876,6 @@ private fun InteractiveGradientCard(
                     Text("Learn More", style = MaterialTheme.typography.labelLarge, textDecoration = TextDecoration.Underline)
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PendingProjectJoinRequestCard(
-    request: ProjectJoinRequest,
-    isResolving: Boolean,
-    onAccept: () -> Unit,
-    onDecline: () -> Unit,
-) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = AppDesignTokens.cardShape,
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = "${request.fromDisplayName} wants to join ${request.projectTitle}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "Role: ${request.requestedRole}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            request.message?.takeIf { it.isNotBlank() }?.let { message ->
-                Text(message, style = MaterialTheme.typography.bodyMedium)
-            }
-            Text(
-                text = request.relativeTime,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onAccept, enabled = !isResolving) {
-                    Text(if (isResolving) "Working…" else "Accept")
-                }
-                TextButton(onClick = onDecline, enabled = !isResolving) {
-                    Text("Decline")
                 }
             }
         }
