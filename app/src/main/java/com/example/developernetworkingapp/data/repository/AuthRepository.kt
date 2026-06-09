@@ -1,5 +1,6 @@
 package com.example.developernetworkingapp.data.repository
 
+import android.app.Activity
 import kotlinx.coroutines.flow.StateFlow
 
 enum class UserRole {
@@ -27,6 +28,7 @@ interface AuthRepository {
     val currentUser: StateFlow<AuthUser?>
     suspend fun login(identifier: String, password: String, rememberMe: Boolean): AuthResult
     suspend fun signInWithGoogle(idToken: String, rememberMe: Boolean): AuthResult
+    suspend fun signInWithGitHub(activity: Activity, rememberMe: Boolean): AuthResult
     suspend fun signup(name: String, username: String, email: String, password: String, rememberMe: Boolean): AuthResult
     suspend fun requestPasswordReset(identifier: String): AuthResult
     suspend fun requestEmailVerification(email: String): AuthResult

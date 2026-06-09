@@ -72,6 +72,7 @@ import com.example.developernetworkingapp.domain.model.ProjectPost
 import com.example.developernetworkingapp.domain.model.EventHighlight
 import com.example.developernetworkingapp.ui.state.FeedPostState
 import com.example.developernetworkingapp.ui.components.CreateProjectDialog
+import com.example.developernetworkingapp.ui.components.DashboardAnalyticsChart
 import com.example.developernetworkingapp.ui.components.EmptyStateCard
 import com.example.developernetworkingapp.ui.components.ErrorStateCard
 import com.example.developernetworkingapp.ui.components.GradientHeroCard
@@ -320,6 +321,14 @@ fun DashboardScreen(
                             .width(170.dp)
                     )
                 }
+            }
+        }
+        content?.stats?.takeIf { it.isNotEmpty() }?.let { stats ->
+            item {
+                DashboardAnalyticsChart(
+                    stats = stats,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
             }
         }
         item { SectionTitle("Quick Access") }
