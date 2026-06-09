@@ -73,4 +73,4 @@ jobs:
         with:
           packages: platforms;android-37 build-tools;35.0.0
       - run: chmod +x gradlew
-      - run: ./gradlew assembleDebug lintDebug --no-daemon
+      - run: ./gradlew test assembleDebug lintDebug --no-daemon

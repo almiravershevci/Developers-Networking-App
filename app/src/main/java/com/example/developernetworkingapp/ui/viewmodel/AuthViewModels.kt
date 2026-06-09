@@ -1,5 +1,6 @@
 package com.example.developernetworkingapp.ui.viewmodel
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.AuthRepository
@@ -120,6 +121,32 @@ class LoginViewModel(
 
     fun reportGoogleSignInError(message: String) {
         _uiState.update { it.copy(errorMessage = message, infoMessage = null) }
+    }
+
+    fun signInWithGitHub(activity: Activity) {
+        val rememberMe = _uiState.value.rememberMe
+        _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
+        viewModelScope.launch {
+            when (val result = authRepository.signInWithGitHub(activity, rememberMe)) {
+                is AuthResult.Success -> {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = null) }
+                    navEmitter.emit(AuthNavEvent.NavigateToDashboard)
+                }
+                is AuthResult.PendingEmailVerification -> {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = null) }
+                    navEmitter.emit(AuthNavEvent.NavigateToVerifyEmail(result.email))
+                }
+                is AuthResult.Error -> {
+                    val canceled = result.message.contains("canceled", ignoreCase = true)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = if (canceled) null else result.message,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

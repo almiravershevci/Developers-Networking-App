@@ -88,8 +88,9 @@ Install the debug APK on a device or emulator (API 24+). See [docs/TEAM_SETUP_AF
 
 1. Add your Android app in the Firebase console and place `google-services.json` under `app/`.
 2. Enable **Email/Password** authentication.
-3. (Optional) Enable **Google** sign-in:
+3. (Optional) Enable **Google** and **GitHub** sign-in:
    - In Firebase Console → Authentication → Sign-in method → Google → Enable.
+   - Enable **GitHub** and add your GitHub OAuth App client ID/secret (callback URL from Firebase).
    - Add your debug/release SHA-1 fingerprints for the Android app.
    - Copy the **Web client ID** into `app/src/main/res/values/strings.xml` as `default_web_client_id`, or re-download `google-services.json` after enabling Google.
 4. Deploy Firestore rules and seed data (see `firestore/`).
