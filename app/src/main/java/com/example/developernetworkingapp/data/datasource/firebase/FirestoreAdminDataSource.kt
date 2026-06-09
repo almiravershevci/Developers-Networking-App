@@ -1,13 +1,19 @@
 package com.example.developernetworkingapp.data.datasource.firebase
 
 import com.example.developernetworkingapp.data.datasource.firebase.schema.AccountRole
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ContentReportDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.FirestorePaths
 import com.example.developernetworkingapp.data.datasource.firebase.schema.InboxNotificationDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.MatchRequestDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.MatchWorkflow
 import com.example.developernetworkingapp.data.datasource.firebase.schema.NotificationKind
+import com.example.developernetworkingapp.data.datasource.firebase.schema.PlatformConfigDoc
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ProductFeedbackDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectLifecycle
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ReportStatus
+import com.example.developernetworkingapp.data.datasource.firebase.schema.SupportTicketDoc
+import com.example.developernetworkingapp.data.datasource.firebase.schema.TicketStatus
 import com.example.developernetworkingapp.data.datasource.firebase.schema.UserProfileDoc
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
@@ -156,6 +162,93 @@ class FirestoreAdminDataSource(
                     "workflowStatus" to status,
                     "resolvedAt" to FieldValue.serverTimestamp(),
                 ),
+            )
+            .await()
+    }
+
+    suspend fun fetchSupportTickets(limit: Long = 30): List<SupportTicketDoc> {
+        val snap = db.collection(FirestorePaths.SUPPORT_TICKETS)
+            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(limit)
+            .get()
+            .await()
+        return snap.documents.mapNotNull { doc ->
+            doc.toObject(SupportTicketDoc::class.java)?.copy(
+                id = doc.id,
+                createdAt = doc.readTimestamp("createdAt"),
+                updatedAt = doc.readTimestamp("updatedAt"),
+            )
+        }
+    }
+
+    suspend fun updateTicketStatus(
+        ticketId: String,
+        ticketStatus: String,
+        assignedAdminId: String? = null,
+    ) {
+        val payload = mutableMapOf<String, Any>(
+            "ticketStatus" to ticketStatus,
+            "updatedAt" to FieldValue.serverTimestamp(),
+        )
+        if (assignedAdminId != null) {
+            payload["assignedAdminId"] = assignedAdminId
+        }
+        db.collection(FirestorePaths.SUPPORT_TICKETS).document(ticketId)
+            .update(payload)
+            .await()
+    }
+
+    suspend fun fetchContentReports(limit: Long = 30): List<ContentReportDoc> {
+        val snap = db.collection(FirestorePaths.CONTENT_REPORTS)
+            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(limit)
+            .get()
+            .await()
+        return snap.documents.mapNotNull { doc ->
+            doc.toObject(ContentReportDoc::class.java)?.copy(
+                id = doc.id,
+                createdAt = doc.readTimestamp("createdAt"),
+            )
+        }
+    }
+
+    suspend fun updateReportStatus(reportId: String, reportStatus: String) {
+        db.collection(FirestorePaths.CONTENT_REPORTS).document(reportId)
+            .update("reportStatus", reportStatus)
+            .await()
+    }
+
+    suspend fun fetchTopProductFeedback(): ProductFeedbackDoc? {
+        val snap = db.collection(FirestorePaths.PRODUCT_FEEDBACK)
+            .orderBy("voteCount", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(1)
+            .get()
+            .await()
+        val doc = snap.documents.firstOrNull() ?: return null
+        return doc.toObject(ProductFeedbackDoc::class.java)?.copy(
+            id = doc.id,
+            createdAt = doc.readTimestamp("createdAt"),
+        )
+    }
+
+    suspend fun fetchPlatformConfig(): PlatformConfigDoc? {
+        val snap = db.document(FirestorePaths.platformConfig()).get().await()
+        if (!snap.exists()) return null
+        return snap.toObject(PlatformConfigDoc::class.java)?.copy(id = snap.id)
+    }
+
+    suspend fun savePlatformConfig(config: PlatformConfigDoc) {
+        db.document(FirestorePaths.platformConfig())
+            .set(
+                mapOf(
+                    "schemaVersion" to 1,
+                    "defaultNotificationsEnabled" to config.defaultNotificationsEnabled,
+                    "strictTransportEncryption" to config.strictTransportEncryption,
+                    "analyticsSharingEnabled" to config.analyticsSharingEnabled,
+                    "themeDraftLabel" to config.themeDraftLabel,
+                    "updatedAt" to FieldValue.serverTimestamp(),
+                ),
+                SetOptions.merge(),
             )
             .await()
     }

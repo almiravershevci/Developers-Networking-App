@@ -790,6 +790,47 @@
       "summary": "Home analytics cards moved to In Progress in Team Neon",
       "relatedProjectId": "proj_devconnect_mobile",
       "createdAt_iso": "2026-05-02T08:12:00.000Z"
+    },
+    "supportTickets/ticket_login_issue": {
+      "schemaVersion": 1,
+      "title": "Cannot reset password on physical device",
+      "description": "Reset email never arrives when testing on Samsung Galaxy.",
+      "submitterUserId": "demo_mina_uid",
+      "ticketStatus": "open",
+      "createdAt_iso": "2026-05-03T09:15:00.000Z",
+      "updatedAt_iso": "2026-05-03T09:15:00.000Z"
+    },
+    "supportTickets/ticket_feature_request": {
+      "schemaVersion": 1,
+      "title": "Export kanban board to CSV",
+      "description": "Would help sprint reviews if tasks could be exported.",
+      "submitterUserId": "demo_khaled_uid",
+      "assignedAdminId": "demo_alex_uid",
+      "ticketStatus": "assigned",
+      "createdAt_iso": "2026-05-01T14:00:00.000Z",
+      "updatedAt_iso": "2026-05-02T10:30:00.000Z"
+    },
+    "contentReports/report_flagged_thread": {
+      "schemaVersion": 1,
+      "summary": "Flagged thread in conv_team_neon — spam links posted",
+      "reporterUserId": "demo_nora_uid",
+      "relatedConversationId": "conv_team_neon",
+      "reportStatus": "active",
+      "createdAt_iso": "2026-05-02T16:45:00.000Z"
+    },
+    "productFeedback/feedback_dark_mode": {
+      "schemaVersion": 1,
+      "suggestion": "Dark mode for admin dashboard",
+      "voteCount": 42,
+      "createdAt_iso": "2026-04-28T11:00:00.000Z"
+    },
+    "platformConfig/default": {
+      "schemaVersion": 1,
+      "defaultNotificationsEnabled": true,
+      "strictTransportEncryption": true,
+      "analyticsSharingEnabled": false,
+      "themeDraftLabel": "Default theme",
+      "updatedAt_iso": "2026-05-01T08:00:00.000Z"
     }
   }
 }
