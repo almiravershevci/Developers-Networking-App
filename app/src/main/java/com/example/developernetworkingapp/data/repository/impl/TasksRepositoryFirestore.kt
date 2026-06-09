@@ -1,6 +1,7 @@
 package com.example.developernetworkingapp.data.repository.impl
 
 import com.example.developernetworkingapp.data.repository.TasksRepository
+import com.example.developernetworkingapp.data.datasource.firebase.FirestoreInboxDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreProjectsDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreUserDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.authStateChanges
@@ -24,6 +25,7 @@ import kotlinx.coroutines.withContext
 class TasksRepositoryFirestore(
     private val projectsDataSource: FirestoreProjectsDataSource = FirestoreProjectsDataSource(),
     private val userDataSource: FirestoreUserDataSource = FirestoreUserDataSource(),
+    private val inboxDataSource: FirestoreInboxDataSource = FirestoreInboxDataSource(),
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
 ) : TasksRepository {
 
@@ -58,6 +60,16 @@ class TasksRepositoryFirestore(
                 assigneeUserId = assigneeUserId,
                 boardColumn = boardColumn,
             )
+            assigneeUserId?.takeIf { it.isNotBlank() && it != uid }?.let { assigneeId ->
+                runCatching {
+                    inboxDataSource.createNotification(
+                        recipientUserId = assigneeId,
+                        title = "New project task",
+                        body = "You were assigned \"$title\". Open Projects or Tasks to view it.",
+                        deepLink = "/tasks",
+                    )
+                }
+            }
             Unit
         }.toTaskResult("create task")
     }
@@ -106,9 +118,7 @@ class TasksRepositoryFirestore(
             val visibleTasks = if (isOwner) {
                 tasks
             } else {
-                tasks.filter { task ->
-                    task.assigneeUserId == null || task.assigneeUserId == uid
-                }
+                tasks.filter { task -> task.assigneeUserId == uid }
             }
             val assigneeIds = visibleTasks.mapNotNull { it.assigneeUserId }.distinct()
             val profiles = runCatching {

@@ -85,6 +85,7 @@ fun TaskManagementScreen(
         CreateTaskDialog(
             isSubmitting = state.isCreatingTask,
             errorMessage = state.createTaskError,
+            assigneeOptions = state.assignableMembers,
             onDismiss = {
                 showCreateTaskDialog = false
                 onClearCreateTaskError()
@@ -153,8 +154,10 @@ fun TaskManagementScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SectionTitle("Task Management")
-                Button(onClick = { showCreateTaskDialog = true }) {
-                    Text("Create task")
+                if (state.isProjectOwner) {
+                    Button(onClick = { showCreateTaskDialog = true }) {
+                        Text("Create task")
+                    }
                 }
             }
         }

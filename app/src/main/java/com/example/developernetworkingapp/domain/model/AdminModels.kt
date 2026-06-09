@@ -40,6 +40,15 @@ data class ContentQueueItem(
     val held: Boolean
 )
 
+data class ProjectJoinQueueRow(
+    val id: String,
+    val projectTitle: String,
+    val applicantLabel: String,
+    val requestedRole: String,
+    val ownerUserId: String,
+    val relativeTime: String,
+)
+
 data class ContentReportRow(
     val id: String,
     val summary: String,
@@ -99,6 +108,7 @@ data class AdminDashboardSnapshot(
     val users: List<AdminUserRow>,
     val projects: List<AdminProjectRow>,
     val contentQueue: List<ContentQueueItem>,
+    val projectJoinQueue: List<ProjectJoinQueueRow> = emptyList(),
     val reports: List<ContentReportRow>,
     val outboundNotifications: List<OutboundNotificationRow>,
     val pushTopic: String,
@@ -120,6 +130,7 @@ data class AdminDashboardSnapshot(
             users = emptyList(),
             projects = emptyList(),
             contentQueue = emptyList(),
+            projectJoinQueue = emptyList(),
             reports = emptyList(),
             outboundNotifications = emptyList(),
             pushTopic = "product_updates",

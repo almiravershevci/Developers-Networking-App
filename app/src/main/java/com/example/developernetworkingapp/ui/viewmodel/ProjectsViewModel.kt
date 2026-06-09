@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.ProjectsRepository
 import com.example.developernetworkingapp.data.repository.DashboardRepository
+import com.example.developernetworkingapp.data.repository.ProjectJoinRepository
 import com.example.developernetworkingapp.data.repository.TasksRepository
 import com.example.developernetworkingapp.ui.state.ProjectsUiState
 import kotlinx.coroutines.channels.BufferOverflow
@@ -20,6 +21,7 @@ class ProjectsViewModel(
     private val repository: ProjectsRepository,
     private val dashboardRepository: DashboardRepository,
     private val tasksRepository: TasksRepository,
+    private val projectJoinRepository: ProjectJoinRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ProjectsUiState())
     val uiState: StateFlow<ProjectsUiState> = _uiState.asStateFlow()
@@ -41,6 +43,39 @@ class ProjectsViewModel(
                     )
                 }
             }
+        }
+        viewModelScope.launch {
+            projectJoinRepository.observeIncomingRequests().collect { requests ->
+                _uiState.update { it.copy(incomingProjectJoinRequests = requests) }
+            }
+        }
+    }
+
+    fun acceptProjectJoinRequest(requestId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(projectJoinActionInFlight = requestId) }
+            val result = projectJoinRepository.acceptRequest(requestId)
+            _uiState.update { it.copy(projectJoinActionInFlight = null) }
+            result.fold(
+                onSuccess = {
+                    repository.invalidateProjects()
+                    dashboardRepository.invalidateDashboard()
+                    emitEvent(ProjectsUiEvent.ShowNotification("Collaborator added to the project."))
+                },
+                onFailure = { emitEvent(ProjectsUiEvent.ShowNotification(it.message ?: "Couldn't accept request.")) },
+            )
+        }
+    }
+
+    fun declineProjectJoinRequest(requestId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(projectJoinActionInFlight = requestId) }
+            val result = projectJoinRepository.declineRequest(requestId)
+            _uiState.update { it.copy(projectJoinActionInFlight = null) }
+            result.fold(
+                onSuccess = { emitEvent(ProjectsUiEvent.ShowNotification("Join request declined.")) },
+                onFailure = { emitEvent(ProjectsUiEvent.ShowNotification(it.message ?: "Couldn't decline request.")) },
+            )
         }
     }
 
