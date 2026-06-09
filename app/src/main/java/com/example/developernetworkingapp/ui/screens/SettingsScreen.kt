@@ -1,6 +1,7 @@
 package com.example.developernetworkingapp.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -69,6 +70,7 @@ fun SettingsRoute(padding: PaddingValues, navController: NavController) {
 
     SettingsScreen(
         padding = padding,
+        navController = navController,
         state = state,
         onPushEnabledChange = viewModel::setPushEnabled,
         onEmailDigestsChange = viewModel::setEmailDigests,
@@ -82,6 +84,7 @@ fun SettingsRoute(padding: PaddingValues, navController: NavController) {
 @Composable
 fun SettingsScreen(
     padding: PaddingValues,
+    navController: NavController,
     state: SettingsUiState,
     onPushEnabledChange: (Boolean) -> Unit,
     onEmailDigestsChange: (Boolean) -> Unit,
@@ -218,6 +221,18 @@ fun SettingsScreen(
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item { SectionTitle("Administration") }
+        item {
+            ListItem(
+                headlineContent = { Text("Admin console") },
+                supportingContent = {
+                    Text("Manage users, projects, events, and platform settings (admin role required)")
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { navController.navigate(AppRoutes.ADMIN_DASHBOARD) },
             )
         }
         item { SectionTitle("Account") }

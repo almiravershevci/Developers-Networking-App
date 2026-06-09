@@ -55,7 +55,8 @@ class AuthRepositoryFirebase(
                 val profile = userDataSource.fetchUserProfile(session.uid)
                     ?: return@withContext AuthResult.Error("Profile not found. Contact support.")
                 mapProfileBlock(profile)?.let { return@withContext AuthResult.Error(it) }
-                val authUser = mapSessionToAuthUser(session, profile)
+                val syncedProfile = ensureAdminRoleIfEligible(session.uid, email, profile)
+                val authUser = mapSessionToAuthUser(session, syncedProfile)
                     ?: return@withContext AuthResult.Error("Profile not found. Contact support.")
                 _currentUser.value = authUser
                 persistSession(authUser.email, rememberMe)
@@ -245,6 +246,18 @@ class AuthRepositoryFirebase(
                 AuthResult.Error(mapDeleteAccountError(e, password, googleIdToken))
             }
         }
+
+    private suspend fun ensureAdminRoleIfEligible(
+        uid: String,
+        email: String,
+        profile: com.example.developernetworkingapp.data.datasource.firebase.schema.UserProfileDoc,
+    ): com.example.developernetworkingapp.data.datasource.firebase.schema.UserProfileDoc {
+        if (email.trim().lowercase() != ADMIN_EMAIL || profile.accountRole == ADMIN_ROLE) {
+            return profile
+        }
+        userDataSource.updateAccountRole(uid, ADMIN_ROLE)
+        return profile.copy(accountRole = ADMIN_ROLE)
+    }
 
     private suspend fun mapSessionToAuthUser(
         session: FirebaseAuthSession,

@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.domain.model.ProjectBoardContent
+import com.example.developernetworkingapp.ui.components.CreateProjectDialog
 import com.example.developernetworkingapp.ui.components.EmptyStateCard
 import com.example.developernetworkingapp.ui.components.LoadingStateCard
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
@@ -50,6 +51,7 @@ import com.example.developernetworkingapp.ui.components.SectionTitle
 import com.example.developernetworkingapp.ui.util.userFacingStatusMessage
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.ProjectsUiState
+import com.example.developernetworkingapp.ui.components.CreateTaskDialog
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.ProjectsUiEvent
 import com.example.developernetworkingapp.ui.viewmodel.ProjectsViewModel
@@ -72,6 +74,10 @@ fun ProjectBoardRoute(
         navController = navController,
         events = viewModel.events,
         onInviteDeveloper = viewModel::notifyInviteStarted,
+        onCreateProject = viewModel::createProject,
+        onCreateTask = viewModel::createTask,
+        onDismissCreateProject = viewModel::clearCreateProjectError,
+        onDismissCreateTask = viewModel::clearCreateTaskError,
     )
 }
 
@@ -82,10 +88,16 @@ fun ProjectBoardScreen(
     navController: NavController,
     events: SharedFlow<ProjectsUiEvent>,
     onInviteDeveloper: () -> Unit,
+    onCreateProject: (String, String, String) -> Unit,
+    onCreateTask: (String, String, String) -> Unit,
+    onDismissCreateProject: () -> Unit,
+    onDismissCreateTask: () -> Unit,
 ) {
     val content = state.displayContent
     var selectedTask by remember { mutableStateOf<String?>(null) }
     var activeNotification by rememberSaveable { mutableStateOf<String?>(null) }
+    var showCreateProjectDialog by rememberSaveable { mutableStateOf(false) }
+    var showCreateTaskDialog by rememberSaveable { mutableStateOf(false) }
     var showInviteDialog by rememberSaveable { mutableStateOf(false) }
     var inviteTarget by rememberSaveable { mutableStateOf("") }
     var inviteRole by rememberSaveable { mutableStateOf("") }
@@ -94,6 +106,8 @@ fun ProjectBoardScreen(
         events.collect { event ->
             when (event) {
                 is ProjectsUiEvent.ShowNotification -> activeNotification = event.message
+                ProjectsUiEvent.ProjectCreated -> showCreateProjectDialog = false
+                ProjectsUiEvent.TaskCreated -> showCreateTaskDialog = false
             }
         }
     }
@@ -136,6 +150,30 @@ fun ProjectBoardScreen(
                 }) { Text("Open board") }
             },
             dismissButton = { TextButton(onClick = { selectedTask = null }) { Text("Close") } }
+        )
+    }
+
+    if (showCreateProjectDialog) {
+        CreateProjectDialog(
+            isSubmitting = state.isCreatingProject,
+            errorMessage = state.createProjectError,
+            onDismiss = {
+                showCreateProjectDialog = false
+                onDismissCreateProject()
+            },
+            onCreate = onCreateProject,
+        )
+    }
+
+    if (showCreateTaskDialog) {
+        CreateTaskDialog(
+            isSubmitting = state.isCreatingTask,
+            errorMessage = state.createTaskError,
+            onDismiss = {
+                showCreateTaskDialog = false
+                onDismissCreateTask()
+            },
+            onCreate = onCreateTask,
         )
     }
 
@@ -206,7 +244,23 @@ fun ProjectBoardScreen(
         verticalArrangement = Arrangement.spacedBy(AppDesignTokens.screenVerticalSpacing),
         contentPadding = AppDesignTokens.screenContentPadding
     ) {
-        item { SectionTitle("Project Workspace") }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SectionTitle("Project Workspace")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { showCreateTaskDialog = true }) {
+                        Text("Add task")
+                    }
+                    Button(onClick = { showCreateProjectDialog = true }) {
+                        Text("Create project")
+                    }
+                }
+            }
+        }
         item {
             ElevatedCard(
                 shape = AppDesignTokens.cardLargeShape,
@@ -240,6 +294,12 @@ fun ProjectBoardScreen(
                     title = content.teamName,
                     subtitle = userFacingStatusMessage(content.teamMeta)
                         ?: "Tasks will appear here when your project workspace is active.",
+                    actionLabel = if (content.teamName == "No projects yet") "Create project" else null,
+                    onAction = if (content.teamName == "No projects yet") {
+                        { showCreateProjectDialog = true }
+                    } else {
+                        null
+                    },
                 )
             }
         }

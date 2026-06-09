@@ -6,6 +6,12 @@ import kotlinx.coroutines.flow.flowOf
 
 interface ProjectsRepository {
     fun observeProjects(): Flow<ProjectBoardContent>
+
+    suspend fun createProject(
+        title: String,
+        description: String,
+        primaryStackLabel: String,
+    ): Result<String>
 }
 
 class FakeProjectsRepository : ProjectsRepository {
@@ -18,4 +24,10 @@ class FakeProjectsRepository : ProjectsRepository {
             done = listOf("Auth draft screens", "Profile summary card")
         )
     )
+
+    override suspend fun createProject(
+        title: String,
+        description: String,
+        primaryStackLabel: String,
+    ): Result<String> = Result.success("fake_project")
 }

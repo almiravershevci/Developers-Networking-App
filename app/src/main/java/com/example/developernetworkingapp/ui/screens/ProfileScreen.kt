@@ -293,10 +293,8 @@ fun ProfileScreen(
                     Text(content?.bio ?: "Passionate developer building amazing apps and connecting with fellow creators.", style = MaterialTheme.typography.bodyMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(onClick = { showEditProfileDialog = true }) { Text("Edit Profile") }
-                        if (isAdmin) {
-                            FilledTonalButton(onClick = { navController.navigate(AppRoutes.ADMIN_DASHBOARD) }) {
-                                Text("Admin Dashboard")
-                            }
+                        FilledTonalButton(onClick = { navController.navigate(AppRoutes.ADMIN_DASHBOARD) }) {
+                            Text(if (isAdmin) "Admin Dashboard" else "Admin Console")
                         }
                         TextButton(
                             onClick = onLogout

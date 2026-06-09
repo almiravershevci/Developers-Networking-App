@@ -78,6 +78,8 @@ fun EmptyStateCard(
     title: String,
     subtitle: String,
     modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
 ) {
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
@@ -98,6 +100,11 @@ fun EmptyStateCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (actionLabel != null && onAction != null) {
+                Button(onClick = onAction) {
+                    Text(actionLabel)
+                }
+            }
         }
     }
 }

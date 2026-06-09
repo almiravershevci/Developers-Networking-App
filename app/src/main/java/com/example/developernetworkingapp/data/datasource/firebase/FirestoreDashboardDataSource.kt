@@ -13,6 +13,9 @@ import com.example.developernetworkingapp.data.datasource.firebase.schema.UserSt
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 import java.util.concurrent.TimeUnit
 
@@ -88,17 +91,63 @@ class FirestoreDashboardDataSource(
         }
     }
 
+    suspend fun fetchOwnedProjects(ownerUserId: String, limit: Long = 6): List<ProjectDoc> {
+        val snap = db.collection(FirestorePaths.PROJECTS)
+            .whereEqualTo("ownerUserId", ownerUserId)
+            .limit(limit)
+            .get()
+            .await()
+        return snap.documents.mapNotNull { doc ->
+            doc.toObject(ProjectDoc::class.java)?.copy(id = doc.id)
+        }
+    }
+
+    suspend fun fetchPublicUsersExcluding(viewerUserId: String, limit: Long = 6): List<UserProfileDoc> {
+        val snap = db.collection(FirestorePaths.USERS)
+            .whereEqualTo("profileVisibility", "public")
+            .limit(limit + 4)
+            .get()
+            .await()
+        return snap.documents
+            .mapNotNull { doc -> doc.toObject(UserProfileDoc::class.java)?.copy(id = doc.id) }
+            .filter { it.id != viewerUserId }
+            .take(limit.toInt())
+    }
+
+    suspend fun fetchInboxActivity(userId: String, limit: Long = 6): List<ActivityItemDoc> {
+        val snap = db.collection(FirestorePaths.INBOX)
+            .whereEqualTo("recipientUserId", userId)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(limit)
+            .get()
+            .await()
+        return snap.documents.mapNotNull { doc ->
+            val title = doc.getString("title").orEmpty()
+            val body = doc.getString("body").orEmpty()
+            ActivityItemDoc(
+                id = doc.id,
+                audienceUserId = userId,
+                summary = listOf(title, body).filter { it.isNotBlank() }.joinToString(" — "),
+                createdAt = doc.readTimestamp("createdAt"),
+            )
+        }
+    }
+
     suspend fun fetchUserProfiles(userIds: Collection<String>): Map<String, UserProfileDoc> {
         if (userIds.isEmpty()) return emptyMap()
         val unique = userIds.distinct()
-        val result = mutableMapOf<String, UserProfileDoc>()
-        for (uid in unique) {
-            val snap = db.collection(FirestorePaths.USERS).document(uid).get().await()
-            if (snap.exists()) {
-                snap.toObject(UserProfileDoc::class.java)?.let { result[uid] = it.copy(id = snap.id) }
-            }
+        return coroutineScope {
+            unique.map { uid ->
+                async {
+                    val snap = db.collection(FirestorePaths.USERS).document(uid).get().await()
+                    if (!snap.exists()) {
+                        null
+                    } else {
+                        snap.toObject(UserProfileDoc::class.java)?.copy(id = snap.id)
+                    }
+                }
+            }.awaitAll().filterNotNull().associateBy { it.id }
         }
-        return result
     }
 }
 

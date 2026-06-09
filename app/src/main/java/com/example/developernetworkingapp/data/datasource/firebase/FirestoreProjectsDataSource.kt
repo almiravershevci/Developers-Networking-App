@@ -1,7 +1,10 @@
 package com.example.developernetworkingapp.data.datasource.firebase
 
 import com.example.developernetworkingapp.data.datasource.firebase.schema.FirestorePaths
+import com.example.developernetworkingapp.data.datasource.firebase.schema.MemberRole
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectDoc
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectIntent
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectLifecycle
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectMemberDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectTaskDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectVisibility
@@ -84,6 +87,76 @@ class FirestoreProjectsDataSource(
                 trySend(tasks)
             }
         awaitClose { registration.remove() }
+    }
+
+    /**
+     * Creates a public recruiting project owned by [ownerUserId] with starter kanban tasks.
+     * @return New project document id.
+     */
+    suspend fun createProject(
+        ownerUserId: String,
+        title: String,
+        description: String,
+        primaryStackLabel: String,
+        openRoleLabels: List<String> = listOf("Contributor"),
+    ): String {
+        val trimmedTitle = title.trim()
+        val trimmedDescription = description.trim()
+        val trimmedStack = primaryStackLabel.trim()
+        require(trimmedTitle.isNotEmpty()) { "Project title is required" }
+        require(ownerUserId.isNotBlank()) { "ownerUserId is required" }
+
+        val stackTags = trimmedStack
+            .split(",", "·", "|")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .ifEmpty { listOf("General") }
+
+        val projectRef = db.collection(FirestorePaths.PROJECTS).document()
+        val projectPayload = mapOf(
+            "schemaVersion" to ProjectDoc().schemaVersion,
+            "title" to trimmedTitle,
+            "subtitle" to trimmedDescription.take(120).ifBlank { "New project workspace" },
+            "description" to trimmedDescription.ifBlank { "A new collaboration workspace." },
+            "primaryStackLabel" to trimmedStack.ifBlank { stackTags.joinToString(" · ") },
+            "stackTags" to stackTags,
+            "ownerUserId" to ownerUserId,
+            "locationKind" to "remote",
+            "openRoleLabels" to openRoleLabels.filter { it.isNotBlank() }.ifEmpty { listOf("Contributor") },
+            "capacityTotal" to 5,
+            "spotsOpen" to 4,
+            "memberCount" to 1,
+            "progressPercent" to 0,
+            "lifecycleStatus" to ProjectLifecycle.RECRUITING,
+            "visibility" to ProjectVisibility.PUBLIC,
+            "projectIntent" to ProjectIntent.RECRUITMENT,
+            "searchKeywords" to listOf(trimmedTitle.lowercase()) + stackTags.map { it.lowercase() },
+            "createdAt" to FieldValue.serverTimestamp(),
+            "updatedAt" to FieldValue.serverTimestamp(),
+        )
+        projectRef.set(projectPayload).await()
+
+        projectRef.collection(FirestorePaths.MEMBERS).document(ownerUserId).set(
+            mapOf(
+                "memberRole" to MemberRole.OWNER,
+                "joinedAt" to FieldValue.serverTimestamp(),
+            ),
+        ).await()
+
+        val starterTasks = listOf(
+            "Define MVP scope",
+            "Set up repository & CI",
+            "Invite collaborators",
+        )
+        starterTasks.forEach { taskTitle ->
+            createProjectTask(
+                projectId = projectRef.id,
+                createdByUserId = ownerUserId,
+                title = taskTitle,
+            )
+        }
+
+        return projectRef.id
     }
 
     // endregion

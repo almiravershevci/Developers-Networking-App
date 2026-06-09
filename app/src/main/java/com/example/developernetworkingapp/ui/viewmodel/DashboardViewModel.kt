@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.DashboardRepository
 import com.example.developernetworkingapp.data.repository.MatchRepository
+import com.example.developernetworkingapp.data.repository.ProjectsRepository
 import com.example.developernetworkingapp.domain.model.ProjectPost
 import com.example.developernetworkingapp.ui.state.DashboardUiState
 import com.example.developernetworkingapp.ui.state.FeedPostState
@@ -19,6 +20,7 @@ import kotlinx.coroutines.launch
 class DashboardViewModel(
     private val repository: DashboardRepository,
     private val matchRepository: MatchRepository,
+    private val projectsRepository: ProjectsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -49,7 +51,13 @@ class DashboardViewModel(
 
     fun loadDashboard() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { state ->
+                if (state.content == null) {
+                    state.copy(isLoading = true, errorMessage = null)
+                } else {
+                    state.copy(errorMessage = null)
+                }
+            }
             repository.observeDashboardContent().collect { content ->
                 _uiState.update {
                     it.copy(
@@ -122,6 +130,32 @@ class DashboardViewModel(
 
     fun notifyProjectApplicationSubmitted() {
         notify("✓ Application submitted! We'll notify you when the project owner reviews your request.")
+    }
+
+    fun createProject(title: String, description: String, stackLabel: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCreatingProject = true, createProjectError = null) }
+            val result = projectsRepository.createProject(title, description, stackLabel)
+            result.fold(
+                onSuccess = {
+                    _uiState.update { it.copy(isCreatingProject = false, showCreateProjectDialog = false) }
+                    loadDashboard()
+                    notify("✓ Project \"$title\" created and added to your feed.")
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isCreatingProject = false,
+                            createProjectError = error.message ?: "Could not create project.",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    fun setShowCreateProjectDialog(show: Boolean) {
+        _uiState.update { it.copy(showCreateProjectDialog = show, createProjectError = null) }
     }
 
     private fun createFeedPostState(post: ProjectPost, id: String): FeedPostState {

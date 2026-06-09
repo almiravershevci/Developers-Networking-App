@@ -19,10 +19,13 @@ import com.example.developernetworkingapp.domain.model.ProjectHighlight
 import com.example.developernetworkingapp.domain.model.ProjectPost
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Dashboard repository backed by Firestore (home feed microservice).
@@ -48,26 +51,66 @@ class DashboardRepositoryFirestore(
             }
         }.flowOn(Dispatchers.IO)
 
-    private suspend fun loadDashboard(uid: String, fallbackName: String): DashboardContent {
-        val profile = runCatching { dataSource.fetchUserProfiles(listOf(uid))[uid] }.getOrNull()
+    private suspend fun loadDashboard(uid: String, fallbackName: String): DashboardContent = coroutineScope {
+        val profileDeferred = async {
+            runCatching { dataSource.fetchUserProfiles(listOf(uid))[uid] }.getOrNull()
+        }
+        val statsDeferred = async {
+            runCatching { dataSource.fetchUserStats(uid) }.getOrNull()
+        }
+        val suggestionsDeferred = async {
+            runCatching { dataSource.fetchCollaboratorSuggestions(uid) }.getOrDefault(emptyList())
+        }
+        val recruitingProjectsDeferred = async {
+            runCatching { dataSource.fetchRecruitingProjects() }.getOrDefault(emptyList())
+        }
+        val ownedProjectsDeferred = async {
+            runCatching { dataSource.fetchOwnedProjects(uid) }.getOrDefault(emptyList())
+        }
+        val newsDeferred = async {
+            runCatching { dataSource.fetchNewsHighlights() }.getOrDefault(emptyList())
+        }
+        val activityDeferred = async {
+            runCatching { dataSource.fetchRecentActivity(uid) }.getOrDefault(emptyList())
+        }
+        val inboxActivityDeferred = async {
+            runCatching { dataSource.fetchInboxActivity(uid) }.getOrDefault(emptyList())
+        }
+        val eventsDeferred = async {
+            runCatching { dataSource.fetchUpcomingEvents() }.getOrDefault(emptyList())
+        }
+
+        val profile = profileDeferred.await()
         val displayName = profile?.displayName?.takeIf { it.isNotBlank() }
             ?: fallbackName.takeIf { it.isNotBlank() }
             ?: "Developer"
 
-        val statsDoc = runCatching { dataSource.fetchUserStats(uid) }.getOrNull()
-        val suggestions = runCatching { dataSource.fetchCollaboratorSuggestions(uid) }.getOrDefault(emptyList())
+        val statsDoc = statsDeferred.await()
+        val suggestions = suggestionsDeferred.await()
+        val fallbackProfiles = if (suggestions.isEmpty()) {
+            runCatching { dataSource.fetchPublicUsersExcluding(uid) }.getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
         val profilesById = runCatching {
-            dataSource.fetchUserProfiles(suggestions.map { it.suggestedUserId })
+            val ids = suggestions.map { it.suggestedUserId } + fallbackProfiles.map { it.id }
+            dataSource.fetchUserProfiles(ids)
         }.getOrDefault(emptyMap())
 
-        val projects = runCatching { dataSource.fetchRecruitingProjects() }.getOrDefault(emptyList())
+        var projects = recruitingProjectsDeferred.await()
+        if (projects.isEmpty()) {
+            projects = ownedProjectsDeferred.await()
+        }
         val ownersById = runCatching {
             dataSource.fetchUserProfiles(projects.map { it.ownerUserId })
         }.getOrDefault(emptyMap())
 
-        val news = runCatching { dataSource.fetchNewsHighlights() }.getOrDefault(emptyList())
-        val activity = runCatching { dataSource.fetchRecentActivity(uid) }.getOrDefault(emptyList())
-        val events = runCatching { dataSource.fetchUpcomingEvents() }.getOrDefault(emptyList())
+        val news = newsDeferred.await()
+        var activity = activityDeferred.await()
+        if (activity.isEmpty()) {
+            activity = inboxActivityDeferred.await()
+        }
+        val events = eventsDeferred.await()
 
         val firestoreContent = DashboardContent(
             greeting = greetingForHour(displayName),
@@ -75,13 +118,24 @@ class DashboardRepositoryFirestore(
             heroSubtitle = heroSubtitle(statsDoc),
             stats = buildStats(statsDoc),
             modules = defaultModules(),
-            matches = suggestions.map { suggestion ->
-                CollaboratorMatch(
-                    suggestedUserId = suggestion.suggestedUserId,
-                    name = profilesById[suggestion.suggestedUserId]?.displayName ?: "Developer",
-                    stack = suggestion.stackSummary,
-                    matchScore = suggestion.matchScore,
-                )
+            matches = if (suggestions.isNotEmpty()) {
+                suggestions.map { suggestion ->
+                    CollaboratorMatch(
+                        suggestedUserId = suggestion.suggestedUserId,
+                        name = profilesById[suggestion.suggestedUserId]?.displayName ?: "Developer",
+                        stack = suggestion.stackSummary,
+                        matchScore = suggestion.matchScore,
+                    )
+                }
+            } else {
+                fallbackProfiles.mapIndexed { index, profile ->
+                    CollaboratorMatch(
+                        suggestedUserId = profile.id,
+                        name = profile.displayName.ifBlank { "Developer" },
+                        stack = profile.skillTags.take(3).joinToString(" · ").ifBlank { profile.headline },
+                        matchScore = 88 - index * 3,
+                    )
+                }
             },
             projects = projects.take(3).map { project ->
                 ProjectHighlight(
@@ -113,13 +167,15 @@ class DashboardRepositoryFirestore(
                 ActivityItem(title = item.summary, time = formatRelativeTime(item.createdAt))
             },
         )
-        return overlayRemoteAnalytics(firestoreContent)
+        overlayRemoteAnalytics(firestoreContent)
     }
 
     private suspend fun overlayRemoteAnalytics(content: DashboardContent): DashboardContent {
         if (!DevConnectApiConfig.ENABLED) return content
         val remoteApi = remoteDataSource ?: return content
-        val remote = runCatching { remoteApi.fetchDashboardStats() }.getOrNull() ?: return content
+        val remote = withTimeoutOrNull(REMOTE_STATS_TIMEOUT_MS) {
+            runCatching { remoteApi.fetchDashboardStats() }.getOrNull()
+        } ?: return content
         val stats = remote.stats
         return content.copy(
             greeting = remote.welcomeMessage.takeIf { it.isNotBlank() } ?: content.greeting,
@@ -178,6 +234,10 @@ class DashboardRepositoryFirestore(
         FeatureModule("Smart Tasks", "Project tasks synced to your stack"),
         FeatureModule("Live Events", "Hackathons and community sessions"),
     )
+
+    private companion object {
+        const val REMOTE_STATS_TIMEOUT_MS = 3_000L
+    }
 
     private fun signedOutDashboardContent(): DashboardContent = DashboardContent(
         greeting = "Hello, Developer",

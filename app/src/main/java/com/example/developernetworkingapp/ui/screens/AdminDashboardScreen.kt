@@ -5,9 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -27,15 +28,6 @@ fun AdminDashboardRoute(padding: PaddingValues, navController: NavController) {
     val adminViewModel: AdminViewModel = appViewModel()
     val currentUser by sessionViewModel.currentUser.collectAsStateWithLifecycle()
     val isAdmin = currentUser?.role == UserRole.ADMIN
-
-    LaunchedEffect(currentUser?.role) {
-        if (currentUser != null && currentUser?.role != UserRole.ADMIN) {
-            navController.navigate(AppRoutes.DASHBOARD) {
-                popUpTo(AppRoutes.ADMIN_DASHBOARD) { inclusive = true }
-                launchSingleTop = true
-            }
-        }
-    }
 
     when {
         currentUser == null -> {
@@ -67,8 +59,12 @@ fun AdminDashboardRoute(padding: PaddingValues, navController: NavController) {
             ) {
                 EmptyStateCard(
                     title = "Admin access required",
-                    subtitle = "This area is limited to administrator accounts. Returning you to the dashboard.",
+                    subtitle = "Sign up or log in with admin@devconnect.app to unlock the admin console. " +
+                        "In Firebase Console, set users/{your-uid}.accountRole to \"admin\" for an existing account.",
                 )
+                Button(onClick = { navController.navigate(AppRoutes.DASHBOARD) }) {
+                    Text("Back to dashboard")
+                }
             }
         }
     }
