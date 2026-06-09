@@ -38,7 +38,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.developernetworkingapp.di.appViewModel
+import com.example.developernetworkingapp.di.authViewModel
 import com.example.developernetworkingapp.ui.auth.isGoogleSignInAvailable
 import com.example.developernetworkingapp.ui.auth.rememberGoogleSignInLauncher
 import com.example.developernetworkingapp.ui.state.LoginUiState
@@ -60,8 +60,8 @@ fun AdvancedSignupScreen() {
 
 @Composable
 private fun AuthScreen(startInSignup: Boolean) {
-    val loginViewModel: LoginViewModel = appViewModel()
-    val signupViewModel: SignupViewModel = appViewModel()
+    val loginViewModel: LoginViewModel = authViewModel()
+    val signupViewModel: SignupViewModel = authViewModel()
     val loginState = loginViewModel.uiState.collectAsStateWithLifecycle().value
     val signupState = signupViewModel.uiState.collectAsStateWithLifecycle().value
     val launchGoogleSignIn = rememberGoogleSignInLauncher(
@@ -93,7 +93,7 @@ private fun AuthScreen(startInSignup: Boolean) {
 
 @Composable
 fun EmailVerificationRoute(email: String) {
-    val viewModel: VerificationViewModel = appViewModel()
+    val viewModel: VerificationViewModel = authViewModel()
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     androidx.compose.runtime.LaunchedEffect(email) {
         viewModel.setEmail(email)
@@ -115,7 +115,7 @@ private fun EmailVerificationScreen(
         Text("Verify your email", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            "We sent a verification link to ${state.email}. Open the link on this device (check spam), then return here and tap Verify email. You must verify before logging in.",
+            "We sent a DevConnect verification link to ${state.email}. Open the link on this device, then return here and tap Verify email.",
             style = MaterialTheme.typography.bodyMedium,
         )
         state.errorMessage?.let {

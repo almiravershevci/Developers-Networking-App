@@ -83,7 +83,7 @@ class SearchRepositoryFirestore(
                 else -> project.locationKind
             }
         }
-        return (DEFAULT_FILTERS + fromTags + fromRoles + fromLocation)
+        return (fromTags + fromRoles + fromLocation)
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .distinct()
@@ -109,14 +109,4 @@ class SearchRepositoryFirestore(
         else -> locationKind
     }
 
-    companion object {
-        private val DEFAULT_FILTERS = listOf(
-            "Kotlin",
-            "Remote",
-            "Backend",
-            "Firebase",
-            "Compose",
-            "Hackathon-ready",
-        )
-    }
 }

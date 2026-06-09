@@ -65,6 +65,7 @@ class SettingsViewModel(
                     }
                     navEmitter.emit(SettingsNavEvent.AccountDeleted)
                 }
+                is AuthResult.PendingEmailVerification -> Unit
                 is AuthResult.Error -> {
                     _uiState.update {
                         it.copy(isDeletingAccount = false, deleteAccountError = result.message)

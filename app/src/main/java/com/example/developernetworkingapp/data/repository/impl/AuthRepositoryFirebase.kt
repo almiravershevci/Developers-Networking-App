@@ -49,8 +49,8 @@ class AuthRepositoryFirebase(
                 val email = userDataSource.resolveEmailForIdentifier(identifier)
                 val session = authDataSource.signInWithEmail(email, password)
                 if (!session.isEmailVerified) {
-                    authDataSource.signOut()
-                    return@withContext AuthResult.Error("Please verify your email before logging in.")
+                    runCatching { authDataSource.sendEmailVerification() }
+                    return@withContext AuthResult.PendingEmailVerification(session.email)
                 }
                 val profile = userDataSource.fetchUserProfile(session.uid)
                     ?: return@withContext AuthResult.Error("Profile not found. Contact support.")
@@ -166,7 +166,7 @@ class AuthRepositoryFirebase(
         try {
             val session = authDataSource.currentSession()
                 ?: return@withContext AuthResult.Error(
-                    "Sign in or complete registration before requesting verification.",
+                    "Go to Login, enter your password, and tap Login — we'll send a fresh verification email.",
                 )
             authDataSource.sendEmailVerification()
             val authUser = mapSessionToAuthUser(session)

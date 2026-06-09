@@ -1,3 +1,5 @@
 # Copy this file to local.properties (gitignored) and set your Android SDK path.
 # Android Studio usually creates local.properties automatically on first sync.
 sdk.dir=C\:\\Users\\YourName\\AppData\\Local\\Android\\Sdk
+# Optional: if Cursor/VS Code Java lacks jlink, add to ~/.gradle/gradle.properties (not committed):
+# org.gradle.java.home=C\:\\Program Files\\Android\\Android Studio\\jbr

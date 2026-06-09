@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -45,9 +46,23 @@ class ProjectsViewModel(
             }
         }
         viewModelScope.launch {
-            projectJoinRepository.observeIncomingRequests().collect { requests ->
-                _uiState.update { it.copy(incomingProjectJoinRequests = requests) }
-            }
+            projectJoinRepository.observeIncomingRequests()
+                .catch { error ->
+                    _uiState.update {
+                        it.copy(
+                            incomingProjectJoinRequests = emptyList(),
+                            joinRequestLoadError = error.message ?: "Couldn't load join requests.",
+                        )
+                    }
+                }
+                .collect { requests ->
+                    _uiState.update {
+                        it.copy(
+                            incomingProjectJoinRequests = requests,
+                            joinRequestLoadError = null,
+                        )
+                    }
+                }
         }
     }
 

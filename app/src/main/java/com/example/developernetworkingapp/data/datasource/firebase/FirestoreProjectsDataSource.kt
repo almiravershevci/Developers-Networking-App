@@ -186,20 +186,6 @@ class FirestoreProjectsDataSource(
             ),
         ).await()
 
-        listOf(
-            "Define MVP scope",
-            "Set up repository & CI",
-            "Invite collaborators",
-        ).forEach { taskTitle ->
-            runCatching {
-                createProjectTask(
-                    projectId = projectRef.id,
-                    createdByUserId = ownerUserId,
-                    title = taskTitle,
-                )
-            }
-        }
-
         return projectRef.id
     }
 

@@ -19,6 +19,8 @@ data class AuthUser(
 sealed class AuthResult {
     data class Success(val user: AuthUser) : AuthResult()
     data class Error(val message: String) : AuthResult()
+    /** Signed in but email not verified; session kept so verification email can be resent. */
+    data class PendingEmailVerification(val email: String) : AuthResult()
 }
 
 interface AuthRepository {

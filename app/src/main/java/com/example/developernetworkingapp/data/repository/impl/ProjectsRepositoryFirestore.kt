@@ -93,7 +93,6 @@ class ProjectsRepositoryFirestore(
             .getOrDefault(emptySet())
         val projectId = owned.firstOrNull()?.id
             ?: memberProjectIds.firstOrNull()
-            ?: resolveShowcaseProjectId()
         if (projectId == null) {
             emit(emptyBoard())
             return@flow
@@ -174,11 +173,6 @@ class ProjectsRepositoryFirestore(
         )
     }
 
-    private suspend fun resolveShowcaseProjectId(): String? {
-        val showcase = projectsDataSource.fetchProject(DEFAULT_SHOWCASE_PROJECT_ID)
-        return if (showcase != null) DEFAULT_SHOWCASE_PROJECT_ID else null
-    }
-
     private fun userFacingProjectError(error: Throwable): String {
         val detail = error.message.orEmpty()
         return when {
@@ -216,7 +210,4 @@ class ProjectsRepositoryFirestore(
         done = emptyList(),
     )
 
-    private companion object {
-        const val DEFAULT_SHOWCASE_PROJECT_ID = "proj_devconnect_mobile"
-    }
 }

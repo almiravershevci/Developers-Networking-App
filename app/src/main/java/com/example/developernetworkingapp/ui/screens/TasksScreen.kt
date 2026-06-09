@@ -86,6 +86,7 @@ fun TaskManagementScreen(
             isSubmitting = state.isCreatingTask,
             errorMessage = state.createTaskError,
             assigneeOptions = state.assignableMembers,
+            isOwner = state.isProjectOwner,
             onDismiss = {
                 showCreateTaskDialog = false
                 onClearCreateTaskError()
