@@ -21,5 +21,8 @@ data class DashboardUiState(
     val incomingMatchRequests: List<MatchRequest> = emptyList(),
     val outgoingMatchRequests: List<MatchRequest> = emptyList(),
     val matchActionInFlight: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val showCreateProjectDialog: Boolean = false,
+    val isCreatingProject: Boolean = false,
+    val createProjectError: String? = null,
 )

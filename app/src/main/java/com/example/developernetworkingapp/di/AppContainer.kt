@@ -80,9 +80,9 @@ object AppContainer {
 
     private val devConnectApi: DevConnectApi by lazy {
         val client = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
+            .connectTimeout(3, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .writeTimeout(5, TimeUnit.SECONDS)
             .addInterceptor(FirebaseAuthInterceptor())
             .build()
         Retrofit.Builder()

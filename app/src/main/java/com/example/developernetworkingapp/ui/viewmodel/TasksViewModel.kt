@@ -44,16 +44,26 @@ class TasksViewModel(
         }
     }
 
-    fun createTask(title: String) {
+    fun createTask(title: String, priority: String = "medium", boardColumn: String = "todo") {
         viewModelScope.launch {
-            _uiState.update { it.copy(actionError = null) }
-            repository.createTask(title = title)
+            _uiState.update { it.copy(isCreatingTask = true, createTaskError = null, actionError = null) }
+            repository.createTask(title = title, priority = priority, boardColumn = boardColumn)
+                .onSuccess {
+                    _uiState.update { it.copy(isCreatingTask = false, createTaskError = null) }
+                }
                 .onFailure { error ->
                     _uiState.update {
-                        it.copy(actionError = error.message ?: "Could not create task.")
+                        it.copy(
+                            isCreatingTask = false,
+                            createTaskError = error.message ?: "Could not create task.",
+                        )
                     }
                 }
         }
+    }
+
+    fun clearCreateTaskError() {
+        _uiState.update { it.copy(createTaskError = null) }
     }
 
     fun clearActionError() {

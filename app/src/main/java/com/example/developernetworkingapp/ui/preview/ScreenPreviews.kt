@@ -248,6 +248,10 @@ fun ProjectBoardScreenPreview() {
                 navController = rememberNavController(),
                 events = MutableSharedFlow(),
                 onInviteDeveloper = {},
+                onCreateProject = { _, _, _ -> },
+                onCreateTask = { _, _, _ -> },
+                onDismissCreateProject = {},
+                onDismissCreateTask = {},
             )
         }
     }

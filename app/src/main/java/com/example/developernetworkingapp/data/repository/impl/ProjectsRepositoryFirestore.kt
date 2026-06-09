@@ -38,11 +38,31 @@ class ProjectsRepositoryFirestore(
             }
         }.flowOn(Dispatchers.IO)
 
+    override suspend fun createProject(
+        title: String,
+        description: String,
+        primaryStackLabel: String,
+    ): Result<String> = runCatching {
+        val uid = firebaseAuth.currentUser?.uid
+            ?: error("Sign in to create a project.")
+        projectsDataSource.createProject(
+            ownerUserId = uid,
+            title = title,
+            description = description,
+            primaryStackLabel = primaryStackLabel,
+        )
+    }
+
     private fun observePrimaryProjectBoard(uid: String): Flow<ProjectBoardContent> = flow {
-        val projectId = resolvePrimaryProjectId(uid)
+        val owned = runCatching { projectsDataSource.fetchOwnedProjects(uid) }.getOrDefault(emptyList())
+        val projectId = owned.firstOrNull()?.id ?: resolveShowcaseProjectId()
+        if (projectId == null) {
+            emit(emptyBoard())
+            return@flow
+        }
         val project = projectsDataSource.fetchProject(projectId)
         if (project == null) {
-            emit(errorBoard(IllegalStateException("Project $projectId not found. Run the Firestore seed.")))
+            emit(emptyBoard())
             return@flow
         }
 
@@ -87,24 +107,22 @@ class ProjectsRepositoryFirestore(
         )
     }
 
-    private suspend fun resolvePrimaryProjectId(uid: String): String {
-        val owned = runCatching { projectsDataSource.fetchOwnedProjects(uid) }
-            .getOrDefault(emptyList())
-        if (owned.isNotEmpty()) return owned.first().id
-        return DEFAULT_SHOWCASE_PROJECT_ID
+    private suspend fun resolveShowcaseProjectId(): String? {
+        val showcase = projectsDataSource.fetchProject(DEFAULT_SHOWCASE_PROJECT_ID)
+        return if (showcase != null) DEFAULT_SHOWCASE_PROJECT_ID else null
     }
 
-    private fun signedOutBoard(): ProjectBoardContent = ProjectBoardContent(
-        teamName = "Sign in required",
-        teamMeta = "Log in to load your project board from Firestore",
+    private fun emptyBoard(): ProjectBoardContent = ProjectBoardContent(
+        teamName = "No projects yet",
+        teamMeta = "Create your first project to open the kanban board and recruit collaborators.",
         todo = emptyList(),
         inProgress = emptyList(),
         done = emptyList(),
     )
 
-    private fun errorBoard(error: Throwable): ProjectBoardContent = ProjectBoardContent(
-        teamName = "Could not load project",
-        teamMeta = error.message ?: "Check Logcat for Firestore errors (rules, seed, or index).",
+    private fun signedOutBoard(): ProjectBoardContent = ProjectBoardContent(
+        teamName = "Sign in required",
+        teamMeta = "Log in to load your project board from Firestore",
         todo = emptyList(),
         inProgress = emptyList(),
         done = emptyList(),

@@ -80,6 +80,29 @@ class FirestoreUserDataSource(
         return snap.toObject(UserProfileDoc::class.java)?.copy(id = snap.id)
     }
 
+    suspend fun fetchPublicUsers(limit: Long = 12): List<UserProfileDoc> {
+        val snap = db.collection(FirestorePaths.USERS)
+            .whereEqualTo("profileVisibility", ProfileVisibility.PUBLIC)
+            .limit(limit)
+            .get()
+            .await()
+        return snap.documents.mapNotNull { doc ->
+            doc.toObject(UserProfileDoc::class.java)?.copy(id = doc.id)
+        }
+    }
+
+    suspend fun updateAccountRole(uid: String, accountRole: String) {
+        db.collection(FirestorePaths.USERS).document(uid)
+            .set(
+                mapOf(
+                    "accountRole" to accountRole,
+                    "updatedAt" to Timestamp.now(),
+                ),
+                SetOptions.merge(),
+            )
+            .await()
+    }
+
     suspend fun fetchUserProfiles(userIds: Collection<String>): Map<String, UserProfileDoc> {
         if (userIds.isEmpty()) return emptyMap()
         val result = mutableMapOf<String, UserProfileDoc>()

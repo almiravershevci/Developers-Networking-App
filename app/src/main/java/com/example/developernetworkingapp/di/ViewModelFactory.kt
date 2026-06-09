@@ -40,9 +40,13 @@ class AppViewModelFactory : ViewModelProvider.Factory {
                 DashboardViewModel(
                     AppContainer.dashboardRepository,
                     AppContainer.matchRepository,
+                    AppContainer.projectsRepository,
                 ) as T
             modelClass.isAssignableFrom(ProjectsViewModel::class.java) ->
-                ProjectsViewModel(AppContainer.projectsRepository) as T
+                ProjectsViewModel(
+                    AppContainer.projectsRepository,
+                    AppContainer.tasksRepository,
+                ) as T
             modelClass.isAssignableFrom(ChatViewModel::class.java) ->
                 ChatViewModel(
                     AppContainer.chatRepository,

@@ -7,4 +7,8 @@ data class ProjectsUiState(
     val displayContent: ProjectBoardContent? = null,
     val selectedProjectName: String = "",
     val isLoading: Boolean = true,
+    val isCreatingProject: Boolean = false,
+    val createProjectError: String? = null,
+    val isCreatingTask: Boolean = false,
+    val createTaskError: String? = null,
 )
