@@ -39,8 +39,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.developernetworkingapp.di.authViewModel
+import com.example.developernetworkingapp.ui.auth.AuthTestTags
 import com.example.developernetworkingapp.ui.auth.isGoogleSignInAvailable
+import com.example.developernetworkingapp.ui.auth.rememberGitHubSignInLauncher
 import com.example.developernetworkingapp.ui.auth.rememberGoogleSignInLauncher
+import androidx.compose.ui.platform.testTag
 import com.example.developernetworkingapp.ui.state.LoginUiState
 import com.example.developernetworkingapp.ui.state.SignupUiState
 import com.example.developernetworkingapp.ui.state.VerificationUiState
@@ -68,9 +71,13 @@ private fun AuthScreen(startInSignup: Boolean) {
         onIdToken = loginViewModel::signInWithGoogle,
         onFailure = loginViewModel::reportGoogleSignInError,
     )
+    val launchGitHubSignIn = rememberGitHubSignInLauncher(
+        onSignIn = loginViewModel::signInWithGitHub,
+        onFailure = loginViewModel::reportGoogleSignInError,
+    )
     val googleSignInAvailable = isGoogleSignInAvailable()
 
-    UnifiedAuthScreen(
+    AuthFormScreen(
         loginState = loginState,
         signupState = signupState,
         startInSignup = startInSignup,
@@ -87,6 +94,7 @@ private fun AuthScreen(startInSignup: Boolean) {
         onLoginSubmit = loginViewModel::login,
         onSignupSubmit = signupViewModel::signup,
         onGoogleSignIn = launchGoogleSignIn,
+        onGitHubSignIn = launchGitHubSignIn,
         googleSignInAvailable = googleSignInAvailable,
     )
 }
@@ -141,7 +149,7 @@ private fun EmailVerificationScreen(
 }
 
 @Composable
-private fun UnifiedAuthScreen(
+fun AuthFormScreen(
     loginState: LoginUiState,
     signupState: SignupUiState,
     startInSignup: Boolean,
@@ -158,6 +166,7 @@ private fun UnifiedAuthScreen(
     onLoginSubmit: () -> Unit,
     onSignupSubmit: () -> Unit,
     onGoogleSignIn: () -> Unit,
+    onGitHubSignIn: () -> Unit,
     googleSignInAvailable: Boolean = false,
 ) {
     AuthCardContainer(horizontalPadding = 20.dp) {
@@ -179,8 +188,8 @@ private fun UnifiedAuthScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AuthModeChip("Login", !showSignup) { showSignup = false }
-            AuthModeChip("Sign up", showSignup) { showSignup = true }
+            AuthModeChip("Login", !showSignup, modifier = Modifier.testTag(AuthTestTags.LOGIN_MODE_CHIP)) { showSignup = false }
+            AuthModeChip("Sign up", showSignup, modifier = Modifier.testTag(AuthTestTags.SIGNUP_MODE_CHIP)) { showSignup = true }
         }
         Spacer(modifier = Modifier.height(16.dp))
         if (showSignup) {
@@ -221,19 +230,31 @@ private fun UnifiedAuthScreen(
                 Text("Remember me on this device", style = MaterialTheme.typography.bodyMedium)
             }
         } else {
-            OutlinedTextField(value = loginState.form.email, onValueChange = onLoginEmailChange, label = { Text("Email or username") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(
+                value = loginState.form.email,
+                onValueChange = onLoginEmailChange,
+                label = { Text("Email or username") },
+                modifier = Modifier.fillMaxWidth().testTag(AuthTestTags.LOGIN_EMAIL_FIELD),
+                singleLine = true,
+            )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = loginState.form.password,
                 onValueChange = onLoginPasswordChange,
                 label = { Text("Password") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(AuthTestTags.LOGIN_PASSWORD_FIELD),
                 singleLine = true,
                 visualTransformation = if (showLoginPassword) VisualTransformation.None else PasswordVisualTransformation()
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Forgot password?", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { onForgotPassword() })
+                Text(
+                    "Forgot password?",
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .testTag(AuthTestTags.FORGOT_PASSWORD_LINK)
+                        .clickable { onForgotPassword() },
+                )
                 TextButton(onClick = { showLoginPassword = !showLoginPassword }) {
                     Text(if (showLoginPassword) "Hide password" else "Show password")
                 }
@@ -261,7 +282,9 @@ private fun UnifiedAuthScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = { if (showSignup) onSignupSubmit() else onLoginSubmit() },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(if (showSignup) AuthTestTags.SIGNUP_SUBMIT_BUTTON else AuthTestTags.LOGIN_SUBMIT_BUTTON),
             enabled = if (showSignup) !signupState.isLoading else !loginState.isLoading
         ) {
             val loading = if (showSignup) signupState.isLoading else loginState.isLoading
@@ -273,19 +296,25 @@ private fun UnifiedAuthScreen(
                 }
             )
         }
-        if (googleSignInAvailable) {
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (googleSignInAvailable) {
                 OutlinedButton(
                     onClick = onGoogleSignIn,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).testTag(AuthTestTags.GOOGLE_SIGN_IN_BUTTON),
                     enabled = !loginState.isLoading && !signupState.isLoading,
                 ) {
                     Text("Google")
                 }
-                OutlinedButton(onClick = { }, modifier = Modifier.weight(1f)) { Text("GitHub") }
+            }
+            OutlinedButton(
+                onClick = onGitHubSignIn,
+                modifier = Modifier.weight(1f).testTag(AuthTestTags.GITHUB_SIGN_IN_BUTTON),
+                enabled = !loginState.isLoading && !signupState.isLoading,
+            ) {
+                Text("GitHub")
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
@@ -367,10 +396,11 @@ private fun AuthCardContainer(horizontalPadding: Dp, content: @Composable Column
 private fun AuthModeChip(
     label: String,
     selected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .background(
                 color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(18.dp)

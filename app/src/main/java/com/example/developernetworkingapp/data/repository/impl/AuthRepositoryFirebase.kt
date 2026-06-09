@@ -4,11 +4,14 @@ import com.example.developernetworkingapp.data.repository.AuthRepository
 import com.example.developernetworkingapp.data.repository.AuthResult
 import com.example.developernetworkingapp.data.repository.AuthUser
 import com.example.developernetworkingapp.data.repository.UserRole
+import android.app.Activity
 import android.content.Context
 import androidx.core.content.edit
 import com.example.developernetworkingapp.data.datasource.firebase.FirebaseAuthDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.FirebaseAuthSession
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreUserDataSource
+import com.example.developernetworkingapp.data.datasource.firebase.GitHubSignInCanceledException
+import com.example.developernetworkingapp.data.datasource.firebase.OAuthSignInResult
 import com.example.developernetworkingapp.data.datasource.firebase.schema.AccountRole
 import com.google.firebase.auth.FirebaseAuthException
 import kotlinx.coroutines.CoroutineScope
@@ -69,44 +72,70 @@ class AuthRepositoryFirebase(
     override suspend fun signInWithGoogle(idToken: String, rememberMe: Boolean): AuthResult =
         withContext(Dispatchers.IO) {
             try {
-                val result = authDataSource.signInWithGoogle(idToken)
-                val existingProfile = userDataSource.fetchUserProfile(result.session.uid)
-                if (result.isNewUser || existingProfile == null) {
-                    val email = result.session.email.trim().lowercase()
-                    if (email.isBlank()) {
-                        authDataSource.signOut()
-                        return@withContext AuthResult.Error("Google account has no email address.")
-                    }
-                    val displayName = result.session.displayName?.takeIf { it.isNotBlank() }
-                        ?: email.substringBefore("@")
-                    val username = userDataSource.generateAvailableUsername(
-                        email.substringBefore("@").replace(".", ""),
-                    )
-                    val accountRole = if (email == ADMIN_EMAIL) ADMIN_ROLE else USER_ROLE
-                    userDataSource.createUserProfile(
-                        uid = result.session.uid,
-                        email = email,
-                        username = username,
-                        displayName = displayName,
-                        accountRole = accountRole,
-                    )
-                }
-                if (!result.session.isEmailVerified) {
-                    authDataSource.signOut()
-                    return@withContext AuthResult.Error("Please verify your email before logging in.")
-                }
-                val profile = userDataSource.fetchUserProfile(result.session.uid)
-                    ?: return@withContext AuthResult.Error("Profile not found. Contact support.")
-                mapProfileBlock(profile)?.let { return@withContext AuthResult.Error(it) }
-                val authUser = mapSessionToAuthUser(result.session, profile)
-                    ?: return@withContext AuthResult.Error("Profile not found. Contact support.")
-                _currentUser.value = authUser
-                persistSession(authUser.email, rememberMe)
-                AuthResult.Success(authUser)
+                completeOAuthSignIn(
+                    result = authDataSource.signInWithGoogle(idToken),
+                    rememberMe = rememberMe,
+                    providerLabel = "Google",
+                )
             } catch (e: Exception) {
                 AuthResult.Error(mapAuthError(e))
             }
         }
+
+    override suspend fun signInWithGitHub(activity: Activity, rememberMe: Boolean): AuthResult =
+        withContext(Dispatchers.IO) {
+            try {
+                completeOAuthSignIn(
+                    result = authDataSource.signInWithGitHub(activity),
+                    rememberMe = rememberMe,
+                    providerLabel = "GitHub",
+                )
+            } catch (e: GitHubSignInCanceledException) {
+                AuthResult.Error(e.message ?: "GitHub sign-in was canceled.")
+            } catch (e: Exception) {
+                AuthResult.Error(mapAuthError(e))
+            }
+        }
+
+    private suspend fun completeOAuthSignIn(
+        result: OAuthSignInResult,
+        rememberMe: Boolean,
+        providerLabel: String,
+    ): AuthResult {
+        val existingProfile = userDataSource.fetchUserProfile(result.session.uid)
+        if (result.isNewUser || existingProfile == null) {
+            val email = result.session.email.trim().lowercase()
+            if (email.isBlank()) {
+                authDataSource.signOut()
+                return AuthResult.Error("$providerLabel account has no email address.")
+            }
+            val displayName = result.session.displayName?.takeIf { it.isNotBlank() }
+                ?: email.substringBefore("@")
+            val username = userDataSource.generateAvailableUsername(
+                email.substringBefore("@").replace(".", ""),
+            )
+            val accountRole = if (email == ADMIN_EMAIL) ADMIN_ROLE else USER_ROLE
+            userDataSource.createUserProfile(
+                uid = result.session.uid,
+                email = email,
+                username = username,
+                displayName = displayName,
+                accountRole = accountRole,
+            )
+        }
+        if (!result.session.isEmailVerified) {
+            authDataSource.signOut()
+            return AuthResult.Error("Please verify your email before logging in.")
+        }
+        val profile = userDataSource.fetchUserProfile(result.session.uid)
+            ?: return AuthResult.Error("Profile not found. Contact support.")
+        mapProfileBlock(profile)?.let { return AuthResult.Error(it) }
+        val authUser = mapSessionToAuthUser(result.session, profile)
+            ?: return AuthResult.Error("Profile not found. Contact support.")
+        _currentUser.value = authUser
+        persistSession(authUser.email, rememberMe)
+        return AuthResult.Success(authUser)
+    }
 
     override suspend fun signup(
         name: String,

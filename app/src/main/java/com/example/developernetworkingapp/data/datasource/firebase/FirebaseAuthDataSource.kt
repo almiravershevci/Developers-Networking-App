@@ -1,10 +1,13 @@
 package com.example.developernetworkingapp.data.datasource.firebase
 
+import android.app.Activity
 import com.google.firebase.auth.ActionCodeSettings
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.OAuthProvider
 import kotlinx.coroutines.tasks.await
 
 /** Snapshot of the signed-in Firebase user without exposing Firebase types to repositories. */
@@ -15,10 +18,12 @@ data class FirebaseAuthSession(
     val displayName: String? = null,
 )
 
-data class GoogleSignInResult(
+data class OAuthSignInResult(
     val session: FirebaseAuthSession,
     val isNewUser: Boolean,
 )
+
+typealias GoogleSignInResult = OAuthSignInResult
 
 private fun FirebaseUser.toSession(): FirebaseAuthSession = FirebaseAuthSession(
     uid = uid,
@@ -40,14 +45,33 @@ class FirebaseAuthDataSource(
         return result.user?.toSession() ?: error("Sign-in succeeded but user is null.")
     }
 
-    suspend fun signInWithGoogle(idToken: String): GoogleSignInResult {
+    suspend fun signInWithGoogle(idToken: String): OAuthSignInResult {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         val result = auth.signInWithCredential(credential).await()
         val user = result.user ?: error("Google sign-in succeeded but user is null.")
-        return GoogleSignInResult(
+        return OAuthSignInResult(
             session = user.toSession(),
             isNewUser = result.additionalUserInfo?.isNewUser == true,
         )
+    }
+
+    suspend fun signInWithGitHub(activity: Activity): OAuthSignInResult {
+        val provider = OAuthProvider.newBuilder("github.com")
+            .setScopes(listOf("user:email"))
+            .build()
+        return try {
+            val result = auth.startActivityForSignInWithProvider(activity, provider).await()
+            val user = result.user ?: error("GitHub sign-in succeeded but user is null.")
+            OAuthSignInResult(
+                session = user.toSession(),
+                isNewUser = result.additionalUserInfo?.isNewUser == true,
+            )
+        } catch (e: FirebaseAuthException) {
+            if (e.errorCode == "ERROR_WEB_CONTEXT_CANCELED") {
+                throw GitHubSignInCanceledException()
+            }
+            throw e
+        }
     }
 
     suspend fun createUserWithEmail(email: String, password: String): FirebaseAuthSession {
@@ -104,3 +128,5 @@ class FirebaseAuthDataSource(
         auth.signOut()
     }
 }
+
+class GitHubSignInCanceledException : Exception("GitHub sign-in was canceled.")

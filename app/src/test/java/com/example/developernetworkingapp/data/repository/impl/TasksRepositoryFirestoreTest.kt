@@ -1,5 +1,6 @@
 package com.example.developernetworkingapp.data.repository.impl
 
+import com.example.developernetworkingapp.data.datasource.firebase.FirestoreInboxDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreProjectsDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreUserDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectDoc
@@ -23,6 +24,7 @@ class TasksRepositoryFirestoreTest {
 
     private val projectsDataSource: FirestoreProjectsDataSource = mock()
     private val userDataSource: FirestoreUserDataSource = mock()
+    private val inboxDataSource: FirestoreInboxDataSource = mock()
     private val firebaseAuth: FirebaseAuth = mock()
     private val firebaseUser: FirebaseUser = mock()
 
@@ -33,6 +35,7 @@ class TasksRepositoryFirestoreTest {
         repository = TasksRepositoryFirestore(
             projectsDataSource = projectsDataSource,
             userDataSource = userDataSource,
+            inboxDataSource = inboxDataSource,
             firebaseAuth = firebaseAuth,
         )
     }

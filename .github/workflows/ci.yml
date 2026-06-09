@@ -71,4 +71,4 @@ jobs:
           java-version: '17'
       # ubuntu-latest ships platforms/android-37.0; minorApiLevel=0 in build.gradle.kts maps to it
       - run: chmod +x gradlew
-      - run: ./gradlew assembleDebug lintDebug --no-daemon
+      - run: ./gradlew test assembleDebug lintDebug --no-daemon
