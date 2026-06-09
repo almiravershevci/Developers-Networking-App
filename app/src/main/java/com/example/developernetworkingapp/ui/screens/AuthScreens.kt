@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.developernetworkingapp.di.appViewModel
+import com.example.developernetworkingapp.ui.auth.isGoogleSignInAvailable
 import com.example.developernetworkingapp.ui.auth.rememberGoogleSignInLauncher
 import com.example.developernetworkingapp.ui.state.LoginUiState
 import com.example.developernetworkingapp.ui.state.SignupUiState
@@ -67,6 +68,7 @@ private fun AuthScreen(startInSignup: Boolean) {
         onIdToken = loginViewModel::signInWithGoogle,
         onFailure = loginViewModel::reportGoogleSignInError,
     )
+    val googleSignInAvailable = isGoogleSignInAvailable()
 
     UnifiedAuthScreen(
         loginState = loginState,
@@ -85,6 +87,7 @@ private fun AuthScreen(startInSignup: Boolean) {
         onLoginSubmit = loginViewModel::login,
         onSignupSubmit = signupViewModel::signup,
         onGoogleSignIn = launchGoogleSignIn,
+        googleSignInAvailable = googleSignInAvailable,
     )
 }
 
@@ -155,6 +158,7 @@ private fun UnifiedAuthScreen(
     onLoginSubmit: () -> Unit,
     onSignupSubmit: () -> Unit,
     onGoogleSignIn: () -> Unit,
+    googleSignInAvailable: Boolean = false,
 ) {
     AuthCardContainer(horizontalPadding = 20.dp) {
         var showSignup by rememberSaveable { mutableStateOf(startInSignup) }
@@ -269,18 +273,20 @@ private fun UnifiedAuthScreen(
                 }
             )
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(
-                onClick = onGoogleSignIn,
-                modifier = Modifier.weight(1f),
-                enabled = !loginState.isLoading && !signupState.isLoading,
-            ) {
-                Text("Google")
+        if (googleSignInAvailable) {
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = onGoogleSignIn,
+                    modifier = Modifier.weight(1f),
+                    enabled = !loginState.isLoading && !signupState.isLoading,
+                ) {
+                    Text("Google")
+                }
+                OutlinedButton(onClick = { }, modifier = Modifier.weight(1f)) { Text("GitHub") }
             }
-            OutlinedButton(onClick = { }, modifier = Modifier.weight(1f)) { Text("GitHub") }
         }
         Spacer(modifier = Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
