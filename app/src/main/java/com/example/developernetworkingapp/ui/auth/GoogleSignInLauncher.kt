@@ -13,19 +13,32 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 
 @Composable
+fun isGoogleSignInAvailable(): Boolean {
+    val context = LocalContext.current
+    return googleWebClientId(context).isNotBlank()
+}
+
+private fun googleWebClientId(context: android.content.Context): String =
+    context.getString(R.string.default_web_client_id).trim()
+
+@Composable
 fun rememberGoogleSignInLauncher(
     onIdToken: (String) -> Unit,
     onFailure: (String) -> Unit,
 ): () -> Unit {
     val context = LocalContext.current
-    val webClientId = context.getString(R.string.default_web_client_id)
+    val webClientId = googleWebClientId(context)
 
     val googleSignInClient = remember(webClientId) {
-        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(webClientId)
-            .requestEmail()
-            .build()
-        GoogleSignIn.getClient(context, options)
+        if (webClientId.isBlank()) {
+            null
+        } else {
+            val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(webClientId)
+                .requestEmail()
+                .build()
+            GoogleSignIn.getClient(context, options)
+        }
     }
 
     val launcher = rememberLauncherForActivityResult(
@@ -49,12 +62,13 @@ fun rememberGoogleSignInLauncher(
     }
 
     return {
-        if (webClientId.isBlank()) {
+        val client = googleSignInClient
+        if (webClientId.isBlank() || client == null) {
             onFailure(
-                "Google Sign-In is not configured. Enable Google in Firebase Console and set default_web_client_id in strings.xml.",
+                "Google Sign-In is not configured. Enable Google in Firebase Console and re-download google-services.json.",
             )
         } else {
-            launcher.launch(googleSignInClient.signInIntent)
+            launcher.launch(client.signInIntent)
         }
     }
 }
