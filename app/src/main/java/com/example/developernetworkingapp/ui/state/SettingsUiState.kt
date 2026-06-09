@@ -6,4 +6,7 @@ data class SettingsUiState(
     val profilePublic: Boolean = true,
     val analyticsOptIn: Boolean = false,
     val appVersion: String = "",
+    val isDeletingAccount: Boolean = false,
+    val deleteAccountError: String? = null,
+    val deleteAccountSuccess: Boolean = false,
 )

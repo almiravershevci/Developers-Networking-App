@@ -48,7 +48,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.developernetworkingapp.di.appViewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ConversationKind
-import com.example.developernetworkingapp.domain.model.ChatQuickRooms
 import com.example.developernetworkingapp.domain.model.ConversationSummary
 import com.example.developernetworkingapp.ui.components.EmptyStateCard
 import com.example.developernetworkingapp.ui.components.PremiumInfoCard
@@ -150,15 +149,15 @@ fun ChatScreen(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        ChatQuickRooms.rooms.forEach { room ->
+                        (state.content?.inbox?.take(4).orEmpty()).forEach { room ->
                             AssistChip(
                                 onClick = {
-                                    navController.navigate(AppRoutes.conversationRoute(room.conversationId))
+                                    navController.navigate(AppRoutes.conversationRoute(room.id))
                                 },
-                                label = { Text(room.label) },
+                                label = { Text(room.title) },
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = if (room.label == "Project Room") {
+                                        imageVector = if (room.conversationKind == "project_thread") {
                                             Icons.Outlined.Groups
                                         } else {
                                             Icons.Outlined.ChatBubbleOutline

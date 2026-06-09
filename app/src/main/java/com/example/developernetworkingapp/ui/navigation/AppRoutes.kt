@@ -49,13 +49,7 @@ object AppRoutes {
         return "verify/${Uri.encode(email)}"
     }
 
-    fun collaboratorProfileRoute(name: String, score: Int): String {
-        val id = name
-            .trim()
-            .lowercase()
-            .replace(Regex("[^a-z0-9]+"), "-")
-            .trim('-')
-            .ifBlank { "collaborator" }
-        return "collaborator_profile/$id/$score"
+    fun collaboratorProfileRoute(userId: String, score: Int): String {
+        return "collaborator_profile/${Uri.encode(userId)}/$score"
     }
 }

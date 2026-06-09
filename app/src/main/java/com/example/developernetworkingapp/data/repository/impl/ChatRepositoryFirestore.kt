@@ -132,6 +132,9 @@ class ChatRepositoryFirestore(
             if (!firebaseAuth.currentUser!!.isEmailVerified) {
                 return@withContext Result.failure(IllegalStateException("Verify your email to send messages"))
             }
+            if (body.trim().isEmpty()) {
+                return@withContext Result.failure(IllegalArgumentException("Message cannot be empty"))
+            }
             runCatching {
                 chatDataSource.sendTextMessage(conversationId, uid, body)
             }

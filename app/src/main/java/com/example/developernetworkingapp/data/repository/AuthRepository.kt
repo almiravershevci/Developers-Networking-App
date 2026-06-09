@@ -24,9 +24,11 @@ sealed class AuthResult {
 interface AuthRepository {
     val currentUser: StateFlow<AuthUser?>
     suspend fun login(identifier: String, password: String, rememberMe: Boolean): AuthResult
+    suspend fun signInWithGoogle(idToken: String, rememberMe: Boolean): AuthResult
     suspend fun signup(name: String, username: String, email: String, password: String, rememberMe: Boolean): AuthResult
     suspend fun requestPasswordReset(identifier: String): AuthResult
     suspend fun requestEmailVerification(email: String): AuthResult
     suspend fun verifyEmailCode(email: String, code: String): AuthResult
+    suspend fun deleteAccount(password: String? = null, googleIdToken: String? = null): AuthResult
     fun logout()
 }

@@ -44,6 +44,13 @@ ANDROID APP
 
   Dry run (no write):  npm run seed:dry
 
+  After you register in the app and verify email, link demo data to your Auth UID:
+
+  $env:DEMO_USER_UID="your-firebase-auth-uid"
+  npm run setup:demo-user
+
+  Dry run: npm run setup:demo-user:dry
+
   Never commit the service account file. .gitignore already lists common names.
 
 ----------------------------------------------------------------------------

@@ -5,8 +5,11 @@ import com.example.developernetworkingapp.data.repository.AuthUser
 import com.example.developernetworkingapp.data.repository.ProfileRepository
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreDashboardDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreUserDataSource
+import com.example.developernetworkingapp.data.datasource.firebase.formatRelativeTime
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ActivityItemDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.UserProfileDoc
 import com.example.developernetworkingapp.data.datasource.firebase.schema.UserStatsDoc
+import com.example.developernetworkingapp.domain.model.ActivityItem
 import com.example.developernetworkingapp.domain.model.ProfileContent
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
@@ -48,13 +51,15 @@ class ProfileRepositoryFirestore(
     private suspend fun loadProfile(uid: String, authUser: AuthUser): ProfileContent {
         val profile = userDataSource.fetchUserProfile(uid)
         val stats = dashboardDataSource.fetchUserStats(uid)
-        return mapToProfileContent(profile, stats, authUser)
+        val activity = runCatching { dashboardDataSource.fetchRecentActivity(uid) }.getOrDefault(emptyList())
+        return mapToProfileContent(profile, stats, authUser, activity)
     }
 
     private fun mapToProfileContent(
         profile: UserProfileDoc?,
         stats: UserStatsDoc?,
         authUser: AuthUser,
+        activity: List<ActivityItemDoc>,
     ): ProfileContent {
         val name = profile?.displayName?.takeIf { it.isNotBlank() } ?: authUser.name
         val role = profile?.headline?.takeIf { it.isNotBlank() } ?: "Developer"
@@ -73,6 +78,16 @@ class ProfileRepositoryFirestore(
             portfolio = portfolio,
             insights = insights,
             statsLine = formatStatsLine(stats),
+            activeProjectsCount = stats?.activeProjectsCount ?: 0,
+            collaborationsCount = stats?.collaborationsCount ?: 0,
+            unreadMessagesCount = stats?.unreadMessagesCount ?: 0,
+            openTasksCount = stats?.openTasksCount ?: 0,
+            activityItems = activity.map { item ->
+                ActivityItem(
+                    title = item.summary,
+                    time = formatRelativeTime(item.createdAt),
+                )
+            },
         )
     }
 

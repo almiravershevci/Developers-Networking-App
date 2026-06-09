@@ -1,7 +1,7 @@
 # Team setup — works for everyone (not just one developer)
 
 Everyone uses the **same shared Firebase project** (`developers-networking-app`).  
-No personal UIDs, no “only works on my machine” steps.
+Follow this so Android Studio **builds and runs** with no compile errors.
 
 ---
 
@@ -9,20 +9,31 @@ No personal UIDs, no “only works on my machine” steps.
 
 1. **Pull** the repo and open in Android Studio.
 2. **Sync Gradle** — `app/google-services.json` is already in git (same Firebase app for all).
-3. **Sign up** in the app with your own email (or use an account a lead created for you).
-4. **Verify your email** — many features are gated until verified.
-5. **Run the app** — you should see Dashboard, Tasks, Chat, Alerts, etc.
+3. Copy `local.properties.example` → `local.properties` if Android Studio does not create it.
+4. **Sign up** in the app with your own email (or use an account a lead created for you).
+5. **Verify your email** — login and most features are gated until verified.
+6. **Run the app** — Dashboard, Tasks, Chat, Alerts, etc.
 
-That is it for normal developers. You do **not** need:
-- A service account JSON to build or run the app
-- The Node backend running (`backend/npm start`) — dashboard uses Firestore directly
-- Render or any hosted REST API
+You do **not** need a service account JSON to **build** the app. You need Firebase + seed/sync for **full demo content**.
+
+```powershell
+.\gradlew assembleDebug
+.\gradlew test
+```
+
+---
+
+## Required files (in git)
+
+| File | Purpose |
+|------|---------|
+| `app/google-services.json` | Firebase Android config — **required** for Auth + Firestore |
+| `gradle/libs.versions.toml` | Dependency versions |
+| `local.properties.example` | Template for SDK path (each machine has its own `local.properties`) |
 
 ---
 
 ## What the team lead / backend dev does once (shared infrastructure)
-
-These steps affect the **whole team**, not one person:
 
 | Step | Command / action | Who |
 |------|------------------|-----|
@@ -47,25 +58,22 @@ npm install
 npm run team:sync-access
 ```
 
-`team:sync-access` adds **every** Firebase Auth user to:
+`team:sync-access` adds **every** Firebase Auth user to project members and showcase chat conversations. Run again when a **new teammate signs up** (until Cloud Functions are deployed).
 
-- `projects/proj_devconnect_mobile/members/{uid}` → Tasks / Kanban writes work
-- Showcase `conversations/*` `participantIds` → Chat inbox works
+### Per-user demo content (alternative to team-wide sync)
 
-Run it again whenever a **new teammate signs up** (until Cloud Functions are deployed).
+After seed + signup + verify email:
+
+```powershell
+$env:DEMO_USER_UID="your-firebase-auth-uid"
+npm run setup:demo-user
+```
 
 ---
 
 ## Automatic onboarding (after Functions deploy)
 
-When `onUserCreate` is deployed, **new signups** automatically get:
-
-- `userStats/{uid}` (zeros)
-- Welcome `inbox` notification
-- `collaboratorSuggestions` (from public profiles)
-- Showcase **project member** + **chat** access
-
-Existing accounts created before deploy still need **one** `npm run team:sync-access`.
+When `onUserCreate` is deployed, **new signups** automatically get `userStats`, welcome inbox, collaborator suggestions, and showcase project/chat access. Existing accounts created before deploy still need **one** `npm run team:sync-access`.
 
 ---
 
@@ -74,44 +82,38 @@ Existing accounts created before deploy still need **one** `npm run team:sync-ac
 | Feature | Works for everyone when… |
 |---------|---------------------------|
 | Login / signup | `google-services.json` in repo |
-| Tasks / Kanban move | User is project member (auto or `team:sync-access`) |
-| Chat | User in conversation `participantIds` (auto or `team:sync-access`) |
-| Alerts / inbox | Cloud Functions deployed + assignee set on tasks |
-| Push notifications (FCM) | Functions deployed + user signed in with notifications allowed + `fcmTokens` on `users/{uid}` |
-| Event RSVP | Signed in + rules deployed + optional Functions for `participantCount` |
-| Dashboard Node API line | **Optional** — `DevConnectApiConfig.ENABLED = false` by default; stats from Firestore |
-| Match invites | Any verified user → any other user (real Auth UIDs) |
-| Dashboard stats | `userStats` doc exists (Functions or seed) |
-
-**Demo seed UIDs** (`demo_alex_uid`, etc.) are sample rows only. Your real account uses **your** Auth UID — that is correct.
+| Email verification | User opens Firebase link, taps **Verify email** in app |
+| Tasks / Kanban | User is project member (auto, `team:sync-access`, or `setup:demo-user`) |
+| Chat | User in conversation `participantIds` |
+| Alerts / inbox | Functions deployed + assignee set on tasks |
+| Push notifications (FCM) | Functions deployed + notifications allowed + `fcmTokens` on `users/{uid}` |
+| Dashboard stats | `userStats` doc exists (Functions, seed, or `setup:demo-user`) |
 
 ---
 
 ## Build troubleshooting
 
-1. **JDK 17** — Android Studio → Settings → Build → Gradle → Embedded JDK.
-2. **Sync fails** — File → Invalidate Caches → Restart.
-3. **PERMISSION_DENIED on tasks** — Lead runs `npm run team:sync-access`.
-4. **Empty Chat** — Verify email, then lead runs `team:sync-access` or redeploy Functions.
-5. **No inbox after task move** — Deploy Functions; task must have an `assigneeUserId`.
-6. **No push in tray** — Allow notifications (Android 13+), sign in + verify email, redeploy Functions (`onInboxCreated`). Check `users/{uid}.fcmTokens` in Firestore.
-7. **Logcat "Dashboard REST stats unavailable"** — Harmless if you see it; REST is disabled by default (`DevConnectApiConfig.ENABLED = false`). Lead can set `ENABLED = true` when running `backend/npm start`.
-
-### Verify FCM (any teammate)
-
-1. Sign in, verify email, allow notification permission.
-2. Firestore → `users/{your-uid}` → `fcmTokens` should contain a token after app launch.
-3. Background the app → have a teammate move a task assigned to you (or send a chat).
-4. Tray notification appears; **Alerts** tab still loads from Firestore `inbox` (repository unchanged).
+1. **JDK 21** — Android Studio → Settings → Build → Gradle → Gradle JDK.
+2. Install Android SDK **API 36** if prompted.
+3. **Sync fails** — File → Invalidate Caches → Restart.
+4. **PERMISSION_DENIED on tasks** — Lead runs `npm run team:sync-access`.
+5. **Empty Chat / Dashboard** — Verify email, then lead runs `team:sync-access` or run `setup:demo-user` for your UID.
 
 ---
 
-## Data layer layout (if you edit backend code)
+## Data layer layout
 
 ```
 data/repository/           ← interfaces
 data/repository/impl/      ← Firestore implementations
 data/datasource/firebase/  ← Firestore + Auth IO
+data/datasource/remote/    ← Hacker News API (Search trends)
 ```
 
-Implementations in `repository.impl` must import `com.example.developernetworkingapp.data.repository.*` explicitly.
+Runtime uses **Firestore repositories only** (`di/AppContainer.kt`). `Fake*Repository` classes are for Compose previews.
+
+## Still broken?
+
+1. Confirm `app/google-services.json` exists.
+2. Delete project `.gradle` folder and sync again.
+3. See [DEPLOYMENT.md](DEPLOYMENT.md) and [BACKEND_ENGINEER_GUIDE.md](BACKEND_ENGINEER_GUIDE.md).
