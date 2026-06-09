@@ -65,6 +65,48 @@ class AuthRepositoryFirebase(
             }
         }
 
+    override suspend fun signInWithGoogle(idToken: String, rememberMe: Boolean): AuthResult =
+        withContext(Dispatchers.IO) {
+            try {
+                val result = authDataSource.signInWithGoogle(idToken)
+                val existingProfile = userDataSource.fetchUserProfile(result.session.uid)
+                if (result.isNewUser || existingProfile == null) {
+                    val email = result.session.email.trim().lowercase()
+                    if (email.isBlank()) {
+                        authDataSource.signOut()
+                        return@withContext AuthResult.Error("Google account has no email address.")
+                    }
+                    val displayName = result.session.displayName?.takeIf { it.isNotBlank() }
+                        ?: email.substringBefore("@")
+                    val username = userDataSource.generateAvailableUsername(
+                        email.substringBefore("@").replace(".", ""),
+                    )
+                    val accountRole = if (email == ADMIN_EMAIL) ADMIN_ROLE else USER_ROLE
+                    userDataSource.createUserProfile(
+                        uid = result.session.uid,
+                        email = email,
+                        username = username,
+                        displayName = displayName,
+                        accountRole = accountRole,
+                    )
+                }
+                if (!result.session.isEmailVerified) {
+                    authDataSource.signOut()
+                    return@withContext AuthResult.Error("Please verify your email before logging in.")
+                }
+                val profile = userDataSource.fetchUserProfile(result.session.uid)
+                    ?: return@withContext AuthResult.Error("Profile not found. Contact support.")
+                mapProfileBlock(profile)?.let { return@withContext AuthResult.Error(it) }
+                val authUser = mapSessionToAuthUser(result.session, profile)
+                    ?: return@withContext AuthResult.Error("Profile not found. Contact support.")
+                _currentUser.value = authUser
+                persistSession(authUser.email, rememberMe)
+                AuthResult.Success(authUser)
+            } catch (e: Exception) {
+                AuthResult.Error(mapAuthError(e))
+            }
+        }
+
     override suspend fun signup(
         name: String,
         username: String,
@@ -136,9 +178,6 @@ class AuthRepositoryFirebase(
 
     override suspend fun verifyEmailCode(email: String, code: String): AuthResult = withContext(Dispatchers.IO) {
         try {
-            if (code.trim().length != 6) {
-                return@withContext AuthResult.Error("Enter the 6-digit verification code.")
-            }
             if (authDataSource.currentSession() == null) {
                 return@withContext AuthResult.Error(
                     "No active session. Sign in again after verifying from your email link.",
@@ -168,6 +207,44 @@ class AuthRepositoryFirebase(
             remove(keySessionEmail)
         }
     }
+
+    override suspend fun deleteAccount(password: String?, googleIdToken: String?): AuthResult =
+        withContext(Dispatchers.IO) {
+            try {
+                val session = authDataSource.currentSession()
+                    ?: return@withContext AuthResult.Error("Not signed in.")
+                val profile = userDataSource.fetchUserProfile(session.uid)
+                    ?: return@withContext AuthResult.Error("Profile not found.")
+
+                when {
+                    !googleIdToken.isNullOrBlank() ->
+                        authDataSource.reauthenticateWithGoogle(googleIdToken)
+                    !password.isNullOrBlank() ->
+                        authDataSource.reauthenticateWithEmail(session.email, password)
+                }
+
+                userDataSource.deleteUserAccount(session.uid, profile.usernameLower)
+                authDataSource.deleteCurrentUser()
+
+                _currentUser.value = null
+                appContext.getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit {
+                    putBoolean(keyRememberMe, false)
+                    remove(keySessionEmail)
+                }
+
+                AuthResult.Success(
+                    AuthUser(
+                        name = "",
+                        username = "",
+                        email = "",
+                        password = "",
+                        isVerified = true,
+                    ),
+                )
+            } catch (e: Exception) {
+                AuthResult.Error(mapDeleteAccountError(e, password, googleIdToken))
+            }
+        }
 
     private suspend fun mapSessionToAuthUser(
         session: FirebaseAuthSession,
@@ -221,12 +298,31 @@ class AuthRepositoryFirebase(
                 -> "Incorrect password. Please try again."
                 "ERROR_EMAIL_ALREADY_IN_USE",
                 -> "An account with this email already exists."
+                "ERROR_ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL",
+                -> "An account already exists with this email. Sign in with your original method."
                 "ERROR_TOO_MANY_REQUESTS",
                 -> "Too many attempts. Wait a few minutes or use a real device, then try Resend."
                 else -> error.message ?: "Authentication failed."
             }
         }
         return error.message ?: "Something went wrong. Try again."
+    }
+
+    private fun mapDeleteAccountError(
+        error: Exception,
+        password: String?,
+        googleIdToken: String?,
+    ): String {
+        if (error is FirebaseAuthException && error.errorCode == "ERROR_REQUIRES_RECENT_LOGIN") {
+            return when {
+                !googleIdToken.isNullOrBlank() ->
+                    "Could not verify your identity. Sign in with Google again, then retry."
+                password.isNullOrBlank() ->
+                    "Enter your password to confirm account deletion."
+                else -> "Could not verify your identity. Sign out, sign in again, then retry."
+            }
+        }
+        return mapAuthError(error)
     }
 
     private fun mapProfileBlock(profile: com.example.developernetworkingapp.data.datasource.firebase.schema.UserProfileDoc): String? =

@@ -15,7 +15,7 @@ data class CollaboratorMatch(
     val suggestedUserId: String = "",
     val name: String,
     val stack: String,
-    val matchScore: Int
+    val matchScore: Int,
 )
 
 data class ProjectHighlight(

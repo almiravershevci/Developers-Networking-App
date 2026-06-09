@@ -19,11 +19,22 @@ class AppNavigationViewModel(
 
     private val unauthenticatedRoutes = setOf(AppRoutes.LOGIN, AppRoutes.SIGNUP)
 
-    fun onRouteChanged(route: String?, isAuthenticated: Boolean) {
+    fun onRouteChanged(route: String?, authUser: AuthUser?) {
+        if (route == null) return
+
+        val isVerified = authUser?.isVerified == true
+        val pendingVerification = authUser != null && !authUser.isVerified
+
         when {
-            !isAuthenticated && route != null && route !in unauthenticatedRoutes && !isVerificationRoute(route) ->
+            pendingVerification && !isVerificationRoute(route) ->
+                navEmitter.emit(AppNavEvent.NavigateToVerifyEmail(authUser.email))
+
+            !isVerified && authUser == null &&
+                route !in unauthenticatedRoutes &&
+                !isVerificationRoute(route) ->
                 navEmitter.emit(AppNavEvent.NavigateToLogin)
-            isAuthenticated && route != null && route in unauthenticatedRoutes ->
+
+            isVerified && route in unauthenticatedRoutes ->
                 navEmitter.emit(AppNavEvent.NavigateToDashboard)
         }
     }

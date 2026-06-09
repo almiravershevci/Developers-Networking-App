@@ -76,6 +76,26 @@ class LoginViewModel(
             }
         }
     }
+
+    fun signInWithGoogle(idToken: String) {
+        val rememberMe = _uiState.value.rememberMe
+        _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
+        viewModelScope.launch {
+            when (val result = authRepository.signInWithGoogle(idToken, rememberMe)) {
+                is AuthResult.Success -> {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = null) }
+                    navEmitter.emit(AuthNavEvent.NavigateToDashboard)
+                }
+                is AuthResult.Error -> {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                }
+            }
+        }
+    }
+
+    fun reportGoogleSignInError(message: String) {
+        _uiState.update { it.copy(errorMessage = message, infoMessage = null) }
+    }
 }
 
 class SignupViewModel(
@@ -202,7 +222,7 @@ class VerificationViewModel(
             when (val result = authRepository.requestEmailVerification(email)) {
                 is AuthResult.Success -> _uiState.update {
                     it.copy(
-                        infoMessage = "Verification email sent to $email. Open the link, then enter any 6 digits and tap Verify.",
+                        infoMessage = "Verification email sent to $email. Open the link on this device, then tap Verify email.",
                         errorMessage = null,
                     )
                 }
@@ -213,10 +233,6 @@ class VerificationViewModel(
 
     fun verify() {
         val state = _uiState.value
-        if (state.code.length != 6) {
-            _uiState.update { it.copy(errorMessage = "Enter the 6-digit verification code.") }
-            return
-        }
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             when (val result = authRepository.verifyEmailCode(state.email, state.code)) {

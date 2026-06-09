@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.developernetworkingapp.ui.navigation.AppNavigationViewModel
 import com.example.developernetworkingapp.ui.viewmodel.AdminViewModel
+import com.example.developernetworkingapp.ui.viewmodel.CollaboratorProfileViewModel
 import com.example.developernetworkingapp.ui.viewmodel.ChatViewModel
 import com.example.developernetworkingapp.ui.viewmodel.ConversationViewModel
 import com.example.developernetworkingapp.ui.viewmodel.DashboardViewModel
@@ -71,9 +72,29 @@ class AppViewModelFactory : ViewModelProvider.Factory {
             modelClass.isAssignableFrom(MainShellViewModel::class.java) ->
                 MainShellViewModel(AppContainer.notificationsRepository) as T
             modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
-                SettingsViewModel(AppContainer.settingsStore) as T
+                SettingsViewModel(
+                    AppContainer.settingsStore,
+                    AppContainer.authRepository,
+                ) as T
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
+    }
+}
+
+class CollaboratorProfileViewModelFactory(
+    private val userId: String,
+    private val matchScore: Int,
+) : ViewModelProvider.Factory {
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(CollaboratorProfileViewModel::class.java)) {
+            return CollaboratorProfileViewModel(
+                userId = userId,
+                matchScore = matchScore,
+            ) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
 }
 

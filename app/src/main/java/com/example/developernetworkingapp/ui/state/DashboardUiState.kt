@@ -21,9 +21,5 @@ data class DashboardUiState(
     val incomingMatchRequests: List<MatchRequest> = emptyList(),
     val outgoingMatchRequests: List<MatchRequest> = emptyList(),
     val matchActionInFlight: String? = null,
-    val composerText: String = "",
-    val composerStack: String = "",
-    val composerBackendNeed: String = "",
-    val composerSpotsInput: String = "3",
     val errorMessage: String? = null
 )

@@ -100,17 +100,12 @@ fun DashboardRoute(
         state = state,
         events = viewModel.events,
         onRefresh = viewModel::refreshFeed,
-        onCreatePost = viewModel::submitComposerPost,
         onToggleLike = viewModel::togglePostLike,
         onTogglePostExpanded = viewModel::togglePostExpanded,
         onToggleComments = viewModel::toggleCommentsVisibility,
         onCommentDraftChange = viewModel::updateCommentDraft,
         onSubmitComment = viewModel::submitComment,
         onProjectApplicationSubmitted = viewModel::notifyProjectApplicationSubmitted,
-        onComposerTextChange = viewModel::updateComposerText,
-        onComposerStackChange = viewModel::updateComposerStack,
-        onComposerBackendNeedChange = viewModel::updateComposerBackendNeed,
-        onComposerSpotsInputChange = viewModel::updateComposerSpotsInput,
         onSendMatchInvite = viewModel::sendMatchInvite,
         onAcceptMatchRequest = viewModel::acceptMatchRequest,
         onDeclineMatchRequest = viewModel::declineMatchRequest,
@@ -124,17 +119,12 @@ fun DashboardScreen(
     state: DashboardUiState,
     events: SharedFlow<DashboardUiEvent>,
     onRefresh: () -> Unit,
-    onCreatePost: () -> Unit,
     onToggleLike: (String) -> Unit,
     onTogglePostExpanded: (String) -> Unit,
     onToggleComments: (String) -> Unit,
     onCommentDraftChange: (String, String) -> Unit,
     onSubmitComment: (String) -> Unit,
     onProjectApplicationSubmitted: () -> Unit,
-    onComposerTextChange: (String) -> Unit,
-    onComposerStackChange: (String) -> Unit,
-    onComposerBackendNeedChange: (String) -> Unit,
-    onComposerSpotsInputChange: (String) -> Unit,
     onSendMatchInvite: (String, String?) -> Unit = { _, _ -> },
     onAcceptMatchRequest: (String) -> Unit = {},
     onDeclineMatchRequest: (String) -> Unit = {},
@@ -282,21 +272,7 @@ fun DashboardScreen(
         }
         item { SectionTitle("Quick Access") }
         item { ShortcutRow(shortcuts = shortcuts, navController = navController) }
-        item { SectionTitle("Post Something New") }
-        item {
-            FeedComposerCard(
-                composerText = state.composerText,
-                onComposerTextChange = onComposerTextChange,
-                stack = state.composerStack,
-                onStackChange = onComposerStackChange,
-                backendStackNeed = state.composerBackendNeed,
-                onBackendStackNeedChange = onComposerBackendNeedChange,
-                spotsInput = state.composerSpotsInput,
-                onSpotsInputChange = onComposerSpotsInputChange,
-                onPostProject = onCreatePost
-            )
-        }
-        item { SectionTitle("Developer Project Feed") }
+        item { SectionTitle("Recruiting Projects") }
         items(state.feedPosts, key = { it.id }) { postState ->
             ProjectPostCard(
                 postState = postState,
@@ -333,7 +309,7 @@ fun DashboardScreen(
                 subtitle = "Match score: ${match.matchScore}% - Invite or start 1:1 chat",
                 onViewClick = {
                     navController.navigate(
-                        AppRoutes.collaboratorProfileRoute(match.name, match.matchScore),
+                        AppRoutes.collaboratorProfileRoute(match.suggestedUserId, match.matchScore),
                     )
                 },
                 onInviteClick = {
@@ -353,7 +329,7 @@ fun DashboardScreen(
                         AppRoutes.detailRoute(
                             title = project.title,
                             subtitle = "Project Progress: ${project.progress}%",
-                            description = projectDetailsDescription(project.title, project.description, project.progress),
+                            description = buildProjectDetailDescription(project.description, project.progress),
                             sourceRoute = AppRoutes.PROJECTS
                         )
                     )
@@ -450,101 +426,6 @@ private fun ShortcutRow(shortcuts: List<ShortcutItem>, navController: NavControl
                     containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                 )
             )
-        }
-    }
-}
-
-@Composable
-private fun FeedComposerCard(
-    composerText: String,
-    onComposerTextChange: (String) -> Unit,
-    stack: String,
-    onStackChange: (String) -> Unit,
-    backendStackNeed: String,
-    onBackendStackNeedChange: (String) -> Unit,
-    spotsInput: String,
-    onSpotsInputChange: (String) -> Unit,
-    onPostProject: () -> Unit
-) {
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 10.dp),
-        shape = AppDesignTokens.cardShape,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                "What's on your mind?",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "Share your project ideas, post job openings, or find collaborators",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-            OutlinedTextField(
-                value = composerText,
-                onValueChange = onComposerTextChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(136.dp),
-                placeholder = { Text("Share project status, role requirements, or a collaboration idea...") },
-                maxLines = 4
-            )
-            OutlinedTextField(
-                value = stack,
-                onValueChange = onStackChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text("Tech stack (optional)") },
-                supportingText = { Text("Example: Kotlin + Firebase + Spring Boot") }
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedTextField(
-                    value = backendStackNeed,
-                    onValueChange = onBackendStackNeedChange,
-                    modifier = Modifier.weight(1.7f),
-                    singleLine = true,
-                    label = { Text("Backend stack needed") },
-                    supportingText = { Text("Example: Node.js + PostgreSQL") }
-                )
-                OutlinedTextField(
-                    value = spotsInput,
-                    onValueChange = onSpotsInputChange,
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    label = { Text("Spots") },
-                    supportingText = { Text("1-20") }
-                )
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
-            ) {
-                Button(
-                    onClick = onPostProject,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(AppDesignTokens.compactButtonHeight + 4.dp),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.width(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Post Project", fontSize = 12.sp)
-                }
-            }
         }
     }
 }
@@ -960,48 +841,17 @@ private fun EventCard(event: EventHighlight, onViewClick: () -> Unit) {
     }
 }
 
-private fun moduleLearnMoreRoute(moduleTitle: String, moduleSubtitle: String): String {
-    val normalized = moduleTitle.lowercase()
-    val detailDescription = when {
-        "team" in normalized || "matching" in normalized ->
-            "Team Matching analyzes stack fit, timezone overlap, delivery pace, and collaboration history to suggest reliable partners.\n\nWhat you get:\n• Ranked collaborator shortlist by role and availability\n• Confidence score with reasons (skills, overlap, past delivery)\n• Suggested intro message templates and follow-up reminders\n\nExample:\nA mobile project needing Firebase + Kotlin can instantly identify backend-friendly Android collaborators, compare match strength, and invite top candidates in one step."
-        "task" in normalized ->
-            "Smart Tasks clusters backlog items by urgency and dependency, then recommends sprint ordering.\n\nWhat you get:\n• Auto-priority queue (critical, high, normal)\n• Blocker and dependency visibility before sprint planning\n• Ownership gaps and delivery risk alerts\n\nExample:\nIf API integration depends on auth completion, Smart Tasks flags sequence risks and proposes a safer execution order."
-        "event" in normalized ->
-            "Live Events centralizes hackathons, meetups, and coding jams with countdowns, participant trends, and team registration actions.\n\nWhat you get:\n• Event timeline and challenge tracks\n• Mentor availability and team formation cues\n• Participation trends and leaderboard snapshots\n\nExample:\nBefore joining a weekend hackathon, you can evaluate active tracks, team needs, and skill fit to pick the best challenge quickly."
-        else ->
-            "$moduleSubtitle.\n\nThis module includes dedicated workflows, progress indicators, collaboration touchpoints, and execution examples to help teams move from discovery to delivery with fewer blockers."
-    }
-    return AppRoutes.detailRoute(
+private fun moduleLearnMoreRoute(moduleTitle: String, moduleSubtitle: String): String =
+    AppRoutes.detailRoute(
         title = moduleTitle,
-        subtitle = "Module Deep Dive",
-        description = detailDescription,
-        sourceRoute = AppRoutes.DASHBOARD
+        subtitle = moduleSubtitle,
+        description = moduleSubtitle,
+        sourceRoute = AppRoutes.DASHBOARD,
     )
-}
 
-private fun projectDetailsDescription(title: String, summary: String, progress: Int): String {
-    return when (title.lowercase()) {
-        "devconnect mobile" ->
-            "DevConnect Mobile focuses on realtime team communication, in-app notifications, and collaboration feed updates for Android.\n\nStatus:\n• Current progress: $progress%\n• Sprint focus: chat threading, push reliability, beta onboarding\n• Team: Android, backend integration, QA automation\n\nDeliverables:\n• Stable realtime messaging\n• Event-driven notification center\n• Collaboration timeline and role-based updates\n\nOverview: $summary"
-        "talent graph api" ->
-            "Talent Graph API powers collaborator matching by ranking skills, availability, and collaboration outcomes.\n\nStatus:\n• Current progress: $progress%\n• Sprint focus: latency optimization, caching, integration test coverage\n• Team: backend, data modeling, API quality\n\nDeliverables:\n• Accurate match scoring endpoint\n• Fast search/filter response under load\n• Stable ranking rules with test visibility\n\nOverview: $summary"
-        else ->
-            "$summary\n\nCurrent progress: $progress%.\nThis project detail tracks scope, sprint milestones, role ownership, blockers, and release readiness checks."
-    }
-}
-
-private fun collaboratorProfileDetailDescription(name: String, stack: String, score: Int): String {
-    return when (name.lowercase()) {
-        "mina" ->
-            "Role: Android + Firebase specialist\nLocation: Prishtina (UTC+2)\nAvailability: 14-18 hrs/week\nCompatibility score: $score%\n\nRecent projects:\n• DevPulse Mobile Alerts\n• Compose Performance Lab\n• Remote Team Sprintboard\n\nStrengths:\n• Realtime mobile sync architecture\n• Release stability and QA alignment\n• Clear async collaboration habits"
-        "khaled" ->
-            "Role: Backend + AI APIs engineer\nLocation: Tirana (UTC+2)\nAvailability: 10-14 hrs/week\nCompatibility score: $score%\n\nRecent projects:\n• Talent Graph Ranking Engine\n• Realtime Notification Gateway\n• LLM Workflow Assistant API\n\nStrengths:\n• API reliability and caching\n• Scoring and ranking pipelines\n• Performance tuning under load"
-        "nora" ->
-            "Role: UI/UX + React Native contributor\nLocation: Skopje (UTC+1)\nAvailability: 12-16 hrs/week\nCompatibility score: $score%\n\nRecent projects:\n• CollabFlow Design System\n• Mentor Connect Mobile\n• Cross-Platform Team Rooms\n\nStrengths:\n• User journey optimization\n• Cross-platform interface consistency\n• Product-to-engineering collaboration"
-        else ->
-            "Role: $stack\nCompatibility score: $score%\n\nThis collaborator profile includes project history, collaboration style, location/availability, and fit summary for your team."
-    }
+private fun buildProjectDetailDescription(summary: String, progress: Int): String {
+    val body = summary.trim().ifBlank { "No project description available yet." }
+    return "$body\n\nProgress: $progress%"
 }
 
 @Composable

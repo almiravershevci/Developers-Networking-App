@@ -158,11 +158,33 @@ fun ProfileScreen(
             onDismissRequest = { showAchievementsDialog = false },
             title = { Text("Developer Achievements") },
             text = {
+                val profile = content
+                val badges = buildList {
+                    if (profile == null) return@buildList
+                    if (profile.activeProjectsCount > 0) {
+                        add("Active on ${profile.activeProjectsCount} project(s)")
+                    }
+                    if (profile.collaborationsCount > 0) {
+                        add("${profile.collaborationsCount} collaboration(s) in your network")
+                    }
+                    profile.stacks.take(4).forEach { stack ->
+                        add("Stack: $stack")
+                    }
+                    if (profile.activityItems.isNotEmpty()) {
+                        add("Latest: ${profile.activityItems.first().title}")
+                    }
+                }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("🏆 Code Contributor - 50+ PRs merged", style = MaterialTheme.typography.bodyMedium)
-                    Text("🚀 Project Leader - Led 3 successful projects", style = MaterialTheme.typography.bodyMedium)
-                    Text("👥 Team Player - Collaborated with 20+ developers", style = MaterialTheme.typography.bodyMedium)
-                    Text("📚 Knowledge Sharer - Published 10+ tutorials", style = MaterialTheme.typography.bodyMedium)
+                    if (badges.isEmpty()) {
+                        Text(
+                            "Complete projects and collaborate to build your achievement history.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    } else {
+                        badges.forEach { badge ->
+                            Text(badge, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
                 }
             },
             confirmButton = { Button(onClick = { showAchievementsDialog = false }) { Text("View all") } },
@@ -287,7 +309,7 @@ fun ProfileScreen(
         item { SectionTitle("Skills & Expertise") }
         item {
             Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                (content?.stacks ?: listOf("Kotlin", "Android", "React", "Node.js", "Python")).forEach { stack ->
+                (content?.stacks.orEmpty()).forEach { stack ->
                     AssistChip(
                         onClick = {
                             navController.navigate(
@@ -347,7 +369,10 @@ fun ProfileScreen(
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Achievements", style = MaterialTheme.typography.titleMedium, color = VibrantOrange)
-                        Text("4 badges earned", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "${content?.collaborationsCount ?: 0} collaborations",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                         InteractiveButton(text = "View Badges", onClick = { showAchievementsDialog = true })
                     }
                 }
@@ -366,8 +391,10 @@ fun ProfileScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text("GitHub Insights", style = MaterialTheme.typography.titleMedium, color = ElectricGreen)
-                    Text("Commits: 1,247 | PRs: 89 | Stars: 156", style = MaterialTheme.typography.bodyMedium)
-                    Text("Most active in Kotlin and Android projects", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        content?.insights?.takeIf { it.isNotBlank() } ?: "Connect GitHub to sync contribution insights.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -401,10 +428,10 @@ fun ProfileScreen(
         item { SectionTitle("Activity Stats") }
         item {
             val activityStats = listOf(
-                Triple("Projects", "23", AppRoutes.PROJECTS),
-                Triple("Collaborations", "45", AppRoutes.PROJECTS),
-                Triple("Messages", "189", AppRoutes.CHAT),
-                Triple("Events", "12", AppRoutes.EVENTS)
+                Triple("Projects", "${content?.activeProjectsCount ?: 0}", AppRoutes.PROJECTS),
+                Triple("Collaborations", "${content?.collaborationsCount ?: 0}", AppRoutes.PROJECTS),
+                Triple("Messages", "${content?.unreadMessagesCount ?: 0}", AppRoutes.CHAT),
+                Triple("Tasks", "${content?.openTasksCount ?: 0}", AppRoutes.TASKS),
             )
             Row(
                 modifier = Modifier
@@ -447,20 +474,22 @@ fun ProfileScreen(
         }
 
         item { SectionTitle("Recent Activity") }
-        items(5) { index ->
-            EnhancedCard(modifier = Modifier.fillMaxWidth(), onClick = {
-                navController.navigate(
-                    AppRoutes.detailRoute(
-                        title = "Recent Activity ${index + 1}",
-                        subtitle = "Profile timeline",
-                        description = "Full activity thread with timestamped updates, linked projects, and collaborator actions.",
-                        sourceRoute = AppRoutes.PROFILE
-                    )
+        val activityItems = content?.activityItems.orEmpty()
+        if (activityItems.isEmpty()) {
+            item {
+                Text(
+                    "No activity in Firestore yet. Run firestore seed or complete actions in the app.",
+                    style = MaterialTheme.typography.bodyMedium,
                 )
-            }) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Joined project: Mobile App Redesign", style = MaterialTheme.typography.bodyMedium)
-                    Text("2 hours ago", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+            }
+        } else {
+            items(activityItems.size) { index ->
+                val item = activityItems[index]
+                EnhancedCard(modifier = Modifier.fillMaxWidth(), onClick = { }) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(item.title, style = MaterialTheme.typography.bodyMedium)
+                        Text(item.time, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
         }

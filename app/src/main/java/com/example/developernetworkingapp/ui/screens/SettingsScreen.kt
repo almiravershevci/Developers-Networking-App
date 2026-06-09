@@ -10,32 +10,55 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.di.appViewModel
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import com.example.developernetworkingapp.ui.event.SettingsNavEvent
+import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.state.SettingsUiState
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 import com.example.developernetworkingapp.ui.viewmodel.SettingsViewModel
 
 @Composable
-fun SettingsRoute(padding: PaddingValues, @Suppress("UNUSED_PARAMETER") navController: NavController) {
+fun SettingsRoute(padding: PaddingValues, navController: NavController) {
     val viewModel: SettingsViewModel = appViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    LaunchedEffect(viewModel, navController) {
+        viewModel.navigationEvents.collect { event ->
+            when (event) {
+                SettingsNavEvent.AccountDeleted ->
+                    navController.navigate(AppRoutes.LOGIN) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                        launchSingleTop = true
+                    }
+            }
+        }
+    }
 
     LaunchedEffect(context) {
         val versionName = runCatching {
@@ -51,6 +74,8 @@ fun SettingsRoute(padding: PaddingValues, @Suppress("UNUSED_PARAMETER") navContr
         onEmailDigestsChange = viewModel::setEmailDigests,
         onProfilePublicChange = viewModel::setProfilePublic,
         onAnalyticsOptInChange = viewModel::setAnalyticsOptIn,
+        onDeleteAccount = viewModel::deleteAccount,
+        onDismissDeleteAccountDialog = viewModel::clearDeleteAccountFeedback,
     )
 }
 
@@ -62,7 +87,71 @@ fun SettingsScreen(
     onEmailDigestsChange: (Boolean) -> Unit,
     onProfilePublicChange: (Boolean) -> Unit,
     onAnalyticsOptInChange: (Boolean) -> Unit,
+    onDeleteAccount: (String) -> Unit,
+    onDismissDeleteAccountDialog: () -> Unit,
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var deletePassword by remember { mutableStateOf("") }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!state.isDeletingAccount) {
+                    showDeleteDialog = false
+                    deletePassword = ""
+                    onDismissDeleteAccountDialog()
+                }
+            },
+            title = { Text("Delete account") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "This permanently removes your profile, username, and notifications. " +
+                            "Projects, messages, and other shared data may remain.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    OutlinedTextField(
+                        value = deletePassword,
+                        onValueChange = { deletePassword = it },
+                        label = { Text("Password (email accounts)") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        supportingText = {
+                            Text("Required for email/password accounts. Google-only users can leave blank.")
+                        },
+                    )
+                    state.deleteAccountError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { onDeleteAccount(deletePassword) },
+                    enabled = !state.isDeletingAccount,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Text(if (state.isDeletingAccount) "Deleting..." else "Delete permanently")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        if (!state.isDeletingAccount) {
+                            showDeleteDialog = false
+                            deletePassword = ""
+                            onDismissDeleteAccountDialog()
+                        }
+                    },
+                    enabled = !state.isDeletingAccount,
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -127,6 +216,26 @@ fun SettingsScreen(
                         checked = state.analyticsOptIn,
                         onCheckedChange = onAnalyticsOptInChange,
                     )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item { SectionTitle("Account") }
+        item {
+            ListItem(
+                headlineContent = { Text("Delete account") },
+                supportingContent = { Text("Permanently remove your account and profile data") },
+                trailingContent = {
+                    Button(
+                        onClick = {
+                            deletePassword = ""
+                            onDismissDeleteAccountDialog()
+                            showDeleteDialog = true
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        Text("Delete")
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
             )

@@ -134,4 +134,31 @@ class FirestoreUserDataSource(
             )
             .await()
     }
+
+    suspend fun generateAvailableUsername(base: String): String {
+        val sanitized = base.trim().lowercase()
+            .filter { it.isLetterOrDigit() }
+            .take(20)
+        val root = sanitized.takeIf { it.length >= 3 } ?: "user${sanitized.ifBlank { "dev" }}"
+        var candidate = root
+        var suffix = 0
+        while (isUsernameTaken(candidate)) {
+            suffix++
+            candidate = "$root$suffix"
+        }
+        return candidate
+    }
+
+    suspend fun deleteUserAccount(uid: String, usernameLower: String) {
+        val inboxSnap = db.collection(FirestorePaths.INBOX)
+            .whereEqualTo("recipientUserId", uid)
+            .get()
+            .await()
+
+        val batch = db.batch()
+        inboxSnap.documents.forEach { batch.delete(it.reference) }
+        batch.delete(db.collection(FirestorePaths.USERS).document(uid))
+        batch.delete(db.collection(FirestorePaths.USERNAMES).document(usernameLower))
+        batch.commit().await()
+    }
 }
