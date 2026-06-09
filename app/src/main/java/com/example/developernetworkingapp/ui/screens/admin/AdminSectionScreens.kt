@@ -190,6 +190,40 @@ fun AdminUsersSection(viewModel: AdminViewModel) {
 fun AdminProjectsSection(viewModel: AdminViewModel) {
     val dash by viewModel.dashboard.collectAsStateWithLifecycle()
     var editingProject by remember { mutableStateOf<AdminProjectRow?>(null) }
+    var removeTarget by remember { mutableStateOf<AdminProjectRow?>(null) }
+
+    removeTarget?.let { project ->
+        var reason by remember(project.id) { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { removeTarget = null },
+            title = { Text("Remove \"${project.name}\" from feed?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "The project will be hidden from everyone's recruiting feed. The owner receives your reason.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    TextField(
+                        value = reason,
+                        onValueChange = { reason = it },
+                        label = { Text("Reason (required)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.removeProjectFromFeed(project.id, reason)
+                        removeTarget = null
+                    },
+                    enabled = reason.isNotBlank(),
+                ) { Text("Remove from feed") }
+            },
+            dismissButton = { TextButton(onClick = { removeTarget = null }) { Text("Cancel") } },
+        )
+    }
 
     editingProject?.let { project ->
         var name by remember(project.id) { mutableStateOf(project.name) }
@@ -223,7 +257,7 @@ fun AdminProjectsSection(viewModel: AdminViewModel) {
         item {
             AdminSectionIntro(
                 title = "Project management",
-                body = "Approvals change project state; archives hide projects from active listings."
+                body = "Remove from feed hides a project for all users and notifies the owner with your reason."
             )
         }
         item { SectionTitle("Project list") }
@@ -247,9 +281,9 @@ fun AdminProjectsSection(viewModel: AdminViewModel) {
                         }
                         TextButton(onClick = { editingProject = project }) { Text("Edit") }
                         OutlinedButton(
-                            onClick = { viewModel.archiveProject(project.id) },
+                            onClick = { removeTarget = project },
                             enabled = project.status != AdminProjectStatus.ARCHIVED && project.status != AdminProjectStatus.REJECTED
-                        ) { Text("Archive") }
+                        ) { Text("Remove from feed") }
                     }
                 }
             }
@@ -275,6 +309,33 @@ fun AdminContentSection(viewModel: AdminViewModel) {
                 body = "Approving clears the queue; holds flag items for another review pass."
             )
         }
+        item { SectionTitle("Project join requests (${dash.projectJoinQueue.size})") }
+        if (dash.projectJoinQueue.isEmpty()) {
+            item {
+                Text(
+                    "No pending join requests. Owners accept these on Home or Projects tabs.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        items(dash.projectJoinQueue, key = { it.id }) { row ->
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            ) {
+                Column(
+                    modifier = Modifier.padding(AppDesignTokens.cardInnerPadding),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        "${row.applicantLabel} → ${row.projectTitle}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text("Role: ${row.requestedRole} • Owner: ${row.ownerUserId.take(8)} • ${row.relativeTime}")
+                }
+            }
+        }
         item { SectionTitle("Content dashboard") }
         item {
             ElevatedCard(
@@ -285,7 +346,7 @@ fun AdminContentSection(viewModel: AdminViewModel) {
                     modifier = Modifier.padding(AppDesignTokens.cardInnerPadding),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Queued posts (${dash.contentQueue.size})", style = MaterialTheme.typography.titleMedium)
+                    Text("Match requests (${dash.contentQueue.size})", style = MaterialTheme.typography.titleMedium)
                     dash.contentQueue.forEach { item ->
                         Text(
                             "• ${item.title} — ${item.author}${if (item.held) " (held)" else ""}",

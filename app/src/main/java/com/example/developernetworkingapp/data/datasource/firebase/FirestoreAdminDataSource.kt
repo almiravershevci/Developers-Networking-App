@@ -106,6 +106,34 @@ class FirestoreAdminDataSource(
             .await()
     }
 
+    suspend fun fetchProject(projectId: String): ProjectDoc? {
+        val snap = db.collection(FirestorePaths.PROJECTS).document(projectId).get().await()
+        return snap.toProjectDocSafe()
+    }
+
+    /** Hides a project from the public feed and records moderation metadata. */
+    suspend fun removeProjectFromFeed(
+        projectId: String,
+        reason: String,
+        adminUserId: String,
+    ) {
+        val trimmedReason = reason.trim()
+        require(trimmedReason.isNotEmpty()) { "Removal reason is required." }
+        db.collection(FirestorePaths.PROJECTS).document(projectId)
+            .set(
+                mapOf(
+                    "visibility" to com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectVisibility.UNLISTED,
+                    "lifecycleStatus" to ProjectLifecycle.ARCHIVED,
+                    "moderationReason" to trimmedReason,
+                    "removedAt" to FieldValue.serverTimestamp(),
+                    "removedByUserId" to adminUserId,
+                    "updatedAt" to FieldValue.serverTimestamp(),
+                ),
+                SetOptions.merge(),
+            )
+            .await()
+    }
+
     suspend fun createInboxNotification(
         recipientUserId: String,
         title: String,

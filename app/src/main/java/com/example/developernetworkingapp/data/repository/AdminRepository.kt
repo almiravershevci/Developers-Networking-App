@@ -32,6 +32,7 @@ interface AdminRepository {
     fun approveProject(projectId: String)
     fun rejectProject(projectId: String)
     fun archiveProject(projectId: String)
+    fun removeProjectFromFeed(projectId: String, reason: String)
     fun updateProject(projectId: String, name: String, techSummary: String)
 
     fun approveAllQueuedContent()
@@ -150,6 +151,13 @@ class InMemoryAdminRepository : AdminRepository {
             })
         }
         audit("Archived project $projectId")
+    }
+
+    override fun removeProjectFromFeed(projectId: String, reason: String) {
+        _snapshot.update { s ->
+            s.copy(projects = s.projects.filterNot { it.id == projectId })
+        }
+        audit("Removed project $projectId from feed: $reason")
     }
 
     override fun updateProject(projectId: String, name: String, techSummary: String) {
