@@ -93,7 +93,7 @@ fun DashboardScreenPreview() {
                 onToggleComments = {},
                 onCommentDraftChange = { _, _ -> },
                 onSubmitComment = {},
-                onSendProjectJoinRequest = { _, _, _, _, _ -> },
+                onSendProjectJoinRequest = { _, _, _, _, _, _ -> },
                 onAcceptProjectJoinRequest = {},
                 onDeclineProjectJoinRequest = {},
                 onSendMatchInvite = { _, _ -> },

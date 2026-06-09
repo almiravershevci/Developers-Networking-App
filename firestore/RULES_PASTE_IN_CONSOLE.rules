@@ -216,7 +216,17 @@ service cloud.firestore {
                 || resource.data.toUserId == request.auth.uid));
       allow create: if signedIn()
         && request.resource.data.fromUserId == request.auth.uid
-        && request.resource.data.schemaVersion is int;
+        && request.resource.data.fromUserId != request.resource.data.toUserId
+        && request.resource.data.workflowStatus == 'pending'
+        && request.resource.data.schemaVersion is int
+        && (
+          projectData(request.resource.data.projectId).ownerUserId == request.resource.data.toUserId
+          || (
+            projectData(request.resource.data.projectId).ownerUserId == ''
+            && request.resource.data.toUserId is string
+            && request.resource.data.toUserId.size() > 0
+          )
+        );
       allow update: if isAdmin()
         || (signedIn() && resource.data.toUserId == request.auth.uid);
       allow delete: if false;

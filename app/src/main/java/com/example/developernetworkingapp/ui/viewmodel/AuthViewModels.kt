@@ -46,13 +46,33 @@ class LoginViewModel(
 
         _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
         viewModelScope.launch {
-            when (val result = authRepository.login(emailOrUsername, password, state.rememberMe)) {
-                is AuthResult.Success -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = null) }
-                    navEmitter.emit(AuthNavEvent.NavigateToDashboard)
+            try {
+                when (val result = authRepository.login(emailOrUsername, password, state.rememberMe)) {
+                    is AuthResult.Success -> {
+                        _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = null) }
+                        navEmitter.emit(AuthNavEvent.NavigateToDashboard)
+                    }
+                    is AuthResult.PendingEmailVerification -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = null,
+                                infoMessage = "Verification email sent to ${result.email}. Opening verify screen…",
+                            )
+                        }
+                        navEmitter.emit(AuthNavEvent.NavigateToVerifyEmail(result.email))
+                    }
+                    is AuthResult.Error -> {
+                        _uiState.update { it.copy(isLoading = false, errorMessage = result.message, infoMessage = null) }
+                    }
                 }
-                is AuthResult.Error -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "Login failed. Check your connection and try again.",
+                        infoMessage = null,
+                    )
                 }
             }
         }
@@ -70,6 +90,7 @@ class LoginViewModel(
                         )
                     }
                 }
+                is AuthResult.PendingEmailVerification -> Unit
                 is AuthResult.Error -> {
                     _uiState.update { it.copy(errorMessage = result.message, infoMessage = null) }
                 }
@@ -85,6 +106,10 @@ class LoginViewModel(
                 is AuthResult.Success -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = null) }
                     navEmitter.emit(AuthNavEvent.NavigateToDashboard)
+                }
+                is AuthResult.PendingEmailVerification -> {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = null) }
+                    navEmitter.emit(AuthNavEvent.NavigateToVerifyEmail(result.email))
                 }
                 is AuthResult.Error -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
@@ -182,6 +207,7 @@ class SignupViewModel(
                     }
                     navEmitter.emit(AuthNavEvent.NavigateToVerifyEmail(email))
                 }
+                is AuthResult.PendingEmailVerification -> Unit
                 is AuthResult.Error -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
                 }
@@ -209,7 +235,13 @@ class VerificationViewModel(
     val navigationEvents: SharedFlow<AuthNavEvent> = navEmitter.events
 
     fun setEmail(email: String) {
-        _uiState.update { it.copy(email = email, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                email = email,
+                errorMessage = null,
+                infoMessage = "A DevConnect verification link was sent to $email.",
+            )
+        }
     }
 
     fun updateCode(value: String) {
@@ -226,6 +258,7 @@ class VerificationViewModel(
                         errorMessage = null,
                     )
                 }
+                is AuthResult.PendingEmailVerification -> Unit
                 is AuthResult.Error -> _uiState.update { it.copy(errorMessage = result.message, infoMessage = null) }
             }
         }
@@ -240,6 +273,7 @@ class VerificationViewModel(
                     _uiState.update { it.copy(isLoading = false, errorMessage = null, infoMessage = "Email verified.") }
                     navEmitter.emit(AuthNavEvent.NavigateToDashboard)
                 }
+                is AuthResult.PendingEmailVerification -> Unit
                 is AuthResult.Error -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
                 }

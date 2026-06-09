@@ -52,6 +52,7 @@ class TasksRepositoryFirestore(
         val uid = requireSignedInUser() ?: return@withContext authRequiredFailure()
         runCatching {
             val resolvedProjectId = projectId?.takeIf { it.isNotBlank() } ?: resolveProjectId(uid)
+                ?: error("Create or join a project before adding tasks.")
             projectsDataSource.createProjectTask(
                 projectId = resolvedProjectId,
                 createdByUserId = uid,
@@ -106,12 +107,17 @@ class TasksRepositoryFirestore(
         val uid = requireSignedInUser() ?: return@withContext authRequiredFailure()
         runCatching {
             val projectId = resolveProjectId(uid)
+                ?: error("Create or join a project before updating tasks.")
             block(projectId)
         }.toTaskResult("update task")
     }
 
     private fun observeTasksForUser(uid: String): Flow<TaskContent> = flow {
         val projectId = resolveProjectId(uid)
+            ?: run {
+                emit(TaskContent(statusMessage = "Create or join a project to see tasks here."))
+                return@flow
+            }
         val project = projectsDataSource.fetchProject(projectId)
         val isOwner = project?.ownerUserId == uid
         projectsDataSource.observeProjectTasks(projectId).collect { tasks ->
@@ -141,14 +147,13 @@ class TasksRepositoryFirestore(
         emit(taskErrorContent(error))
     }
 
-    private suspend fun resolveProjectId(uid: String): String {
+    private suspend fun resolveProjectId(uid: String): String? {
         val owned = runCatching { projectsDataSource.fetchOwnedProjects(uid) }
             .getOrDefault(emptyList())
         if (owned.isNotEmpty()) return owned.first().id
         val memberIds = runCatching { projectsDataSource.fetchMemberProjectIds(uid) }
             .getOrDefault(emptySet())
-        if (memberIds.isNotEmpty()) return memberIds.first()
-        return DEFAULT_PROJECT_ID
+        return memberIds.firstOrNull()
     }
 
     private fun requireSignedInUser(): String? {
@@ -165,11 +170,8 @@ class TasksRepositoryFirestore(
         onFailure = { error ->
             val detail = error.message.orEmpty()
             val message = when {
-                detail.contains("PERMISSION_DENIED", ignoreCase = true) -> {
-                    val uid = firebaseAuth.currentUser?.uid ?: "unknown"
-                    "Cannot $action. Add projects/proj_devconnect_mobile/members/$uid " +
-                        "in Firestore (run: npm run project:add-me in firestore/)."
-                }
+                detail.contains("PERMISSION_DENIED", ignoreCase = true) ->
+                    "Cannot $action. You must be a project owner or member. Ask the owner to accept your join request."
                 else -> "Cannot $action. $detail"
             }
             Result.failure(IllegalStateException(message, error))
@@ -195,7 +197,4 @@ class TasksRepositoryFirestore(
         assigneeName: String?,
     ): TaskItem = TaskItemMapper.fromDoc(task, currentUserId, assigneeName)
 
-    private companion object {
-        const val DEFAULT_PROJECT_ID = "proj_devconnect_mobile"
-    }
 }

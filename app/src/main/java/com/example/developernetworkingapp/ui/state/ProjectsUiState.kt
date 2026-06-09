@@ -8,6 +8,7 @@ data class ProjectsUiState(
     val displayContent: ProjectBoardContent? = null,
     val selectedProjectName: String = "",
     val incomingProjectJoinRequests: List<ProjectJoinRequest> = emptyList(),
+    val joinRequestLoadError: String? = null,
     val projectJoinActionInFlight: String? = null,
     val isLoading: Boolean = true,
     val isCreatingProject: Boolean = false,

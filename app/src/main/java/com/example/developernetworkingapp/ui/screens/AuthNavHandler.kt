@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.di.appViewModel
+import com.example.developernetworkingapp.di.authViewModel
 import com.example.developernetworkingapp.ui.event.AuthNavEvent
 import com.example.developernetworkingapp.ui.event.ProfileNavEvent
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
@@ -15,9 +16,9 @@ import kotlinx.coroutines.flow.merge
 
 @Composable
 fun CollectAuthNavEvents(navController: NavController) {
-    val loginViewModel: LoginViewModel = appViewModel()
-    val signupViewModel: SignupViewModel = appViewModel()
-    val verificationViewModel: VerificationViewModel = appViewModel()
+    val loginViewModel: LoginViewModel = authViewModel()
+    val signupViewModel: SignupViewModel = authViewModel()
+    val verificationViewModel: VerificationViewModel = authViewModel()
 
     LaunchedEffect(loginViewModel, signupViewModel, verificationViewModel, navController) {
         merge(
