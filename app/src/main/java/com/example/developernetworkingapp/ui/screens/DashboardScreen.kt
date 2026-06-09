@@ -66,6 +66,9 @@ import androidx.navigation.NavController
 import com.example.developernetworkingapp.domain.model.ActivityItem
 import com.example.developernetworkingapp.domain.model.CollaboratorMatch
 import com.example.developernetworkingapp.domain.model.MatchRequest
+import com.example.developernetworkingapp.domain.model.ProjectJoinRequest
+import com.example.developernetworkingapp.domain.model.ProjectJoinStatus
+import com.example.developernetworkingapp.domain.model.ProjectPost
 import com.example.developernetworkingapp.domain.model.EventHighlight
 import com.example.developernetworkingapp.ui.state.FeedPostState
 import com.example.developernetworkingapp.ui.components.CreateProjectDialog
@@ -106,7 +109,9 @@ fun DashboardRoute(
         onToggleComments = viewModel::toggleCommentsVisibility,
         onCommentDraftChange = viewModel::updateCommentDraft,
         onSubmitComment = viewModel::submitComment,
-        onProjectApplicationSubmitted = viewModel::notifyProjectApplicationSubmitted,
+        onSendProjectJoinRequest = viewModel::sendProjectJoinRequest,
+        onAcceptProjectJoinRequest = viewModel::acceptProjectJoinRequest,
+        onDeclineProjectJoinRequest = viewModel::declineProjectJoinRequest,
         onSendMatchInvite = viewModel::sendMatchInvite,
         onAcceptMatchRequest = viewModel::acceptMatchRequest,
         onDeclineMatchRequest = viewModel::declineMatchRequest,
@@ -127,7 +132,15 @@ fun DashboardScreen(
     onToggleComments: (String) -> Unit,
     onCommentDraftChange: (String, String) -> Unit,
     onSubmitComment: (String) -> Unit,
-    onProjectApplicationSubmitted: () -> Unit,
+    onSendProjectJoinRequest: (
+        projectId: String,
+        projectTitle: String,
+        ownerUserId: String,
+        requestedRole: String,
+        message: String?,
+    ) -> Unit = { _, _, _, _, _ -> },
+    onAcceptProjectJoinRequest: (String) -> Unit = {},
+    onDeclineProjectJoinRequest: (String) -> Unit = {},
     onSendMatchInvite: (String, String?) -> Unit = { _, _ -> },
     onAcceptMatchRequest: (String) -> Unit = {},
     onDeclineMatchRequest: (String) -> Unit = {},
@@ -137,8 +150,7 @@ fun DashboardScreen(
     val content = state.content
     var showInviteDialog by rememberSaveable { mutableStateOf(false) }
     var selectedCollaborator by remember { mutableStateOf<CollaboratorMatch?>(null) }
-    var showJoinProjectDialog by rememberSaveable { mutableStateOf(false) }
-    var selectedProject by remember { mutableStateOf<String?>(null) }
+    var selectedJoinPost by remember { mutableStateOf<ProjectPost?>(null) }
     var activeNotification by rememberSaveable { mutableStateOf<String?>(null) }
     val shortcuts = listOf(
         ShortcutItem("Task Board", AppRoutes.TASKS, Icons.Outlined.Task),
@@ -183,11 +195,14 @@ fun DashboardScreen(
         )
     }
 
-    if (showJoinProjectDialog && selectedProject != null) {
-        JoinProjectTeamDialog(
-            projectTitle = selectedProject!!,
-            onDismissRequest = { showJoinProjectDialog = false; selectedProject = null },
-            onSubmit = onProjectApplicationSubmitted
+    selectedJoinPost?.let { post ->
+        JoinProjectFormDialog(
+            projectTitle = post.title,
+            onDismissRequest = { selectedJoinPost = null },
+            onSubmit = { role, message ->
+                onSendProjectJoinRequest(post.projectId, post.title, post.ownerUserId, role, message)
+                selectedJoinPost = null
+            },
         )
     }
 
@@ -305,12 +320,34 @@ fun DashboardScreen(
         items(state.feedPosts, key = { it.id }) { postState ->
             ProjectPostCard(
                 postState = postState,
+                joinActionInFlight = state.projectJoinActionInFlight == postState.post.projectId,
                 onToggleLike = { onToggleLike(postState.id) },
                 onToggleComments = { onToggleComments(postState.id) },
                 onToggleExpanded = { onTogglePostExpanded(postState.id) },
                 onCommentDraftChange = { onCommentDraftChange(postState.id, it) },
-                onSubmitComment = { onSubmitComment(postState.id) }
+                onSubmitComment = { onSubmitComment(postState.id) },
+                onSendJoinRequest = { role, message ->
+                    val post = postState.post
+                    onSendProjectJoinRequest(
+                        post.projectId,
+                        post.title,
+                        post.ownerUserId,
+                        role,
+                        message,
+                    )
+                },
             )
+        }
+        if (state.incomingProjectJoinRequests.isNotEmpty()) {
+            item { SectionTitle("Project Join Requests") }
+            items(state.incomingProjectJoinRequests, key = { it.id }) { request ->
+                PendingProjectJoinRequestCard(
+                    request = request,
+                    isResolving = state.projectJoinActionInFlight == request.id,
+                    onAccept = { onAcceptProjectJoinRequest(request.id) },
+                    onDecline = { onDeclineProjectJoinRequest(request.id) },
+                )
+            }
         }
         item { SectionTitle("Feature Modules") }
         items(content?.modules ?: emptyList()) { module ->
@@ -367,10 +404,12 @@ fun DashboardScreen(
             }
         }
         items(content?.projects ?: emptyList()) { project ->
+            val matchingPost = state.feedPosts.firstOrNull { it.post.title == project.title }?.post
             ProjectProgressCard(
-                project.title,
-                project.description,
-                project.progress,
+                title = project.title,
+                description = project.description,
+                progress = project.progress,
+                joinStatus = matchingPost?.joinStatus ?: ProjectJoinStatus.AVAILABLE,
                 onViewClick = {
                     navController.navigate(
                         AppRoutes.detailRoute(
@@ -382,9 +421,8 @@ fun DashboardScreen(
                     )
                 },
                 onJoinClick = {
-                    selectedProject = project.title
-                    showJoinProjectDialog = true
-                }
+                    matchingPost?.let { selectedJoinPost = it }
+                },
             )
         }
         item { SectionTitle("Realtime Activity") }
@@ -449,8 +487,9 @@ private fun ProjectProgressCard(
     title: String,
     description: String,
     progress: Int,
+    joinStatus: ProjectJoinStatus,
     onViewClick: () -> Unit,
-    onJoinClick: () -> Unit
+    onJoinClick: () -> Unit,
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -463,7 +502,32 @@ private fun ProjectProgressCard(
             Text("Progress: $progress%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onViewClick) { Text("View details") }
-                TextButton(onClick = onJoinClick) { Text("Join team") }
+                when (joinStatus) {
+                    ProjectJoinStatus.MEMBER -> {
+                        Text(
+                            "You're in this project",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = ElectricGreen,
+                        )
+                    }
+                    ProjectJoinStatus.OWNER -> {
+                        Text(
+                            "Your project",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    ProjectJoinStatus.PENDING -> {
+                        Text(
+                            "Request pending",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    ProjectJoinStatus.AVAILABLE -> {
+                        TextButton(onClick = onJoinClick) { Text("Join team") }
+                    }
+                }
             }
         }
     }
@@ -488,15 +552,16 @@ private fun ShortcutRow(shortcuts: List<ShortcutItem>, navController: NavControl
 @Composable
 private fun ProjectPostCard(
     postState: FeedPostState,
+    joinActionInFlight: Boolean,
     onToggleLike: () -> Unit,
     onToggleComments: () -> Unit,
     onToggleExpanded: () -> Unit,
     onCommentDraftChange: (String) -> Unit,
-    onSubmitComment: () -> Unit
+    onSubmitComment: () -> Unit,
+    onSendJoinRequest: (requestedRole: String, message: String?) -> Unit,
 ) {
     val post = postState.post
     val baseLikes = remember(post.title) { (post.title.hashCode().absoluteValue % 120) + 4 }
-    var hasJoined by remember { mutableStateOf(false) }
     var hasMessaged by remember { mutableStateOf(false) }
     var showJoinForm by remember { mutableStateOf(false) }
     var showMessageForm by remember { mutableStateOf(false) }
@@ -505,7 +570,10 @@ private fun ProjectPostCard(
         JoinProjectFormDialog(
             projectTitle = post.title,
             onDismissRequest = { showJoinForm = false },
-            onSubmit = { hasJoined = true }
+            onSubmit = { role, message ->
+                onSendJoinRequest(role, message)
+                showJoinForm = false
+            },
         )
     }
 
@@ -666,12 +734,43 @@ private fun ProjectPostCard(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Button(
-                        onClick = { showJoinForm = true },
-                        enabled = !hasJoined,
-                        modifier = Modifier.height(AppDesignTokens.compactButtonHeight)
-                    ) {
-                        Text(if (hasJoined) "Joined" else "Join", style = MaterialTheme.typography.labelMedium)
+                    when (post.joinStatus) {
+                        ProjectJoinStatus.OWNER -> {
+                            AssistChip(
+                                onClick = {},
+                                enabled = false,
+                                label = { Text("Your project", style = MaterialTheme.typography.labelMedium) },
+                            )
+                        }
+                        ProjectJoinStatus.MEMBER -> {
+                            AssistChip(
+                                onClick = {},
+                                enabled = false,
+                                label = { Text("You're in this project", style = MaterialTheme.typography.labelMedium) },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = ElectricGreen.copy(alpha = 0.2f),
+                                ),
+                            )
+                        }
+                        ProjectJoinStatus.PENDING -> {
+                            AssistChip(
+                                onClick = {},
+                                enabled = false,
+                                label = { Text("Request pending", style = MaterialTheme.typography.labelMedium) },
+                            )
+                        }
+                        ProjectJoinStatus.AVAILABLE -> {
+                            Button(
+                                onClick = { showJoinForm = true },
+                                enabled = !joinActionInFlight && post.projectId.isNotBlank(),
+                                modifier = Modifier.height(AppDesignTokens.compactButtonHeight),
+                            ) {
+                                Text(
+                                    if (joinActionInFlight) "Sending…" else "Join",
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
                     }
                     TextButton(
                         onClick = { showMessageForm = true },
@@ -776,6 +875,52 @@ private fun InteractiveGradientCard(
                     Text("Learn More", style = MaterialTheme.typography.labelLarge, textDecoration = TextDecoration.Underline)
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingProjectJoinRequestCard(
+    request: ProjectJoinRequest,
+    isResolving: Boolean,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = AppDesignTokens.cardShape,
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "${request.fromDisplayName} wants to join ${request.projectTitle}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Role: ${request.requestedRole}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            request.message?.takeIf { it.isNotBlank() }?.let { message ->
+                Text(message, style = MaterialTheme.typography.bodyMedium)
+            }
+            Text(
+                text = request.relativeTime,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onAccept, enabled = !isResolving) {
+                    Text(if (isResolving) "Working…" else "Accept")
+                }
+                TextButton(onClick = onDecline, enabled = !isResolving) {
+                    Text("Decline")
                 }
             }
         }
@@ -914,14 +1059,12 @@ private fun buildProjectDetailDescription(summary: String, progress: Int): Strin
 private fun JoinProjectFormDialog(
     projectTitle: String,
     onDismissRequest: () -> Unit,
-    onSubmit: () -> Unit = {}
+    onSubmit: (requestedRole: String, message: String?) -> Unit = { _, _ -> },
 ) {
-    var yourName by rememberSaveable { mutableStateOf("") }
-    var experience by rememberSaveable { mutableStateOf("") }
-    val availableRoles = listOf("Frontend", "Backend", "Full Stack")
+    val availableRoles = listOf("Frontend", "Backend", "Full Stack", "Mobile", "DevOps")
     var selectedRole by rememberSaveable { mutableStateOf(availableRoles.first()) }
     var roleExpanded by remember { mutableStateOf(false) }
-    var portfolio by rememberSaveable { mutableStateOf("") }
+    var pitch by rememberSaveable { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
@@ -936,20 +1079,10 @@ private fun JoinProjectFormDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text("Interested in: $projectTitle", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                OutlinedTextField(
-                    value = yourName,
-                    onValueChange = { yourName = it },
-                    label = { Text("Your name *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = experience,
-                    onValueChange = { experience = it },
-                    label = { Text("Years of experience *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    supportingText = { Text("e.g., 3 years") }
+                Text(
+                    "Your request goes to the project owner. They can accept or decline.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 ExposedDropdownMenuBox(
                     expanded = roleExpanded,
@@ -985,22 +1118,20 @@ private fun JoinProjectFormDialog(
                     }
                 }
                 OutlinedTextField(
-                    value = portfolio,
-                    onValueChange = { portfolio = it },
-                    label = { Text("Portfolio/GitHub link") },
+                    value = pitch,
+                    onValueChange = { pitch = it },
+                    label = { Text("Why you want to join (optional)") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    maxLines = 3,
                 )
             }
         },
         confirmButton = {
             Button(onClick = {
-                if (yourName.isNotBlank() && experience.isNotBlank()) {
-                    onSubmit()
-                    onDismissRequest()
-                }
+                onSubmit(selectedRole, pitch.trim().takeIf { it.isNotBlank() })
+                onDismissRequest()
             }) {
-                Text("Submit Application")
+                Text("Send join request")
             }
         },
         dismissButton = {

@@ -3,6 +3,7 @@ package com.example.developernetworkingapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.developernetworkingapp.data.repository.ProjectsRepository
+import com.example.developernetworkingapp.data.repository.DashboardRepository
 import com.example.developernetworkingapp.data.repository.TasksRepository
 import com.example.developernetworkingapp.ui.state.ProjectsUiState
 import kotlinx.coroutines.channels.BufferOverflow
@@ -17,6 +18,7 @@ import kotlinx.coroutines.launch
 
 class ProjectsViewModel(
     private val repository: ProjectsRepository,
+    private val dashboardRepository: DashboardRepository,
     private val tasksRepository: TasksRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ProjectsUiState())
@@ -58,22 +60,25 @@ class ProjectsViewModel(
     fun createProject(title: String, description: String, stackLabel: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isCreatingProject = true, createProjectError = null) }
-            val result = repository.createProject(title, description, stackLabel)
-            result.fold(
-                onSuccess = {
-                    _uiState.update { it.copy(isCreatingProject = false, createProjectError = null) }
-                    emitEvent(ProjectsUiEvent.ProjectCreated)
-                    emitEvent(ProjectsUiEvent.ShowNotification("Project \"$title\" created. Kanban board is ready."))
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
-                            isCreatingProject = false,
-                            createProjectError = error.message ?: "Could not create project.",
-                        )
-                    }
-                },
-            )
+            try {
+                val result = repository.createProject(title, description, stackLabel)
+                result.fold(
+                    onSuccess = {
+                        _uiState.update { it.copy(isCreatingProject = false, createProjectError = null) }
+                        repository.invalidateProjects()
+                        dashboardRepository.invalidateDashboard()
+                        emitEvent(ProjectsUiEvent.ProjectCreated)
+                        emitEvent(ProjectsUiEvent.ShowNotification("Project \"$title\" created. Kanban board is ready."))
+                    },
+                    onFailure = { error ->
+                        val message = error.message ?: "Could not create project."
+                        _uiState.update { it.copy(isCreatingProject = false, createProjectError = message) }
+                        emitEvent(ProjectsUiEvent.ShowNotification(message))
+                    },
+                )
+            } finally {
+                _uiState.update { it.copy(isCreatingProject = false) }
+            }
         }
     }
 
@@ -81,19 +86,35 @@ class ProjectsViewModel(
         _uiState.update { it.copy(createProjectError = null) }
     }
 
-    fun createTask(title: String, priority: String, boardColumn: String) {
+    fun createTask(
+        title: String,
+        priority: String,
+        boardColumn: String,
+        assigneeUserId: String? = null,
+    ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isCreatingTask = true, createTaskError = null) }
+            val projectId = _uiState.value.content?.projectId
             val result = tasksRepository.createTask(
                 title = title,
                 priority = priority,
                 boardColumn = boardColumn,
+                assigneeUserId = assigneeUserId,
+                projectId = projectId,
             )
             result.fold(
                 onSuccess = {
                     _uiState.update { it.copy(isCreatingTask = false, createTaskError = null) }
                     emitEvent(ProjectsUiEvent.TaskCreated)
-                    emitEvent(ProjectsUiEvent.ShowNotification("Task \"$title\" added to your board."))
+                    val assigneeName = _uiState.value.content?.members
+                        ?.firstOrNull { it.userId == assigneeUserId }
+                        ?.displayName
+                    val message = if (assigneeName != null) {
+                        "Task \"$title\" assigned to $assigneeName."
+                    } else {
+                        "Task \"$title\" added to your board."
+                    }
+                    emitEvent(ProjectsUiEvent.ShowNotification(message))
                 },
                 onFailure = { error ->
                     _uiState.update {

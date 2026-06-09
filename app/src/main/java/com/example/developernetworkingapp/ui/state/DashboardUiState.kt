@@ -2,6 +2,7 @@ package com.example.developernetworkingapp.ui.state
 
 import com.example.developernetworkingapp.domain.model.DashboardContent
 import com.example.developernetworkingapp.domain.model.MatchRequest
+import com.example.developernetworkingapp.domain.model.ProjectJoinRequest
 import com.example.developernetworkingapp.domain.model.ProjectPost
 
 data class FeedPostState(
@@ -20,7 +21,9 @@ data class DashboardUiState(
     val feedPosts: List<FeedPostState> = emptyList(),
     val incomingMatchRequests: List<MatchRequest> = emptyList(),
     val outgoingMatchRequests: List<MatchRequest> = emptyList(),
+    val incomingProjectJoinRequests: List<ProjectJoinRequest> = emptyList(),
     val matchActionInFlight: String? = null,
+    val projectJoinActionInFlight: String? = null,
     val errorMessage: String? = null,
     val showCreateProjectDialog: Boolean = false,
     val isCreatingProject: Boolean = false,

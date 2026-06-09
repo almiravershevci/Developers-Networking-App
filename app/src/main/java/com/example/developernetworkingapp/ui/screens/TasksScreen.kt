@@ -50,7 +50,9 @@ fun TaskManagementRoute(padding: PaddingValues, navController: NavController) {
         state = state,
         navController = navController,
         onMoveTask = viewModel::moveTaskToStatus,
-        onCreateTask = viewModel::createTask,
+        onCreateTask = { title, priority, boardColumn, assigneeUserId ->
+            viewModel.createTask(title, priority, boardColumn, assigneeUserId)
+        },
         onClearError = viewModel::clearActionError,
         onClearCreateTaskError = viewModel::clearCreateTaskError,
     )
@@ -62,7 +64,7 @@ fun TaskManagementScreen(
     state: TasksUiState,
     navController: NavController,
     onMoveTask: (taskId: String, statusLabel: String) -> Unit = { _, _ -> },
-    onCreateTask: (title: String, priority: String, boardColumn: String) -> Unit = { _, _, _ -> },
+    onCreateTask: (title: String, priority: String, boardColumn: String, assigneeUserId: String?) -> Unit = { _, _, _, _ -> },
     onClearError: () -> Unit = {},
     onClearCreateTaskError: () -> Unit = {},
 ) {
@@ -87,9 +89,9 @@ fun TaskManagementScreen(
                 showCreateTaskDialog = false
                 onClearCreateTaskError()
             },
-            onCreate = { title, priority, boardColumn ->
+            onCreate = { title, priority, boardColumn, assigneeUserId ->
                 taskSubmitRequested = true
-                onCreateTask(title, priority, boardColumn)
+                onCreateTask(title, priority, boardColumn, assigneeUserId)
             },
         )
     }

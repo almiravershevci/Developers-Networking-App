@@ -29,20 +29,12 @@ class FirestoreAdminDataSource(
 ) {
     suspend fun fetchDirectoryUsers(limit: Long = 40): List<UserProfileDoc> {
         val snap = db.collection(FirestorePaths.USERS).limit(limit).get().await()
-        return snap.documents.mapNotNull { doc ->
-            doc.toObject(UserProfileDoc::class.java)?.copy(id = doc.id)
-        }
+        return snap.documents.mapNotNull { doc -> doc.toUserProfileDocSafe() }
     }
 
     suspend fun fetchDirectoryProjects(limit: Long = 40): List<ProjectDoc> {
         val snap = db.collection(FirestorePaths.PROJECTS).limit(limit).get().await()
-        return snap.documents.mapNotNull { doc ->
-            doc.toObject(ProjectDoc::class.java)?.copy(
-                id = doc.id,
-                updatedAt = doc.readTimestamp("updatedAt"),
-                createdAt = doc.readTimestamp("createdAt"),
-            )
-        }
+        return snap.documents.mapNotNull { doc -> doc.toProjectDocSafe() }
     }
 
     suspend fun fetchPendingMatchRequests(limit: Long = 20): List<MatchRequestDoc> {

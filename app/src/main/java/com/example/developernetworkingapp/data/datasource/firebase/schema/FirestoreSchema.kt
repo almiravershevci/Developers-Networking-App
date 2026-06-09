@@ -49,7 +49,8 @@ data class UsernameRegistryDoc(
 
 /** Denormalized counters and badges; written by privileged automation only (Cloud Functions / Admin). */
 data class UserStatsDoc(
-    @DocumentId val userId: String = "",
+    /** Document id (userStats/{uid}); also stored as a field in seed data. */
+    val userId: String = "",
     val schemaVersion: Int = 1,
     val activeProjectsCount: Int = 0,
     val openTasksCount: Int = 0,
@@ -116,6 +117,20 @@ data class MatchRequestDoc(
     val schemaVersion: Int = 1,
     val fromUserId: String = "",
     val toUserId: String = "",
+    val workflowStatus: String = MatchWorkflow.PENDING,
+    val message: String? = null,
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    val resolvedAt: Timestamp? = null,
+)
+
+data class ProjectJoinRequestDoc(
+    @DocumentId val id: String = "",
+    val schemaVersion: Int = 1,
+    val projectId: String = "",
+    val projectTitle: String = "",
+    val fromUserId: String = "",
+    val toUserId: String = "",
+    val requestedRole: String = "Contributor",
     val workflowStatus: String = MatchWorkflow.PENDING,
     val message: String? = null,
     @ServerTimestamp val createdAt: Timestamp? = null,

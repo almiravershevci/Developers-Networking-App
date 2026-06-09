@@ -26,6 +26,8 @@ import com.example.developernetworkingapp.data.repository.impl.ProjectsRepositor
 import com.example.developernetworkingapp.data.repository.impl.MatchRepositoryFirestore
 import com.example.developernetworkingapp.data.repository.impl.TasksRepositoryFirestore
 import com.example.developernetworkingapp.data.repository.MatchRepository
+import com.example.developernetworkingapp.data.repository.ProjectJoinRepository
+import com.example.developernetworkingapp.data.repository.impl.ProjectJoinRepositoryFirestore
 import com.example.developernetworkingapp.data.repository.NotificationDispatcher
 import com.example.developernetworkingapp.data.repository.NotificationsRepository
 import com.example.developernetworkingapp.data.repository.ProfileRepository
@@ -64,6 +66,7 @@ object AppContainer {
     }
     val tasksRepository: TasksRepository by lazy { TasksRepositoryFirestore() }
     val matchRepository: MatchRepository by lazy { MatchRepositoryFirestore() }
+    val projectJoinRepository: ProjectJoinRepository by lazy { ProjectJoinRepositoryFirestore() }
     val eventsRepository: EventsRepository by lazy { EventsRepositoryFirestore() }
     val chatRepository: ChatRepository by lazy { ChatRepositoryFirestore() }
     val chatMuteStore: ChatMuteStore

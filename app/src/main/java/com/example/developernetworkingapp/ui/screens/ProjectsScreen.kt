@@ -89,7 +89,7 @@ fun ProjectBoardScreen(
     events: SharedFlow<ProjectsUiEvent>,
     onInviteDeveloper: () -> Unit,
     onCreateProject: (String, String, String) -> Unit,
-    onCreateTask: (String, String, String) -> Unit,
+    onCreateTask: (String, String, String, String?) -> Unit,
     onDismissCreateProject: () -> Unit,
     onDismissCreateTask: () -> Unit,
 ) {
@@ -166,9 +166,15 @@ fun ProjectBoardScreen(
     }
 
     if (showCreateTaskDialog) {
+        val assignableMembers = if (content?.isOwner == true) {
+            content.members.filter { it.role != "owner" }
+        } else {
+            emptyList()
+        }
         CreateTaskDialog(
             isSubmitting = state.isCreatingTask,
             errorMessage = state.createTaskError,
+            assigneeOptions = assignableMembers,
             onDismiss = {
                 showCreateTaskDialog = false
                 onDismissCreateTask()
@@ -252,8 +258,10 @@ fun ProjectBoardScreen(
             ) {
                 SectionTitle("Project Workspace")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { showCreateTaskDialog = true }) {
-                        Text("Add task")
+                    if (content?.isOwner != false) {
+                        Button(onClick = { showCreateTaskDialog = true }) {
+                            Text("Add task")
+                        }
                     }
                     Button(onClick = { showCreateProjectDialog = true }) {
                         Text("Create project")

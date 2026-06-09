@@ -45,12 +45,13 @@ class TasksRepositoryFirestore(
         priority: String,
         assigneeUserId: String?,
         boardColumn: String,
+        projectId: String?,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         val uid = requireSignedInUser() ?: return@withContext authRequiredFailure()
         runCatching {
-            val projectId = resolveProjectId(uid)
+            val resolvedProjectId = projectId?.takeIf { it.isNotBlank() } ?: resolveProjectId(uid)
             projectsDataSource.createProjectTask(
-                projectId = projectId,
+                projectId = resolvedProjectId,
                 createdByUserId = uid,
                 title = title,
                 priority = priority,
@@ -99,15 +100,29 @@ class TasksRepositoryFirestore(
 
     private fun observeTasksForUser(uid: String): Flow<TaskContent> = flow {
         val projectId = resolveProjectId(uid)
+        val project = projectsDataSource.fetchProject(projectId)
+        val isOwner = project?.ownerUserId == uid
         projectsDataSource.observeProjectTasks(projectId).collect { tasks ->
-            val assigneeIds = tasks.mapNotNull { it.assigneeUserId }.distinct()
+            val visibleTasks = if (isOwner) {
+                tasks
+            } else {
+                tasks.filter { task ->
+                    task.assigneeUserId == null || task.assigneeUserId == uid
+                }
+            }
+            val assigneeIds = visibleTasks.mapNotNull { it.assigneeUserId }.distinct()
             val profiles = runCatching {
                 userDataSource.fetchUserProfiles(assigneeIds)
             }.getOrDefault(emptyMap())
             emit(
                 TaskContent(
-                    items = tasks.map { task ->
+                    items = visibleTasks.map { task ->
                         mapToTaskItem(task, uid, profiles[task.assigneeUserId]?.displayName)
+                    },
+                    statusMessage = if (!isOwner && visibleTasks.isEmpty()) {
+                        "No tasks assigned to you yet. Your project owner can assign work from the Projects tab."
+                    } else {
+                        null
                     },
                 ),
             )
@@ -120,6 +135,9 @@ class TasksRepositoryFirestore(
         val owned = runCatching { projectsDataSource.fetchOwnedProjects(uid) }
             .getOrDefault(emptyList())
         if (owned.isNotEmpty()) return owned.first().id
+        val memberIds = runCatching { projectsDataSource.fetchMemberProjectIds(uid) }
+            .getOrDefault(emptySet())
+        if (memberIds.isNotEmpty()) return memberIds.first()
         return DEFAULT_PROJECT_ID
     }
 

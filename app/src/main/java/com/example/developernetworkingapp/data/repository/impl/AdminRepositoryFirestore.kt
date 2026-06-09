@@ -319,61 +319,70 @@ class AdminRepositoryFirestore(
     }
 
     private suspend fun refreshCatalog() {
-        if (!isCurrentUserAdmin()) {
-            _snapshot.value = AdminDashboardSnapshot.empty(
-                catalogSourceLabel = "Admin only — set accountRole=admin on your user doc",
-            )
-            return
-        }
-
-        val users = runCatching { adminDataSource.fetchDirectoryUsers() }.getOrDefault(emptyList())
-        val projects = runCatching { adminDataSource.fetchDirectoryProjects() }.getOrDefault(emptyList())
-        val pendingMatches = runCatching { adminDataSource.fetchPendingMatchRequests() }.getOrDefault(emptyList())
-        val inbox = runCatching { adminDataSource.fetchRecentInbox() }.getOrDefault(emptyList())
-        val tickets = runCatching { adminDataSource.fetchSupportTickets() }.getOrDefault(emptyList())
-        val reports = runCatching { adminDataSource.fetchContentReports() }.getOrDefault(emptyList())
-        val topFeedback = runCatching { adminDataSource.fetchTopProductFeedback() }.getOrNull()
-        if (!platformConfigLoaded) {
-            runCatching { adminDataSource.fetchPlatformConfig() }.getOrNull()?.let { config ->
-                platformSettings = PlatformSettingsSnapshot(
-                    defaultNotificationsEnabled = config.defaultNotificationsEnabled,
-                    strictTransportEncryption = config.strictTransportEncryption,
-                    analyticsSharingEnabled = config.analyticsSharingEnabled,
-                    themeDraftLabel = config.themeDraftLabel,
+        try {
+            if (!isCurrentUserAdmin()) {
+                _snapshot.value = AdminDashboardSnapshot.empty(
+                    catalogSourceLabel = "Admin only — set accountRole=admin on your user doc",
                 )
-                platformConfigLoaded = true
+                return
             }
-        }
-        val ownerProfiles = runCatching {
-            userDataSource.fetchUserProfiles(projects.map { it.ownerUserId }.distinct())
-        }.getOrDefault(emptyMap())
 
-        val adminUid = firebaseAuth.currentUser?.uid.orEmpty()
-        val adminProfile = userDataSource.fetchUserProfile(adminUid)
+            val users = runCatching { adminDataSource.fetchDirectoryUsers() }.getOrDefault(emptyList())
+            val projects = runCatching { adminDataSource.fetchDirectoryProjects() }.getOrDefault(emptyList())
+            val pendingMatches = runCatching { adminDataSource.fetchPendingMatchRequests() }.getOrDefault(emptyList())
+            val inbox = runCatching { adminDataSource.fetchRecentInbox() }.getOrDefault(emptyList())
+            val tickets = runCatching { adminDataSource.fetchSupportTickets() }.getOrDefault(emptyList())
+            val reports = runCatching { adminDataSource.fetchContentReports() }.getOrDefault(emptyList())
+            val topFeedback = runCatching { adminDataSource.fetchTopProductFeedback() }.getOrNull()
+            if (!platformConfigLoaded) {
+                runCatching { adminDataSource.fetchPlatformConfig() }.getOrNull()?.let { config ->
+                    platformSettings = PlatformSettingsSnapshot(
+                        defaultNotificationsEnabled = config.defaultNotificationsEnabled,
+                        strictTransportEncryption = config.strictTransportEncryption,
+                        analyticsSharingEnabled = config.analyticsSharingEnabled,
+                        themeDraftLabel = config.themeDraftLabel,
+                    )
+                    platformConfigLoaded = true
+                }
+            }
+            val ownerProfiles = runCatching {
+                userDataSource.fetchUserProfiles(projects.map { it.ownerUserId }.distinct())
+            }.getOrDefault(emptyMap())
 
-        _snapshot.update { current ->
-            current.copy(
-                catalogSourceLabel = "Firestore · ${users.size} users · ${projects.size} projects",
-                users = users.map { it.toAdminUserRow() },
-                projects = projects.map { project ->
-                    project.toAdminProjectRow(ownerProfiles[project.ownerUserId]?.displayName)
-                },
-                contentQueue = pendingMatches.map { it.toQueueItem() },
-                reports = reports.map { it.toReportRow() },
-                outboundNotifications = (localOutbound + inbox.map { it.toOutboundRow() }).take(20),
-                tickets = tickets.map { it.toTicketRow() },
-                feedbackSuggestion = topFeedback?.suggestion ?: "No feedback yet",
-                feedbackVotes = topFeedback?.voteCount ?: 0,
-                adminAccounts = listOfNotNull(adminProfile?.toAdminAccountRow()),
-                platformSettings = platformSettings,
-                analyticsExportsTotal = analyticsExportsTotal,
-                quickStatNewUsers7d = users.size,
-                quickStatNewProjects7d = projects.count {
-                    it.lifecycleStatus == ProjectLifecycle.RECRUITING
-                },
-                activityTrendUp = projects.isNotEmpty(),
-                nextPushSlotLabel = nextPushSlotLabel,
-            )
+            val adminUid = firebaseAuth.currentUser?.uid.orEmpty()
+            val adminProfile = userDataSource.fetchUserProfile(adminUid)
+
+            _snapshot.update { current ->
+                current.copy(
+                    catalogSourceLabel = "Firestore · ${users.size} users · ${projects.size} projects",
+                    users = users.map { it.toAdminUserRow() },
+                    projects = projects.map { project ->
+                        project.toAdminProjectRow(ownerProfiles[project.ownerUserId]?.displayName)
+                    },
+                    contentQueue = pendingMatches.map { it.toQueueItem() },
+                    reports = reports.map { it.toReportRow() },
+                    outboundNotifications = (localOutbound + inbox.map { it.toOutboundRow() }).take(20),
+                    tickets = tickets.map { it.toTicketRow() },
+                    feedbackSuggestion = topFeedback?.suggestion ?: "No feedback yet",
+                    feedbackVotes = topFeedback?.voteCount ?: 0,
+                    adminAccounts = listOfNotNull(adminProfile?.toAdminAccountRow()),
+                    platformSettings = platformSettings,
+                    analyticsExportsTotal = analyticsExportsTotal,
+                    quickStatNewUsers7d = users.size,
+                    quickStatNewProjects7d = projects.count {
+                        it.lifecycleStatus == ProjectLifecycle.RECRUITING
+                    },
+                    activityTrendUp = projects.isNotEmpty(),
+                    nextPushSlotLabel = nextPushSlotLabel,
+                )
+            }
+        } catch (error: Exception) {
+            _snapshot.update { current ->
+                current.copy(
+                    catalogSourceLabel = "Admin load failed: ${error.message ?: "Unknown error"}",
+                )
+            }
+            audit("Admin catalog refresh failed: ${error.message}")
         }
     }
 

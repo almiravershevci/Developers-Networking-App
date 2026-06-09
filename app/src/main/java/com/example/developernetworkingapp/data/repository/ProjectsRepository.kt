@@ -12,6 +12,8 @@ interface ProjectsRepository {
         description: String,
         primaryStackLabel: String,
     ): Result<String>
+
+    fun invalidateProjects()
 }
 
 class FakeProjectsRepository : ProjectsRepository {
@@ -30,4 +32,6 @@ class FakeProjectsRepository : ProjectsRepository {
         description: String,
         primaryStackLabel: String,
     ): Result<String> = Result.success("fake_project")
+
+    override fun invalidateProjects() = Unit
 }
