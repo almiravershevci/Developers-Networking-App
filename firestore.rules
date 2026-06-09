@@ -194,6 +194,36 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /supportTickets/{ticketId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.submitterUserId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.submitterUserId == request.auth.uid
+        && request.resource.data.schemaVersion is int;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /contentReports/{reportId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.reporterUserId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.reporterUserId == request.auth.uid
+        && request.resource.data.schemaVersion is int;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /productFeedback/{feedbackId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /platformConfig/{docId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -114,3 +114,15 @@ object ProjectIntent {
     const val PRODUCT = "product"
     const val RECRUITMENT = "recruitment"
 }
+
+object TicketStatus {
+    const val OPEN = "open"
+    const val ASSIGNED = "assigned"
+    const val CLOSED = "closed"
+}
+
+object ReportStatus {
+    const val ACTIVE = "active"
+    const val DISMISSED = "dismissed"
+    const val RESOLVED = "resolved"
+}

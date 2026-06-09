@@ -20,6 +20,10 @@ object FirestorePaths {
     const val ACTIVITY = "activity"
     const val NEWS_HIGHLIGHTS = "newsHighlights"
     const val COLLABORATOR_SUGGESTIONS = "collaboratorSuggestions"
+    const val SUPPORT_TICKETS = "supportTickets"
+    const val CONTENT_REPORTS = "contentReports"
+    const val PRODUCT_FEEDBACK = "productFeedback"
+    const val PLATFORM_CONFIG = "platformConfig"
 
     fun user(userId: String) = "$USERS/$userId"
 
@@ -63,4 +67,12 @@ object FirestorePaths {
     fun newsHighlight(docId: String) = "$NEWS_HIGHLIGHTS/$docId"
 
     fun collaboratorSuggestion(docId: String) = "$COLLABORATOR_SUGGESTIONS/$docId"
+
+    fun supportTicket(ticketId: String) = "$SUPPORT_TICKETS/$ticketId"
+
+    fun contentReport(reportId: String) = "$CONTENT_REPORTS/$reportId"
+
+    fun productFeedback(docId: String) = "$PRODUCT_FEEDBACK/$docId"
+
+    fun platformConfig() = "$PLATFORM_CONFIG/default"
 }
