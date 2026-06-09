@@ -1,0 +1,3 @@
+# Copy this file to local.properties (gitignored) and set your Android SDK path.
+# Android Studio usually creates local.properties automatically on first sync.
+sdk.dir=C\:\\Users\\YourName\\AppData\\Local\\Android\\Sdk

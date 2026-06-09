@@ -9,6 +9,8 @@
     "chat:add-me:dry": "node add-chat-participant.mjs --dry-run",
     "inbox:copy-demo": "node add-inbox-for-user.mjs",
     "inbox:copy-demo:dry": "node add-inbox-for-user.mjs --dry-run",
+    "setup:demo-user": "node setup-demo-user.mjs",
+    "setup:demo-user:dry": "node setup-demo-user.mjs --dry-run",
     "project:add-me": "node add-project-member.mjs",
     "project:add-me:dry": "node add-project-member.mjs --dry-run",
     "project:add-all-auth": "node add-all-auth-members.mjs",

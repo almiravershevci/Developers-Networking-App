@@ -38,20 +38,6 @@ data class ChatContent(
     val isSignedIn: Boolean = false,
 )
 
-object ChatQuickRooms {
-    data class Room(val label: String, val conversationId: String)
-
-    val rooms: List<Room> = listOf(
-        Room("Project Room", "conv_team_neon"),
-        Room("Mentorship", "conv_aria_api"),
-        Room("Hackathon Team", "conv_hackathon_squad"),
-        Room("General", "conv_design_crew"),
-    )
-
-    fun conversationIdForLabel(label: String): String? =
-        rooms.firstOrNull { it.label == label }?.conversationId
-}
-
 object ChatMessageKinds {
     const val TEXT = "text"
     const val SYSTEM = "system"

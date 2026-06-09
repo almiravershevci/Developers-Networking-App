@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.developernetworkingapp.di.appViewModel
+import com.example.developernetworkingapp.ui.auth.rememberGoogleSignInLauncher
 import com.example.developernetworkingapp.ui.state.LoginUiState
 import com.example.developernetworkingapp.ui.state.SignupUiState
 import com.example.developernetworkingapp.ui.state.VerificationUiState
@@ -62,6 +63,10 @@ private fun AuthScreen(startInSignup: Boolean) {
     val signupViewModel: SignupViewModel = appViewModel()
     val loginState = loginViewModel.uiState.collectAsStateWithLifecycle().value
     val signupState = signupViewModel.uiState.collectAsStateWithLifecycle().value
+    val launchGoogleSignIn = rememberGoogleSignInLauncher(
+        onIdToken = loginViewModel::signInWithGoogle,
+        onFailure = loginViewModel::reportGoogleSignInError,
+    )
 
     UnifiedAuthScreen(
         loginState = loginState,
@@ -79,6 +84,7 @@ private fun AuthScreen(startInSignup: Boolean) {
         onForgotPassword = loginViewModel::requestPasswordReset,
         onLoginSubmit = loginViewModel::login,
         onSignupSubmit = signupViewModel::signup,
+        onGoogleSignIn = launchGoogleSignIn,
     )
 }
 
@@ -91,7 +97,6 @@ fun EmailVerificationRoute(email: String) {
     }
     EmailVerificationScreen(
         state = state,
-        onCodeChange = viewModel::updateCode,
         onResend = viewModel::resendCode,
         onVerify = viewModel::verify,
     )
@@ -100,25 +105,15 @@ fun EmailVerificationRoute(email: String) {
 @Composable
 private fun EmailVerificationScreen(
     state: VerificationUiState,
-    onCodeChange: (String) -> Unit,
     onResend: () -> Unit,
-    onVerify: () -> Unit
+    onVerify: () -> Unit,
 ) {
     AuthCardContainer(horizontalPadding = 20.dp) {
         Text("Verify your email", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            "We sent a verification link to ${state.email}. Open the link on this device, then return here and tap Verify.",
+            "We sent a verification link to ${state.email}. Open the link on this device (check spam), then return here and tap Verify email. You must verify before logging in.",
             style = MaterialTheme.typography.bodyMedium,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
-            value = state.code,
-            onValueChange = onCodeChange,
-            label = { Text("Confirmation code (optional)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            supportingText = { Text("After opening the email link, enter any 6 digits to continue. Check spam if needed.") }
         )
         state.errorMessage?.let {
             Spacer(modifier = Modifier.height(8.dp))
@@ -137,7 +132,7 @@ private fun EmailVerificationScreen(
             Text(if (state.isLoading) "Verifying..." else "Verify email")
         }
         TextButton(onClick = onResend, modifier = Modifier.align(Alignment.End)) {
-            Text("Resend code")
+            Text("Resend email")
         }
     }
 }
@@ -158,7 +153,8 @@ private fun UnifiedAuthScreen(
     onSignupRememberMeChange: (Boolean) -> Unit,
     onForgotPassword: () -> Unit,
     onLoginSubmit: () -> Unit,
-    onSignupSubmit: () -> Unit
+    onSignupSubmit: () -> Unit,
+    onGoogleSignIn: () -> Unit,
 ) {
     AuthCardContainer(horizontalPadding = 20.dp) {
         var showSignup by rememberSaveable { mutableStateOf(startInSignup) }
@@ -277,7 +273,13 @@ private fun UnifiedAuthScreen(
         HorizontalDivider()
         Spacer(modifier = Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = { }, modifier = Modifier.weight(1f)) { Text("Google") }
+            OutlinedButton(
+                onClick = onGoogleSignIn,
+                modifier = Modifier.weight(1f),
+                enabled = !loginState.isLoading && !signupState.isLoading,
+            ) {
+                Text("Google")
+            }
             OutlinedButton(onClick = { }, modifier = Modifier.weight(1f)) { Text("GitHub") }
         }
         Spacer(modifier = Modifier.height(12.dp))

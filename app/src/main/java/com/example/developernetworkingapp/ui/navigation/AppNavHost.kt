@@ -31,7 +31,7 @@ fun AppRoot() {
     val currentRoute = backStackEntry?.destination?.route
 
     LaunchedEffect(currentUser, currentRoute) {
-        appNavigationViewModel.onRouteChanged(currentRoute, currentUser != null)
+        appNavigationViewModel.onRouteChanged(currentRoute, currentUser)
     }
 
     LaunchedEffect(Unit) {
@@ -44,6 +44,11 @@ fun AppRoot() {
                     }
                 AppNavEvent.NavigateToDashboard ->
                     navController.navigate(AppRoutes.DASHBOARD) {
+                        popUpTo(AppRoutes.LOGIN) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                is AppNavEvent.NavigateToVerifyEmail ->
+                    navController.navigate(AppRoutes.verifyEmailRoute(event.email)) {
                         popUpTo(AppRoutes.LOGIN) { inclusive = true }
                         launchSingleTop = true
                     }

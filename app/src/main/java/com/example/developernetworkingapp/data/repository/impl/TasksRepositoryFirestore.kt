@@ -5,7 +5,7 @@ import com.example.developernetworkingapp.data.datasource.firebase.FirestoreProj
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreUserDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.authStateChanges
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectTaskDoc
-import com.example.developernetworkingapp.data.datasource.firebase.schema.TaskBoardColumn
+import com.example.developernetworkingapp.data.repository.mapping.TaskItemMapper
 import com.example.developernetworkingapp.domain.model.TaskContent
 import com.example.developernetworkingapp.domain.model.TaskItem
 import com.google.firebase.auth.FirebaseAuth
@@ -165,30 +165,7 @@ class TasksRepositoryFirestore(
         task: ProjectTaskDoc,
         currentUserId: String,
         assigneeName: String?,
-    ): TaskItem {
-        val assigneeLabel = when {
-            task.assigneeUserId == null -> "Unassigned"
-            task.assigneeUserId == currentUserId -> "You"
-            !assigneeName.isNullOrBlank() -> assigneeName
-            else -> "Teammate"
-        }
-        return TaskItem(
-            id = task.id,
-            title = task.title,
-            statusLabel = boardColumnLabel(task.boardColumn),
-            boardColumn = task.boardColumn,
-            priority = task.priority,
-            assigneeLabel = assigneeLabel,
-        )
-    }
-
-    private fun boardColumnLabel(boardColumn: String): String = when (boardColumn) {
-        TaskBoardColumn.TODO -> "To Do"
-        TaskBoardColumn.IN_PROGRESS -> "In Progress"
-        TaskBoardColumn.DONE -> "Done"
-        TaskBoardColumn.BLOCKED -> "Blocked"
-        else -> boardColumn
-    }
+    ): TaskItem = TaskItemMapper.fromDoc(task, currentUserId, assigneeName)
 
     private companion object {
         const val DEFAULT_PROJECT_ID = "proj_devconnect_mobile"

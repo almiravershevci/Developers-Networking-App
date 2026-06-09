@@ -23,13 +23,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.developernetworkingapp.domain.model.CollaboratorProfiles
+import com.example.developernetworkingapp.di.CollaboratorProfileViewModelFactory
 import com.example.developernetworkingapp.ui.components.SectionTitle
+import com.example.developernetworkingapp.ui.viewmodel.CollaboratorProfileViewModel
 import com.example.developernetworkingapp.ui.navigation.AppRoutes
 import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 
@@ -40,11 +44,14 @@ fun CollaboratorProfileRoute(
     collaboratorId: String,
     score: Int,
 ) {
+    val viewModel: CollaboratorProfileViewModel = viewModel(
+        factory = CollaboratorProfileViewModelFactory(collaboratorId, score),
+    )
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     CollaboratorProfileScreen(
         padding = padding,
         navController = navController,
-        collaboratorId = collaboratorId,
-        score = score,
+        state = state,
     )
 }
 
@@ -57,17 +64,6 @@ fun GenericDetailScreen(
     description: String,
     sourceRoute: String
 ) {
-    val examples = listOf(
-        "Example workflow: discovery -> planning -> sprint execution -> review -> release",
-        "Example metric: cycle time reduced by 18% after dependency mapping",
-        "Example team setup: 1 product owner, 2 mobile devs, 1 backend dev, 1 QA"
-    )
-    val checklist = listOf(
-        "Define clear ownership and deadlines",
-        "Track blockers in daily updates",
-        "Review risk and scope each sprint",
-        "Document outcomes for handoff"
-    )
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -127,40 +123,6 @@ fun GenericDetailScreen(
             }
         }
         item {
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text("Implementation Notes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(
-                        "This section documents how this module/project/event should run in practice, what success looks like, and which checks keep delivery predictable.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    examples.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
-                }
-            }
-        }
-        item {
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text("Execution Checklist", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    checklist.forEach { item -> Text("• $item", style = MaterialTheme.typography.bodyMedium) }
-                }
-            }
-        }
-        item {
             TextButton(onClick = { navController.navigate(AppRoutes.DASHBOARD) }) {
                 Text("Back to Home")
             }
@@ -173,24 +135,31 @@ fun GenericDetailScreen(
 fun CollaboratorProfileScreen(
     padding: PaddingValues,
     navController: NavController,
-    collaboratorId: String,
-    score: Int
+    state: com.example.developernetworkingapp.ui.viewmodel.CollaboratorProfileUiState,
 ) {
-    val collaborator = CollaboratorProfiles.resolve(collaboratorId)
+    val collaborator = state.profile
+    val uriHandler = LocalUriHandler.current
+    if (state.isLoading || collaborator == null) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = AppDesignTokens.screenHorizontalPadding),
+        ) {
+            Text("Loading profile from Firestore…", style = MaterialTheme.typography.bodyLarge)
+        }
+        return
+    }
     val name = collaborator.name
     val stack = collaborator.stack
-    val experienceYears = (score % 7) + 2
-    val completedProjects = score + 6
-    val collaborations = (score % 12) + 9
+    val score = collaborator.matchScore
     val matchBadge = when {
-        score >= 95 -> Triple("Elite Fit", Color(0xFF0F766E), "Top-tier stack alignment and delivery confidence")
-        score >= 90 -> Triple("Great Fit", Color(0xFF1D4ED8), "Strong compatibility for active project collaboration")
-        score >= 80 -> Triple("Strong Fit", Color(0xFF7C3AED), "Solid potential with minor onboarding ramp")
-        else -> Triple("Potential Fit", Color(0xFFB45309), "Worth exploring based on overlap and availability")
+        score >= 95 -> Triple("Elite Fit", Color(0xFF0F766E), "Top-tier stack alignment")
+        score >= 90 -> Triple("Great Fit", Color(0xFF1D4ED8), "Strong collaboration fit")
+        score >= 80 -> Triple("Strong Fit", Color(0xFF7C3AED), "Solid potential match")
+        else -> Triple("Potential Fit", Color(0xFFB45309), "Worth exploring")
     }
-    val email = "${name.lowercase().replace(" ", ".")}@devnet.app"
-    val uriHandler = LocalUriHandler.current
-    val personProjects = collaborator.projects.map { (projectTitle, _) -> "$name • $projectTitle" }
+    val email = collaborator.email
 
     Column(
         modifier = Modifier
@@ -229,80 +198,24 @@ fun CollaboratorProfileScreen(
                 )
                 Text(matchBadge.third, style = MaterialTheme.typography.bodySmall)
                 Text("Match score: $score%", style = MaterialTheme.typography.bodyMedium)
-                Text("Experience: $experienceYears years", style = MaterialTheme.typography.bodyMedium)
-                Text("Completed collaborations: $completedProjects", style = MaterialTheme.typography.bodyMedium)
-                Text("Active collaboration count: $collaborations", style = MaterialTheme.typography.bodyMedium)
                 Text(collaborator.summary, style = MaterialTheme.typography.bodyMedium)
-                Text("Contact: $email", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                Text("Location: ${collaborator.location}", style = MaterialTheme.typography.bodyMedium)
-                Text("Availability: ${collaborator.availability}", style = MaterialTheme.typography.bodyMedium)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    personProjects.forEach { project ->
-                        AssistChip(
-                            onClick = {
-                                navController.navigate(
-                                    AppRoutes.detailRoute(
-                                        title = project,
-                                        subtitle = "Project by $name",
-                                        description = "Detailed scope, timeline, team roles, and contribution history for this collaborator project.",
-                                        sourceRoute = AppRoutes.PROJECTS
-                                    )
-                                )
-                            },
-                            label = { Text(project.take(24)) }
-                        )
-                    }
+                if (email.isNotBlank()) {
+                    Text("Contact: $email", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                 }
-            }
-        }
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text("Projects Built", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                collaborator.projects.forEach { (projectTitle, projectSummary) ->
-                    Text("• $projectTitle", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    Text(projectSummary, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("Collaboration History", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                collaborator.collaborationHistory.forEach { item ->
-                    Text("• $item", style = MaterialTheme.typography.bodyMedium)
+                Text("Headline: ${collaborator.location}", style = MaterialTheme.typography.bodyMedium)
+                Text(collaborator.availability, style = MaterialTheme.typography.bodyMedium)
+                state.errorMessage?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { uriHandler.openUri("mailto:$email?subject=Collaboration%20request%20from%20DevNet") }) {
-                Text("Message")
-            }
-            Button(
-                onClick = {
-                    navController.navigate(
-                        AppRoutes.detailRoute(
-                            title = "$name's Projects",
-                            subtitle = "Portfolio projects",
-                            description = personProjects.joinToString(separator = "\n• ", prefix = "• "),
-                            sourceRoute = AppRoutes.PROJECTS
-                        )
-                    )
+            if (email.isNotBlank()) {
+                Button(onClick = { uriHandler.openUri("mailto:$email?subject=Collaboration%20from%20DevConnect") }) {
+                    Text("Email")
                 }
-            ) { Text("View Projects") }
-            TextButton(onClick = { navController.navigate(AppRoutes.SEARCH) }) { Text("Back to Search") }
+            }
+            TextButton(onClick = { navController.navigate(AppRoutes.DASHBOARD) }) { Text("Back to Dashboard") }
         }
     }
 }

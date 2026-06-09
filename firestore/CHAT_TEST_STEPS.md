@@ -2,6 +2,8 @@
 
 You must be in **participantIds** on a conversation or Firestore rules block reads.
 
+**Related docs:** [docs/BACKEND_API.md](../docs/BACKEND_API.md) · [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) · [docs/FIRESTORE_SCHEMA.md](../docs/FIRESTORE_SCHEMA.md)
+
 ---
 
 ## Step 1 — Get your Firebase Auth UID
@@ -80,15 +82,16 @@ If a conversation document does not exist, import seed data first (`npm run seed
 
 ## Step 4 — Test in the Android app
 
-1. **Sync** project in Android Studio.
-2. **Sign in** with the same account whose UID you added.
-3. **Verify email** (Chat requires verified email, same as Tasks/Projects).
+1. **Sign in** with the same account whose UID you added.
+2. **Verify email** (Chat requires verified email, same as Tasks/Projects).
+3. Optional: test **username login** or **Google Sign-In** if configured (see README Authentication section).
 4. Open **Chat** tab.
 5. You should see up to **5 conversations** (titles like “Team Neon - Sprint planning thread”).
 6. Tap **Open** on one thread — messages from seed should load (realtime).
 7. Type a message and **Send** — it should appear and persist in Console under  
    `conversations/{id}/messages`.
 8. Try a **quick room** chip (e.g. Project Room → `conv_team_neon`).
+9. **Account deletion** (Settings) removes your profile and inbox rows but not shared chat history — expected per [BACKEND_API.md](../docs/BACKEND_API.md).
 
 ### If you see “Couldn’t load conversations” (0 active)
 

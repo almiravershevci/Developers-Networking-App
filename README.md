@@ -35,8 +35,8 @@ Production docs: [docs/SECURITY.md](docs/SECURITY.md) · [docs/SLO.md](docs/SLO.
 
 ## Presentation demo flow (5 minutes)
 
-1. **Sign up / log in** — Create an account or use a seeded test user.
-2. **Verify email** — Open the Firebase verification link on the device, return to the app, enter any 6 digits, tap **Verify** → lands on the dashboard.
+1. **Sign up / log in** — Create an account (email/password or Google).
+2. **Verify email** — Open the Firebase verification link in your inbox, return to the app, tap **Verify email** → lands on the dashboard. Login is blocked until verified.
 3. **Dashboard** — Review feed, collaborator matches (tap **View** for full profile), and shortcuts to Tasks / Events / Chat.
 4. **Projects** — Kanban board; deep-link with `projects?project=DevConnect Mobile` for showcase workspace.
 5. **Chat** — Use quick rooms (Project Room, Mentorship, etc.) or inbox threads.
@@ -64,22 +64,64 @@ Android emulator uses `http://10.0.2.2:5000/` (`DevConnectApiConfig.kt`). Deploy
 
 ## Build & run
 
-**Requirements:** Android Studio, JDK 17+, `google-services.json` in `app/` (already in repo).
+**Requirements:** Android Studio (latest stable), **JDK 21**, `google-services.json` in `app/` (already in repo).
+
+Copy `local.properties.example` → `local.properties` if Android Studio does not create it automatically.
 
 ```bash
 ./gradlew assembleDebug
+./gradlew test
 ```
 
-Install the debug APK on a device or emulator (API 24+).
+Install the debug APK on a device or emulator (API 24+). See [docs/TEAM_SETUP_AFTER_PULL.md](docs/TEAM_SETUP_AFTER_PULL.md) for the full teammate checklist.
+
+## Related docs
+
+| Document | Purpose |
+|----------|---------|
+| [docs/BACKEND_API.md](../docs/BACKEND_API.md) | Repository methods + Firestore mapping |
+| [docs/FIRESTORE_SCHEMA.md](../docs/FIRESTORE_SCHEMA.md) | Collection field reference |
+| [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) | Rules, indexes, seed deploy |
+| [docs/PRESENTATION_SCRIPT.md](../docs/PRESENTATION_SCRIPT.md) | 30-second submission pitch |
 
 ## Firebase setup
 
 1. Add your Android app in the Firebase console and place `google-services.json` under `app/`.
 2. Enable **Email/Password** authentication.
-3. Deploy Firestore rules and seed data (see `firestore/` if present in the repo).
-4. Sign in with a seeded user or register a new account and verify email.
+3. (Optional) Enable **Google** sign-in:
+   - In Firebase Console → Authentication → Sign-in method → Google → Enable.
+   - Add your debug/release SHA-1 fingerprints for the Android app.
+   - Copy the **Web client ID** into `app/src/main/res/values/strings.xml` as `default_web_client_id`, or re-download `google-services.json` after enabling Google.
+4. Deploy Firestore rules and seed data (see `firestore/`).
+5. Register in the app, verify email, then link demo content to your UID:
+   ```powershell
+   $env:DEMO_USER_UID="your-firebase-auth-uid"
+   cd firestore
+   npm run setup:demo-user
+   ```
 
-Without seed data, the app still runs: screens show friendly empty states instead of raw developer error strings.
+Without seed + `setup:demo-user`, the app still runs but Dashboard, Chat, and Alerts may show empty states for new accounts.
+
+## Authentication
+
+### Email and username login
+
+The login screen accepts **either email or username** with your password:
+
+- Usernames are **case-insensitive** (stored as `usernameLower` in Firestore).
+- At signup, the app writes:
+  - `users/{firebaseUid}` — profile (`email`, `usernameLower`, `displayName`, …)
+  - `usernames/{usernameLower}` — registry `{ userId: uid }` for lookup
+- **Password reset** also accepts email or username; usernames resolve to the account email via Firestore.
+- **Example:** register as username `jane` with `jane@example.com` → log in with `jane` or `jane@example.com` and your password.
+
+### Google Sign-In
+
+Tap **Google** on the login/signup screen. First-time Google users get an auto-generated username (from their email) and a Firestore profile. Google accounts must have a verified email (Firebase marks them verified automatically).
+
+### Account deletion
+
+Open **Settings → Delete account**. This removes your Firebase Auth user, Firestore profile (`users/{uid}`), username registry entry, and inbox notifications. Shared data in projects, chats, and match requests may remain until cleaned up server-side.
 
 ## Key packages
 
