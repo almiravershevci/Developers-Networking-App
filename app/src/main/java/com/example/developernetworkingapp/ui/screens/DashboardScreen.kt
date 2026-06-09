@@ -68,6 +68,7 @@ import com.example.developernetworkingapp.domain.model.CollaboratorMatch
 import com.example.developernetworkingapp.domain.model.MatchRequest
 import com.example.developernetworkingapp.domain.model.EventHighlight
 import com.example.developernetworkingapp.ui.state.FeedPostState
+import com.example.developernetworkingapp.ui.components.CreateProjectDialog
 import com.example.developernetworkingapp.ui.components.EmptyStateCard
 import com.example.developernetworkingapp.ui.components.ErrorStateCard
 import com.example.developernetworkingapp.ui.components.GradientHeroCard
@@ -109,6 +110,8 @@ fun DashboardRoute(
         onSendMatchInvite = viewModel::sendMatchInvite,
         onAcceptMatchRequest = viewModel::acceptMatchRequest,
         onDeclineMatchRequest = viewModel::declineMatchRequest,
+        onCreateProject = viewModel::createProject,
+        onShowCreateProjectDialog = viewModel::setShowCreateProjectDialog,
     )
 }
 
@@ -128,6 +131,8 @@ fun DashboardScreen(
     onSendMatchInvite: (String, String?) -> Unit = { _, _ -> },
     onAcceptMatchRequest: (String) -> Unit = {},
     onDeclineMatchRequest: (String) -> Unit = {},
+    onCreateProject: (String, String, String) -> Unit = { _, _, _ -> },
+    onShowCreateProjectDialog: (Boolean) -> Unit = {},
 ) {
     val content = state.content
     var showInviteDialog by rememberSaveable { mutableStateOf(false) }
@@ -186,6 +191,15 @@ fun DashboardScreen(
         )
     }
 
+    if (state.showCreateProjectDialog) {
+        CreateProjectDialog(
+            isSubmitting = state.isCreatingProject,
+            errorMessage = state.createProjectError,
+            onDismiss = { onShowCreateProjectDialog(false) },
+            onCreate = onCreateProject,
+        )
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -235,7 +249,7 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = content?.greeting ?: "Preparing your dashboard...",
                             style = MaterialTheme.typography.titleMedium,
@@ -246,10 +260,15 @@ fun DashboardScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
-                    Button(onClick = onRefresh) {
-                        Icon(Icons.Outlined.Add, contentDescription = "Post project")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Refresh Feed")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onShowCreateProjectDialog(true) }) {
+                            Icon(Icons.Outlined.Add, contentDescription = "Create project")
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Create project")
+                        }
+                        TextButton(onClick = onRefresh) {
+                            Text("Refresh")
+                        }
                     }
                 }
             }
@@ -273,6 +292,16 @@ fun DashboardScreen(
         item { SectionTitle("Quick Access") }
         item { ShortcutRow(shortcuts = shortcuts, navController = navController) }
         item { SectionTitle("Recruiting Projects") }
+        if (state.feedPosts.isEmpty() && !state.isLoading) {
+            item {
+                EmptyStateCard(
+                    title = "No recruiting projects yet",
+                    subtitle = "Create a project to publish it on the dashboard and recruit collaborators.",
+                    actionLabel = "Create project",
+                    onAction = { onShowCreateProjectDialog(true) },
+                )
+            }
+        }
         items(state.feedPosts, key = { it.id }) { postState ->
             ProjectPostCard(
                 postState = postState,
@@ -303,6 +332,14 @@ fun DashboardScreen(
             }
         }
         item { SectionTitle("Suggested Collaborators") }
+        if ((content?.matches ?: emptyList()).isEmpty() && !state.isLoading) {
+            item {
+                EmptyStateCard(
+                    title = "No collaborator suggestions yet",
+                    subtitle = "Invite developers from Search, or create a project to attract teammates.",
+                )
+            }
+        }
         items(content?.matches ?: emptyList()) { match ->
             MatchCard(
                 title = "${match.name} (${match.stack})",
@@ -319,6 +356,16 @@ fun DashboardScreen(
             )
         }
         item { SectionTitle("Active Projects") }
+        if ((content?.projects ?: emptyList()).isEmpty() && !state.isLoading) {
+            item {
+                EmptyStateCard(
+                    title = "No active projects",
+                    subtitle = "Projects you create or join will appear here with progress tracking.",
+                    actionLabel = "Create project",
+                    onAction = { onShowCreateProjectDialog(true) },
+                )
+            }
+        }
         items(content?.projects ?: emptyList()) { project ->
             ProjectProgressCard(
                 project.title,
@@ -341,6 +388,14 @@ fun DashboardScreen(
             )
         }
         item { SectionTitle("Realtime Activity") }
+        if ((content?.activity ?: emptyList()).isEmpty() && !state.isLoading) {
+            item {
+                EmptyStateCard(
+                    title = "No activity yet",
+                    subtitle = "Notifications and project updates will show up here as you use the app.",
+                )
+            }
+        }
         items(content?.activity ?: emptyList()) { item ->
             ActivityCard(item) {
                 navController.navigate(AppRoutes.NOTIFICATIONS)

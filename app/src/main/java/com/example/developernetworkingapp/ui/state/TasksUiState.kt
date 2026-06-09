@@ -6,4 +6,6 @@ data class TasksUiState(
     val content: TaskContent? = null,
     val updatingTaskId: String? = null,
     val actionError: String? = null,
+    val isCreatingTask: Boolean = false,
+    val createTaskError: String? = null,
 )
