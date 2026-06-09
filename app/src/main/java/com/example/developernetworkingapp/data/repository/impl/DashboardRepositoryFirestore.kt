@@ -106,14 +106,8 @@ class DashboardRepositoryFirestore(
 
         val statsDoc = statsDeferred.await()
         val suggestions = suggestionsDeferred.await()
-        val fallbackProfiles = if (suggestions.isEmpty()) {
-            runCatching { dataSource.fetchPublicUsersExcluding(uid) }.getOrDefault(emptyList())
-        } else {
-            emptyList()
-        }
         val profilesById = runCatching {
-            val ids = suggestions.map { it.suggestedUserId } + fallbackProfiles.map { it.id }
-            dataSource.fetchUserProfiles(ids)
+            dataSource.fetchUserProfiles(suggestions.map { it.suggestedUserId })
         }.getOrDefault(emptyMap())
 
         val memberProjectIds = runCatching {
@@ -145,24 +139,13 @@ class DashboardRepositoryFirestore(
             heroSubtitle = heroSubtitle(statsDoc),
             stats = buildStats(statsDoc),
             modules = defaultModules(),
-            matches = if (suggestions.isNotEmpty()) {
-                suggestions.map { suggestion ->
-                    CollaboratorMatch(
-                        suggestedUserId = suggestion.suggestedUserId,
-                        name = profilesById[suggestion.suggestedUserId]?.displayName ?: "Developer",
-                        stack = suggestion.stackSummary,
-                        matchScore = suggestion.matchScore,
-                    )
-                }
-            } else {
-                fallbackProfiles.mapIndexed { index, profile ->
-                    CollaboratorMatch(
-                        suggestedUserId = profile.id,
-                        name = profile.displayName.ifBlank { "Developer" },
-                        stack = profile.skillTags.take(3).joinToString(" · ").ifBlank { profile.headline },
-                        matchScore = 88 - index * 3,
-                    )
-                }
+            matches = suggestions.map { suggestion ->
+                CollaboratorMatch(
+                    suggestedUserId = suggestion.suggestedUserId,
+                    name = profilesById[suggestion.suggestedUserId]?.displayName ?: "Developer",
+                    stack = suggestion.stackSummary,
+                    matchScore = suggestion.matchScore,
+                )
             },
             projects = projects.take(3).map { project ->
                 ProjectHighlight(

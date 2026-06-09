@@ -1,5 +1,6 @@
 package com.example.developernetworkingapp.data.datasource.firebase
 
+import com.google.firebase.auth.ActionCodeSettings
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -75,9 +76,22 @@ class FirebaseAuthDataSource(
         auth.sendPasswordResetEmail(email.trim()).await()
     }
 
-    suspend fun sendEmailVerification() {
+    suspend fun sendEmailVerification(
+        androidPackageName: String = ANDROID_PACKAGE_NAME,
+        continueUrl: String = AUTH_CONTINUE_URL,
+    ) {
         val user = auth.currentUser ?: error("No signed-in user to verify.")
-        user.sendEmailVerification().await()
+        val actionCodeSettings = ActionCodeSettings.newBuilder()
+            .setUrl(continueUrl)
+            .setHandleCodeInApp(true)
+            .setAndroidPackageName(androidPackageName, true, null)
+            .build()
+        user.sendEmailVerification(actionCodeSettings).await()
+    }
+
+    private companion object {
+        const val ANDROID_PACKAGE_NAME = "com.example.developernetworkingapp"
+        const val AUTH_CONTINUE_URL = "https://developers-networking-app.firebaseapp.com"
     }
 
     suspend fun reloadCurrentSession(): FirebaseAuthSession {

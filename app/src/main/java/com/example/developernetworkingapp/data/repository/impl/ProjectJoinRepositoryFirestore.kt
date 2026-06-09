@@ -31,7 +31,7 @@ class ProjectJoinRepositoryFirestore(
     override fun observeIncomingRequests(): Flow<List<ProjectJoinRequest>> =
         firebaseAuth.authStateChanges().flatMapLatest { firebaseUser ->
             when {
-                firebaseUser == null || !firebaseUser.isEmailVerified -> flowOf(emptyList())
+                firebaseUser == null -> flowOf(emptyList())
                 else -> joinDataSource.observeIncomingPending(firebaseUser.uid)
                     .map { docs -> mapRequests(docs, currentUserId = firebaseUser.uid, incoming = true) }
             }
@@ -40,7 +40,7 @@ class ProjectJoinRepositoryFirestore(
     override fun observeOutgoingRequests(): Flow<List<ProjectJoinRequest>> =
         firebaseAuth.authStateChanges().flatMapLatest { firebaseUser ->
             when {
-                firebaseUser == null || !firebaseUser.isEmailVerified -> flowOf(emptyList())
+                firebaseUser == null -> flowOf(emptyList())
                 else -> joinDataSource.observeOutgoingPending(firebaseUser.uid)
                     .map { docs -> mapRequests(docs, currentUserId = firebaseUser.uid, incoming = false) }
             }
@@ -57,35 +57,44 @@ class ProjectJoinRepositoryFirestore(
         if (projectId.isBlank()) {
             return@withContext Result.failure(IllegalArgumentException("Project is required."))
         }
-        if (ownerUserId.isBlank()) {
-            return@withContext Result.failure(IllegalArgumentException("Project owner is missing."))
-        }
-        if (ownerUserId == uid) {
-            return@withContext Result.failure(IllegalArgumentException("You already own this project."))
-        }
         runCatching {
-            val existing = joinDataSource.fetchPendingForProject(projectId, uid)
+            val project = projectsDataSource.fetchProject(projectId)
+                ?: error("Project not found. It may have been removed from the feed.")
+            val resolvedOwnerId = project.ownerUserId.ifBlank { ownerUserId }
+            if (resolvedOwnerId.isBlank()) {
+                error("This project has no owner set in Firestore. Ask the creator to recreate it.")
+            }
+            if (resolvedOwnerId == uid) {
+                error("You already own this project.")
+            }
+            val existing = runCatching {
+                joinDataSource.fetchPendingForProject(projectId, uid)
+            }.getOrNull()
             if (existing != null) {
                 error("You already have a pending request for this project.")
             }
-            val members = projectsDataSource.fetchProjectMembers(projectId)
-            if (members.any { it.memberUserId == uid }) {
+            val memberProjectIds = runCatching {
+                projectsDataSource.fetchMemberProjectIds(uid)
+            }.getOrDefault(emptySet())
+            if (memberProjectIds.contains(projectId) || project.ownerUserId == uid) {
                 error("You are already a member of this project.")
             }
             joinDataSource.createJoinRequest(
                 projectId = projectId,
-                projectTitle = projectTitle,
+                projectTitle = projectTitle.ifBlank { project.title },
                 fromUserId = uid,
-                toUserId = ownerUserId,
+                toUserId = resolvedOwnerId,
                 requestedRole = requestedRole,
                 message = message,
             )
-            inboxDataSource.createNotification(
-                recipientUserId = ownerUserId,
-                title = "New project join request",
-                body = "Someone wants to join \"$projectTitle\". Review it on your dashboard.",
-                deepLink = "/dashboard",
-            )
+            runCatching {
+                inboxDataSource.createNotification(
+                    recipientUserId = resolvedOwnerId,
+                    title = "New project join request",
+                    body = "Someone wants to join \"${projectTitle.ifBlank { project.title }}\". Review it on Home or Projects.",
+                    deepLink = "/dashboard",
+                )
+            }
             Unit
         }.toJoinResult("send join request")
     }
@@ -110,15 +119,16 @@ class ProjectJoinRepositoryFirestore(
                 if (request.workflowStatus != MatchWorkflow.PENDING) {
                     error("This request was already resolved.")
                 }
-                if (request.toUserId != uid) {
+                val project = projectsDataSource.fetchProject(request.projectId)
+                    ?: error("Project no longer exists.")
+                if (project.ownerUserId != uid && request.toUserId != uid) {
                     error("Only the project owner can accept or decline this request.")
                 }
-                joinDataSource.updateWorkflowStatus(requestId, workflowStatus)
                 if (workflowStatus == MatchWorkflow.ACCEPTED) {
                     projectsDataSource.addProjectMember(
                         projectId = request.projectId,
                         memberUserId = request.fromUserId,
-                        memberRole = MemberRole.CONTRIBUTOR,
+                        memberRole = resolveMemberRole(request.requestedRole),
                     )
                     val applicantName = userDataSource.fetchUserProfile(request.fromUserId)
                         ?.displayName
@@ -144,6 +154,7 @@ class ProjectJoinRepositoryFirestore(
                         deepLink = "/dashboard",
                     )
                 }
+                joinDataSource.updateWorkflowStatus(requestId, workflowStatus)
                 Unit
             }.toJoinResult(if (workflowStatus == MatchWorkflow.ACCEPTED) "accept join request" else "decline join request")
         }
@@ -174,6 +185,15 @@ class ProjectJoinRepositoryFirestore(
         }
     }
 
+    private fun resolveMemberRole(requestedRole: String): String {
+        val normalized = requestedRole.trim().lowercase()
+        return when {
+            normalized.contains("maintain") -> MemberRole.MAINTAINER
+            normalized.contains("view") -> MemberRole.VIEWER
+            else -> MemberRole.CONTRIBUTOR
+        }
+    }
+
     private fun workflowStatusLabel(status: String): String = when (status) {
         MatchWorkflow.PENDING -> "Pending"
         MatchWorkflow.ACCEPTED -> "Accepted"
@@ -181,10 +201,19 @@ class ProjectJoinRepositoryFirestore(
         else -> status.replaceFirstChar { it.uppercase() }
     }
 
-    private fun requireSignedInUser() = firebaseAuth.currentUser?.takeIf { it.isEmailVerified }?.uid
+    private suspend fun requireSignedInUser(): String? {
+        val user = firebaseAuth.currentUser ?: return null
+        if (user.isEmailVerified) return user.uid
+        val profile = userDataSource.fetchUserProfile(user.uid)
+        return if (profile?.emailVerified == true) user.uid else null
+    }
 
     private fun authRequiredFailure(): Result<Unit> =
-        Result.failure(IllegalStateException("Sign in with a verified email to manage project requests."))
+        Result.failure(
+            IllegalStateException(
+                "Verify your email before joining projects. Open the verify screen from login.",
+            ),
+        )
 
     private fun Result<Unit>.toJoinResult(action: String): Result<Unit> = fold(
         onSuccess = { Result.success(Unit) },
@@ -192,7 +221,7 @@ class ProjectJoinRepositoryFirestore(
             val detail = error.message.orEmpty()
             val message = when {
                 detail.contains("PERMISSION_DENIED", ignoreCase = true) ->
-                    "Project join blocked by Firestore rules. Publish the latest firestore.rules."
+                    "Join blocked by Firestore rules. Deploy firestore.rules, or the project may be missing ownerUserId in Firestore."
                 detail.contains("index", ignoreCase = true) ||
                     detail.contains("FAILED_PRECONDITION", ignoreCase = true) ->
                     "Firestore index missing for project join requests. Deploy firestore.indexes.json."

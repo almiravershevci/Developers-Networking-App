@@ -5,6 +5,7 @@ import com.example.developernetworkingapp.data.datasource.firebase.schema.MatchW
 import com.example.developernetworkingapp.data.datasource.firebase.schema.ProjectJoinRequestDoc
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -17,9 +18,10 @@ class FirestoreProjectJoinDataSource(
         val registration = db.collection(FirestorePaths.PROJECT_JOIN_REQUESTS)
             .whereEqualTo("toUserId", ownerUserId)
             .whereEqualTo("workflowStatus", MatchWorkflow.PENDING)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    trySend(emptyList())
+                    close(error)
                     return@addSnapshotListener
                 }
                 val requests = snapshot?.documents
@@ -35,9 +37,10 @@ class FirestoreProjectJoinDataSource(
         val registration = db.collection(FirestorePaths.PROJECT_JOIN_REQUESTS)
             .whereEqualTo("fromUserId", applicantUserId)
             .whereEqualTo("workflowStatus", MatchWorkflow.PENDING)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    trySend(emptyList())
+                    close(error)
                     return@addSnapshotListener
                 }
                 val requests = snapshot?.documents
@@ -79,6 +82,7 @@ class FirestoreProjectJoinDataSource(
         val snap = db.collection(FirestorePaths.PROJECT_JOIN_REQUESTS)
             .whereEqualTo("fromUserId", applicantUserId)
             .whereEqualTo("workflowStatus", MatchWorkflow.PENDING)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(20)
             .get()
             .await()

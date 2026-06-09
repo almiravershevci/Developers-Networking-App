@@ -61,7 +61,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.developernetworkingapp.di.appViewModel
+import com.example.developernetworkingapp.di.activityViewModel
 import androidx.navigation.NavController
 import com.example.developernetworkingapp.domain.model.ActivityItem
 import com.example.developernetworkingapp.domain.model.CollaboratorMatch
@@ -95,7 +95,7 @@ import kotlin.math.absoluteValue
 fun DashboardRoute(
     padding: PaddingValues,
     navController: NavController,
-    viewModel: DashboardViewModel = appViewModel()
+    viewModel: DashboardViewModel = activityViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -139,7 +139,8 @@ fun DashboardScreen(
         ownerUserId: String,
         requestedRole: String,
         message: String?,
-    ) -> Unit = { _, _, _, _, _ -> },
+        feedPostKey: String,
+    ) -> Unit = { _, _, _, _, _, _ -> },
     onAcceptProjectJoinRequest: (String) -> Unit = {},
     onDeclineProjectJoinRequest: (String) -> Unit = {},
     onSendMatchInvite: (String, String?) -> Unit = { _, _ -> },
@@ -174,10 +175,19 @@ fun DashboardScreen(
             kotlinx.coroutines.delay(AppDesignTokens.notificationAutoHideMs)
             activeNotification = null
         }
+        val isErrorNotification = notificationMessage.startsWith("Cannot") ||
+            notificationMessage.startsWith("Couldn't") ||
+            notificationMessage.contains("blocked", ignoreCase = true) ||
+            notificationMessage.contains("Verify your email", ignoreCase = true) ||
+            notificationMessage.contains("missing", ignoreCase = true)
         NotificationBanner(
             message = notificationMessage,
             onDismiss = { activeNotification = null },
-            containerColor = ElectricGreen.copy(alpha = 0.9f),
+            containerColor = if (isErrorNotification) {
+                MaterialTheme.colorScheme.errorContainer
+            } else {
+                ElectricGreen.copy(alpha = 0.9f)
+            },
             modifier = Modifier.padding(top = 8.dp)
         )
     }
@@ -201,7 +211,14 @@ fun DashboardScreen(
             projectTitle = post.title,
             onDismissRequest = { selectedJoinPost = null },
             onSubmit = { role, message ->
-                onSendProjectJoinRequest(post.projectId, post.title, post.ownerUserId, role, message)
+                onSendProjectJoinRequest(
+                    post.projectId,
+                    post.title,
+                    post.ownerUserId,
+                    role,
+                    message,
+                    post.projectId.ifBlank { post.title },
+                )
                 selectedJoinPost = null
             },
         )
@@ -307,6 +324,24 @@ fun DashboardScreen(
         }
         item { SectionTitle("Quick Access") }
         item { ShortcutRow(shortcuts = shortcuts, navController = navController) }
+        state.joinRequestLoadError?.let { error ->
+            item {
+                Text(
+                    error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        state.joinActionError?.let { error ->
+            item {
+                Text(
+                    error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
         if (state.incomingProjectJoinRequests.isNotEmpty()) {
             item { SectionTitle("Project Join Requests — review here") }
             items(state.incomingProjectJoinRequests, key = { it.id }) { request ->
@@ -346,6 +381,7 @@ fun DashboardScreen(
                         post.ownerUserId,
                         role,
                         message,
+                        postState.id,
                     )
                 },
             )
@@ -566,6 +602,7 @@ private fun ProjectPostCard(
     var hasMessaged by remember { mutableStateOf(false) }
     var showJoinForm by remember { mutableStateOf(false) }
     var showMessageForm by remember { mutableStateOf(false) }
+    val defaultRole = post.openRoles.firstOrNull()?.takeIf { it.isNotBlank() } ?: "Contributor"
 
     if (showJoinForm) {
         JoinProjectFormDialog(
@@ -762,7 +799,7 @@ private fun ProjectPostCard(
                         }
                         ProjectJoinStatus.AVAILABLE -> {
                             Button(
-                                onClick = { showJoinForm = true },
+                                onClick = { onSendJoinRequest(defaultRole, null) },
                                 enabled = !joinActionInFlight && post.projectId.isNotBlank(),
                                 modifier = Modifier.height(AppDesignTokens.compactButtonHeight),
                             ) {

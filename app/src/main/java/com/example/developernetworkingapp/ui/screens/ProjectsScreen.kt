@@ -181,6 +181,7 @@ fun ProjectBoardScreen(
             isSubmitting = state.isCreatingTask,
             errorMessage = state.createTaskError,
             assigneeOptions = assignableMembers,
+            isOwner = content?.isOwner == true,
             onDismiss = {
                 showCreateTaskDialog = false
                 onDismissCreateTask()
@@ -295,9 +296,22 @@ fun ProjectBoardScreen(
                 }
             }
         }
-        if (content?.isOwner == true && state.incomingProjectJoinRequests.isNotEmpty()) {
+        val activeProjectId = content?.projectId.orEmpty()
+        val projectJoinRequests = state.incomingProjectJoinRequests.filter { request ->
+            activeProjectId.isBlank() || request.projectId == activeProjectId
+        }
+        state.joinRequestLoadError?.let { error ->
+            item {
+                Text(
+                    error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        if (content?.isOwner == true && projectJoinRequests.isNotEmpty()) {
             item { SectionTitle("Join requests for your project") }
-            items(state.incomingProjectJoinRequests, key = { it.id }) { request ->
+            items(projectJoinRequests, key = { it.id }) { request ->
                 ProjectJoinRequestCard(
                     request = request,
                     isResolving = state.projectJoinActionInFlight == request.id,

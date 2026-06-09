@@ -30,6 +30,7 @@ fun CreateTaskDialog(
     errorMessage: String?,
     onDismiss: () -> Unit,
     assigneeOptions: List<ProjectMemberSummary> = emptyList(),
+    isOwner: Boolean = false,
     onCreate: (title: String, priority: String, boardColumn: String, assigneeUserId: String?) -> Unit,
 ) {
     var title by rememberSaveable { mutableStateOf("") }
@@ -56,10 +57,12 @@ fun CreateTaskDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
-                    if (assigneeOptions.isEmpty()) {
-                        "Add a task to your active project board."
-                    } else {
-                        "Assign a task to a project member. They will see it on their board."
+                    when {
+                        assigneeOptions.isNotEmpty() ->
+                            "Assign a task to a project member. They will see it on their board."
+                        isOwner ->
+                            "No collaborators yet. When someone joins your project (Home → accept their request), they appear in Assign to."
+                        else -> "Add a task to your active project board."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -101,41 +104,59 @@ fun CreateTaskDialog(
                         }
                     }
                 }
-                if (assigneeOptions.isNotEmpty()) {
+                if (isOwner) {
                     ExposedDropdownMenuBox(
                         expanded = assigneeExpanded,
-                        onExpandedChange = { if (!isSubmitting) assigneeExpanded = !assigneeExpanded },
+                        onExpandedChange = {
+                            if (!isSubmitting && assigneeOptions.isNotEmpty()) {
+                                assigneeExpanded = !assigneeExpanded
+                            }
+                        },
                     ) {
                         OutlinedTextField(
                             value = assigneeLabel,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Assign to member") },
+                            label = { Text("Assign to") },
                             modifier = Modifier
-                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = !isSubmitting)
+                                .menuAnchor(
+                                    ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                    enabled = !isSubmitting && assigneeOptions.isNotEmpty(),
+                                )
                                 .fillMaxWidth(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = assigneeExpanded) },
+                            trailingIcon = {
+                                if (assigneeOptions.isNotEmpty()) {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = assigneeExpanded)
+                                }
+                            },
                             enabled = !isSubmitting,
+                            supportingText = {
+                                if (assigneeOptions.isEmpty()) {
+                                    Text("Accept a join request on Home to add members.")
+                                }
+                            },
                         )
-                        ExposedDropdownMenu(
-                            expanded = assigneeExpanded,
-                            onDismissRequest = { assigneeExpanded = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Unassigned") },
-                                onClick = {
-                                    selectedAssigneeId = null
-                                    assigneeExpanded = false
-                                },
-                            )
-                            assigneeOptions.forEach { member ->
+                        if (assigneeOptions.isNotEmpty()) {
+                            ExposedDropdownMenu(
+                                expanded = assigneeExpanded,
+                                onDismissRequest = { assigneeExpanded = false },
+                            ) {
                                 DropdownMenuItem(
-                                    text = { Text("${member.displayName} (${member.role})") },
+                                    text = { Text("Unassigned") },
                                     onClick = {
-                                        selectedAssigneeId = member.userId
+                                        selectedAssigneeId = null
                                         assigneeExpanded = false
                                     },
                                 )
+                                assigneeOptions.forEach { member ->
+                                    DropdownMenuItem(
+                                        text = { Text("${member.displayName} (${member.role})") },
+                                        onClick = {
+                                            selectedAssigneeId = member.userId
+                                            assigneeExpanded = false
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
