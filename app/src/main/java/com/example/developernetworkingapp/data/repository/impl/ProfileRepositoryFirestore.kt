@@ -42,15 +42,16 @@ class ProfileRepositoryFirestore(
                 val uid = firebaseAuth.currentUser?.uid
                 val content = when {
                     authUser == null || !authUser.isVerified || uid == null -> signedOutProfile()
-                    else -> loadProfile(uid, authUser)
+                    else -> runCatching { loadProfile(uid, authUser) }
+                        .getOrElse { signedOutProfile() }
                 }
                 emit(content)
             }
         }.flowOn(Dispatchers.IO)
 
     private suspend fun loadProfile(uid: String, authUser: AuthUser): ProfileContent {
-        val profile = userDataSource.fetchUserProfile(uid)
-        val stats = dashboardDataSource.fetchUserStats(uid)
+        val profile = runCatching { userDataSource.fetchUserProfile(uid) }.getOrNull()
+        val stats = runCatching { dashboardDataSource.fetchUserStats(uid) }.getOrNull()
         val activity = runCatching { dashboardDataSource.fetchRecentActivity(uid) }.getOrDefault(emptyList())
         return mapToProfileContent(profile, stats, authUser, activity)
     }

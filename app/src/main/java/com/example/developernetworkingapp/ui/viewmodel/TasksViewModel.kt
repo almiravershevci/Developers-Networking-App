@@ -44,10 +44,20 @@ class TasksViewModel(
         }
     }
 
-    fun createTask(title: String, priority: String = "medium", boardColumn: String = "todo") {
+    fun createTask(
+        title: String,
+        priority: String = "medium",
+        boardColumn: String = "todo",
+        assigneeUserId: String? = null,
+    ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isCreatingTask = true, createTaskError = null, actionError = null) }
-            repository.createTask(title = title, priority = priority, boardColumn = boardColumn)
+            repository.createTask(
+                title = title,
+                priority = priority,
+                boardColumn = boardColumn,
+                assigneeUserId = assigneeUserId,
+            )
                 .onSuccess {
                     _uiState.update { it.copy(isCreatingTask = false, createTaskError = null) }
                 }

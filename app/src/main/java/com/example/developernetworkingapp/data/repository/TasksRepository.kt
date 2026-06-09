@@ -15,6 +15,7 @@ interface TasksRepository {
         priority: String = TaskPriority.MEDIUM,
         assigneeUserId: String? = null,
         boardColumn: String = TaskBoardColumn.TODO,
+        projectId: String? = null,
     ): Result<Unit>
 
     suspend fun moveTask(taskId: String, boardColumn: String): Result<Unit>
@@ -66,6 +67,7 @@ class FakeTasksRepository : TasksRepository {
         priority: String,
         assigneeUserId: String?,
         boardColumn: String,
+        projectId: String?,
     ): Result<Unit> = Result.success(Unit)
 
     override suspend fun moveTask(taskId: String, boardColumn: String): Result<Unit> =

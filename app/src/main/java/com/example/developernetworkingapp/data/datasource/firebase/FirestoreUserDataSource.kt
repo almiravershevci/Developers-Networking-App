@@ -77,7 +77,7 @@ class FirestoreUserDataSource(
     suspend fun fetchUserProfile(uid: String): UserProfileDoc? {
         val snap = db.collection(FirestorePaths.USERS).document(uid).get().await()
         if (!snap.exists()) return null
-        return snap.toObject(UserProfileDoc::class.java)?.copy(id = snap.id)
+        return snap.toUserProfileDocSafe()
     }
 
     suspend fun fetchPublicUsers(limit: Long = 12): List<UserProfileDoc> {
@@ -86,9 +86,7 @@ class FirestoreUserDataSource(
             .limit(limit)
             .get()
             .await()
-        return snap.documents.mapNotNull { doc ->
-            doc.toObject(UserProfileDoc::class.java)?.copy(id = doc.id)
-        }
+        return snap.documents.mapNotNull { doc -> doc.toUserProfileDocSafe() }
     }
 
     suspend fun updateAccountRole(uid: String, accountRole: String) {
