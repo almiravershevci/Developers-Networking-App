@@ -108,6 +108,27 @@
         { "fieldPath": "sortOrder", "order": "ASCENDING" },
         { "fieldPath": "publishedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "supportTickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contentReports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "productFeedback",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "voteCount", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

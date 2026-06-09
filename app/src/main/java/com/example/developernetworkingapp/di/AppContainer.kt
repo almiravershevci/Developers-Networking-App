@@ -40,6 +40,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 object AppContainer {
     private lateinit var authRepo: AuthRepository
@@ -79,6 +80,9 @@ object AppContainer {
 
     private val devConnectApi: DevConnectApi by lazy {
         val client = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(20, TimeUnit.SECONDS)
             .addInterceptor(FirebaseAuthInterceptor())
             .build()
         Retrofit.Builder()

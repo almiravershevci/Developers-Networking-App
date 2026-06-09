@@ -224,4 +224,44 @@ data class CollaboratorSuggestionDoc(
     @ServerTimestamp val updatedAt: Timestamp? = null,
 )
 
+data class SupportTicketDoc(
+    @DocumentId val id: String = "",
+    val schemaVersion: Int = 1,
+    val title: String = "",
+    val description: String? = null,
+    val submitterUserId: String = "",
+    val assignedAdminId: String? = null,
+    val ticketStatus: String = TicketStatus.OPEN,
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null,
+)
+
+data class ContentReportDoc(
+    @DocumentId val id: String = "",
+    val schemaVersion: Int = 1,
+    val summary: String = "",
+    val reporterUserId: String = "",
+    val relatedConversationId: String? = null,
+    val reportStatus: String = ReportStatus.ACTIVE,
+    @ServerTimestamp val createdAt: Timestamp? = null,
+)
+
+data class ProductFeedbackDoc(
+    @DocumentId val id: String = "",
+    val schemaVersion: Int = 1,
+    val suggestion: String = "",
+    val voteCount: Int = 0,
+    @ServerTimestamp val createdAt: Timestamp? = null,
+)
+
+data class PlatformConfigDoc(
+    @DocumentId val id: String = "default",
+    val schemaVersion: Int = 1,
+    val defaultNotificationsEnabled: Boolean = true,
+    val strictTransportEncryption: Boolean = true,
+    val analyticsSharingEnabled: Boolean = false,
+    val themeDraftLabel: String = "Default theme",
+    @ServerTimestamp val updatedAt: Timestamp? = null,
+)
+
 // endregion

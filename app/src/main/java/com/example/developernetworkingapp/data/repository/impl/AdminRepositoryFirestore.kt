@@ -1,8 +1,9 @@
 package com.example.developernetworkingapp.data.repository.impl
 
 import com.example.developernetworkingapp.data.repository.AdminRepository
-import com.example.developernetworkingapp.data.repository.InMemoryAdminRepository
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreAdminDataSource
+import com.example.developernetworkingapp.data.datasource.firebase.schema.ReportStatus
+import com.example.developernetworkingapp.data.datasource.firebase.schema.TicketStatus
 import com.example.developernetworkingapp.data.datasource.firebase.FirestoreUserDataSource
 import com.example.developernetworkingapp.data.datasource.firebase.formatRelativeTime
 import com.example.developernetworkingapp.data.datasource.firebase.schema.AccountRole
@@ -21,6 +22,7 @@ import com.example.developernetworkingapp.domain.model.ContentQueueItem
 import com.example.developernetworkingapp.domain.model.ContentReportRow
 import com.example.developernetworkingapp.domain.model.OutboundNotificationRow
 import com.example.developernetworkingapp.domain.model.PlatformSettingsSnapshot
+import com.example.developernetworkingapp.domain.model.SupportTicketRow
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +59,7 @@ class AdminRepositoryFirestore(
         analyticsSharingEnabled = false,
         themeDraftLabel = "Default theme",
     )
+    private var platformConfigLoaded = false
     private var analyticsExportsTotal = 0
     private var nextPushSlotLabel = "None scheduled"
 
@@ -166,11 +169,19 @@ class AdminRepositoryFirestore(
     }
 
     override fun removeReportedContent(reportId: String) {
-        scope.launch { audit("Removed content for report $reportId (local moderation log)") }
+        scope.launch {
+            runAdminAction("Resolved report $reportId") {
+                adminDataSource.updateReportStatus(reportId, ReportStatus.RESOLVED)
+            }
+        }
     }
 
     override fun dismissReport(reportId: String) {
-        scope.launch { audit("Dismissed report $reportId (local moderation log)") }
+        scope.launch {
+            runAdminAction("Dismissed report $reportId") {
+                adminDataSource.updateReportStatus(reportId, ReportStatus.DISMISSED)
+            }
+        }
     }
 
     override fun sendNotification(title: String, body: String, audience: String) {
@@ -217,20 +228,29 @@ class AdminRepositoryFirestore(
 
     override fun setDefaultNotifications(enabled: Boolean) {
         platformSettings = platformSettings.copy(defaultNotificationsEnabled = enabled)
-        audit("Platform default notifications → $enabled")
-        scope.launch { refreshCatalog() }
+        scope.launch {
+            runAdminAction("Platform default notifications → $enabled") {
+                adminDataSource.savePlatformConfig(toPlatformConfigDoc())
+            }
+        }
     }
 
     override fun setStrictEncryption(enabled: Boolean) {
         platformSettings = platformSettings.copy(strictTransportEncryption = enabled)
-        audit("Strict TLS enforcement → $enabled")
-        scope.launch { refreshCatalog() }
+        scope.launch {
+            runAdminAction("Strict TLS enforcement → $enabled") {
+                adminDataSource.savePlatformConfig(toPlatformConfigDoc())
+            }
+        }
     }
 
     override fun setAnalyticsSharing(enabled: Boolean) {
         platformSettings = platformSettings.copy(analyticsSharingEnabled = enabled)
-        audit("Product analytics sharing → $enabled")
-        scope.launch { refreshCatalog() }
+        scope.launch {
+            runAdminAction("Product analytics sharing → $enabled") {
+                adminDataSource.savePlatformConfig(toPlatformConfigDoc())
+            }
+        }
     }
 
     override fun rotateIntegrationKeys() {
@@ -240,17 +260,34 @@ class AdminRepositoryFirestore(
     override fun saveThemeDraft() {
         scope.launch {
             platformSettings = platformSettings.copy(themeDraftLabel = "Draft saved ${nowLabel()}")
-            audit("Saved branding / theme draft")
-            refreshCatalog()
+            runAdminAction("Saved branding / theme draft") {
+                adminDataSource.savePlatformConfig(toPlatformConfigDoc())
+            }
         }
     }
 
     override fun assignTicket(ticketId: String) {
-        scope.launch { audit("Assigned ticket $ticketId (support desk local)") }
+        scope.launch {
+            val adminUid = firebaseAuth.currentUser?.uid.orEmpty()
+            runAdminAction("Assigned ticket $ticketId") {
+                adminDataSource.updateTicketStatus(
+                    ticketId = ticketId,
+                    ticketStatus = TicketStatus.ASSIGNED,
+                    assignedAdminId = adminUid,
+                )
+            }
+        }
     }
 
     override fun closeTicket(ticketId: String) {
-        scope.launch { audit("Closed ticket $ticketId (support desk local)") }
+        scope.launch {
+            runAdminAction("Closed ticket $ticketId") {
+                adminDataSource.updateTicketStatus(
+                    ticketId = ticketId,
+                    ticketStatus = TicketStatus.CLOSED,
+                )
+            }
+        }
     }
 
     override fun addHelpArticleStub() {
@@ -293,6 +330,20 @@ class AdminRepositoryFirestore(
         val projects = runCatching { adminDataSource.fetchDirectoryProjects() }.getOrDefault(emptyList())
         val pendingMatches = runCatching { adminDataSource.fetchPendingMatchRequests() }.getOrDefault(emptyList())
         val inbox = runCatching { adminDataSource.fetchRecentInbox() }.getOrDefault(emptyList())
+        val tickets = runCatching { adminDataSource.fetchSupportTickets() }.getOrDefault(emptyList())
+        val reports = runCatching { adminDataSource.fetchContentReports() }.getOrDefault(emptyList())
+        val topFeedback = runCatching { adminDataSource.fetchTopProductFeedback() }.getOrNull()
+        if (!platformConfigLoaded) {
+            runCatching { adminDataSource.fetchPlatformConfig() }.getOrNull()?.let { config ->
+                platformSettings = PlatformSettingsSnapshot(
+                    defaultNotificationsEnabled = config.defaultNotificationsEnabled,
+                    strictTransportEncryption = config.strictTransportEncryption,
+                    analyticsSharingEnabled = config.analyticsSharingEnabled,
+                    themeDraftLabel = config.themeDraftLabel,
+                )
+                platformConfigLoaded = true
+            }
+        }
         val ownerProfiles = runCatching {
             userDataSource.fetchUserProfiles(projects.map { it.ownerUserId }.distinct())
         }.getOrDefault(emptyMap())
@@ -308,11 +359,11 @@ class AdminRepositoryFirestore(
                     project.toAdminProjectRow(ownerProfiles[project.ownerUserId]?.displayName)
                 },
                 contentQueue = pendingMatches.map { it.toQueueItem() },
-                reports = defaultReports(),
+                reports = reports.map { it.toReportRow() },
                 outboundNotifications = (localOutbound + inbox.map { it.toOutboundRow() }).take(20),
-                tickets = InMemoryAdminRepository.seed().tickets,
-                feedbackSuggestion = InMemoryAdminRepository.seed().feedbackSuggestion,
-                feedbackVotes = InMemoryAdminRepository.seed().feedbackVotes,
+                tickets = tickets.map { it.toTicketRow() },
+                feedbackSuggestion = topFeedback?.suggestion ?: "No feedback yet",
+                feedbackVotes = topFeedback?.voteCount ?: 0,
                 adminAccounts = listOfNotNull(adminProfile?.toAdminAccountRow()),
                 platformSettings = platformSettings,
                 analyticsExportsTotal = analyticsExportsTotal,
@@ -424,7 +475,28 @@ class AdminRepositoryFirestore(
         permissionPreset = AdminPermissionPreset.SUPER_ADMIN,
     )
 
-    private fun defaultReports(): List<ContentReportRow> = listOf(
-        ContentReportRow("r-local-1", "Flagged thread — awaiting moderator (demo)", active = true),
+    private fun toPlatformConfigDoc() = com.example.developernetworkingapp.data.datasource.firebase.schema.PlatformConfigDoc(
+        defaultNotificationsEnabled = platformSettings.defaultNotificationsEnabled,
+        strictTransportEncryption = platformSettings.strictTransportEncryption,
+        analyticsSharingEnabled = platformSettings.analyticsSharingEnabled,
+        themeDraftLabel = platformSettings.themeDraftLabel,
     )
+
+    private fun com.example.developernetworkingapp.data.datasource.firebase.schema.SupportTicketDoc.toTicketRow() =
+        SupportTicketRow(
+            id = id,
+            title = title,
+            status = when (ticketStatus) {
+                TicketStatus.ASSIGNED -> com.example.developernetworkingapp.domain.model.TicketStatus.ASSIGNED
+                TicketStatus.CLOSED -> com.example.developernetworkingapp.domain.model.TicketStatus.CLOSED
+                else -> com.example.developernetworkingapp.domain.model.TicketStatus.OPEN
+            },
+        )
+
+    private fun com.example.developernetworkingapp.data.datasource.firebase.schema.ContentReportDoc.toReportRow() =
+        ContentReportRow(
+            id = id,
+            summary = summary,
+            active = reportStatus == ReportStatus.ACTIVE,
+        )
 }
