@@ -1,6 +1,7 @@
 package com.example.developernetworkingapp.notifications
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -43,7 +44,17 @@ class DevConnectFirebaseMessagingService : FirebaseMessagingService() {
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(this).notify(Random.nextInt(1000, 9999), notification)
+        showNotification(notification)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun showNotification(notification: android.app.Notification) {
+        if (!canPostNotifications()) return
+        try {
+            NotificationManagerCompat.from(this).notify(Random.nextInt(1000, 9999), notification)
+        } catch (_: SecurityException) {
+            // POST_NOTIFICATIONS revoked between check and notify
+        }
     }
 
     private fun canPostNotifications(): Boolean {

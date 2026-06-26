@@ -19,8 +19,8 @@ import com.example.developernetworkingapp.ui.theme.AppDesignTokens
 
 @Composable
 fun LoadingStateCard(
-    message: String = "Loading…",
     modifier: Modifier = Modifier,
+    message: String = "Loading…",
 ) {
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
@@ -45,8 +45,8 @@ fun LoadingStateCard(
 @Composable
 fun ErrorStateCard(
     message: String,
-    onRetry: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
 ) {
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
