@@ -3,6 +3,7 @@ const { db } = require('../lib/firestore');
 const { FieldValue } = require('../lib/serializers');
 const { asyncHandler } = require('../lib/asyncHandler');
 const { validate, adminBroadcastSchema } = require('../middleware/validate');
+const { writeAuditLog, AuditVerb } = require('../lib/auditLog');
 
 const router = express.Router();
 
@@ -11,6 +12,7 @@ router.post(
   validate(adminBroadcastSchema),
   asyncHandler(async (req, res) => {
     const { title, body, audience = 'all' } = req.validated;
+    const adminUid = req.user.uid;
 
     let recipientIds = [];
     if (audience === 'all') {
@@ -37,6 +39,17 @@ router.post(
       });
     }
     await batch.commit();
+
+    await writeAuditLog({
+      adminUid,
+      action: AuditVerb.ADMIN_BROADCAST,
+      summary: `Admin broadcast "${title}" to ${recipientIds.length} recipient(s)`,
+      metadata: {
+        requestId: req.requestId,
+        audience: audience === 'all' ? 'all' : recipientIds,
+        sent: recipientIds.length,
+      },
+    });
 
     res.status(201).json({
       sent: recipientIds.length,

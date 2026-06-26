@@ -4,6 +4,7 @@ const { requireProjectReadAccess } = require('../lib/authorization');
 const { paginateQuery, parseLimit } = require('../lib/pagination');
 const { asyncHandler } = require('../lib/asyncHandler');
 const { mapProject, mapTask } = require('../lib/serializers');
+const { sendJsonWithEtag } = require('../lib/etag');
 const { validate, paginationQuerySchema } = require('../middleware/validate');
 
 const router = express.Router();
@@ -36,7 +37,7 @@ router.get(
       );
     }
 
-    res.json({ projects, pagination, source: 'firestore' });
+    sendJsonWithEtag(req, res, { projects, pagination, source: 'firestore' });
   }),
 );
 
