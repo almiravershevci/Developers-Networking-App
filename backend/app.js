@@ -1,46 +1,45 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
 
 const firebaseAuth = require('./middleware/firebaseAuth');
 const requireAdmin = require('./middleware/requireAdmin');
 const { requestLogger } = require('./middleware/requestLogger');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const projectRoutes = require('./routes/projectRoutes');
-const meRoutes = require('./routes/meRoutes');
-const eventsRoutes = require('./routes/eventsRoutes');
-const inboxRoutes = require('./routes/inboxRoutes');
-const matchRequestsRoutes = require('./routes/matchRequestsRoutes');
-const conversationsRoutes = require('./routes/conversationsRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const { db, projectId } = require('./lib/firestore');
+const { mountApiRoutes } = require('./lib/mountApi');
+const { publicLimiter } = require('./middleware/rateLimit');
+const { db, projectId, admin } = require('./lib/firestore');
+
+const API_VERSION = 'v1';
+const STARTED_AT = Date.now();
 
 const API_ROUTES = [
-  'GET  /api/me',
-  'PATCH /api/me',
-  'GET  /api/dashboard/stats',
-  'GET  /api/projects',
-  'GET  /api/projects/:projectId',
-  'GET  /api/projects/:projectId/tasks',
-  'GET  /api/events',
-  'GET  /api/events/:eventId',
-  'POST /api/events/:eventId/registrations/me',
-  'DELETE /api/events/:eventId/registrations/me',
-  'GET  /api/inbox',
-  'PATCH /api/inbox/:notificationId/read',
-  'GET  /api/match-requests/incoming',
-  'GET  /api/match-requests/outgoing',
-  'POST /api/match-requests',
-  'POST /api/match-requests/:requestId/accept',
-  'POST /api/match-requests/:requestId/decline',
-  'GET  /api/conversations',
-  'GET  /api/conversations/:conversationId/messages',
-  'POST /api/conversations/:conversationId/messages',
-  'POST /api/admin/inbox/broadcast',
+  `GET  /api/${API_VERSION}/me`,
+  `PATCH /api/${API_VERSION}/me`,
+  `GET  /api/${API_VERSION}/dashboard/stats`,
+  `GET  /api/${API_VERSION}/projects?limit&cursor`,
+  `GET  /api/${API_VERSION}/projects/:projectId`,
+  `GET  /api/${API_VERSION}/projects/:projectId/tasks`,
+  `GET  /api/${API_VERSION}/events`,
+  `GET  /api/${API_VERSION}/events/:eventId`,
+  `POST /api/${API_VERSION}/events/:eventId/registrations/me`,
+  `DELETE /api/${API_VERSION}/events/:eventId/registrations/me`,
+  `GET  /api/${API_VERSION}/inbox?limit&cursor`,
+  `PATCH /api/${API_VERSION}/inbox/:notificationId/read`,
+  `GET  /api/${API_VERSION}/match-requests/incoming`,
+  `GET  /api/${API_VERSION}/match-requests/outgoing`,
+  `POST /api/${API_VERSION}/match-requests`,
+  `POST /api/${API_VERSION}/match-requests/:requestId/accept`,
+  `POST /api/${API_VERSION}/match-requests/:requestId/decline`,
+  `GET  /api/${API_VERSION}/conversations`,
+  `GET  /api/${API_VERSION}/conversations/:conversationId/messages`,
+  `POST /api/${API_VERSION}/conversations/:conversationId/messages`,
+  `POST /api/${API_VERSION}/admin/inbox/broadcast`,
 ];
 
 /**
- * Factory for the Express app — enables supertest without listening on a port.
  * @param {{ authMiddleware?: Function }} [options]
  */
 function createApp(options = {}) {
@@ -52,43 +51,73 @@ function createApp(options = {}) {
   app.use(cors(buildCorsOptions()));
   app.use(requestLogger);
 
+  const openapiPath = path.join(__dirname, 'openapi.yaml');
+  const openapiDocument = YAML.load(openapiPath);
+
   app.get('/', (_req, res) => {
     res.json({
       service: 'DevConnect API',
-      version: '1.0.0',
+      version: API_VERSION,
       project: projectId,
       auth: 'Firebase ID token (Authorization: Bearer)',
+      documentation: '/docs',
+      openapi: '/openapi.yaml',
+      health: '/health',
       routes: API_ROUTES,
+      legacyPrefix: '/api (deprecated — use /api/v1)',
     });
   });
 
-  app.get('/health', async (_req, res) => {
-    try {
-      await db.collection('users').limit(1).get();
-      res.json({
-        status: 'ok',
-        firestore: 'connected',
-        project: projectId,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      res.status(503).json({
-        status: 'degraded',
-        firestore: 'unavailable',
-        project: projectId,
-        message: error.message,
-      });
-    }
+  app.get('/openapi.yaml', (_req, res) => {
+    res.sendFile(openapiPath);
   });
 
-  app.use('/api/me', auth, meRoutes);
-  app.use('/api/dashboard', auth, dashboardRoutes);
-  app.use('/api/projects', auth, projectRoutes);
-  app.use('/api/events', auth, eventsRoutes);
-  app.use('/api/inbox', auth, inboxRoutes);
-  app.use('/api/match-requests', auth, matchRequestsRoutes);
-  app.use('/api/conversations', auth, conversationsRoutes);
-  app.use('/api/admin', auth, requireAdmin, adminRoutes);
+  app.use('/docs', publicLimiter, swaggerUi.serve, swaggerUi.setup(openapiDocument, {
+    customSiteTitle: 'DevConnect API',
+  }));
+
+  app.get('/health', async (req, res) => {
+    const checks = {
+      firestore: 'unknown',
+      auth: 'unknown',
+    };
+
+    try {
+      await db.collection('users').limit(1).get();
+      checks.firestore = 'connected';
+    } catch (error) {
+      checks.firestore = 'unavailable';
+      return res.status(503).json({
+        status: 'degraded',
+        project: projectId,
+        version: API_VERSION,
+        uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000),
+        checks,
+        message: error.message,
+        requestId: req.requestId,
+      });
+    }
+
+    try {
+      await admin.auth().listUsers(1);
+      checks.auth = 'connected';
+    } catch {
+      checks.auth = 'degraded';
+    }
+
+    res.json({
+      status: checks.auth === 'connected' ? 'ok' : 'degraded',
+      project: projectId,
+      version: API_VERSION,
+      uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000),
+      checks,
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId,
+    });
+  });
+
+  mountApiRoutes(app, `/api/${API_VERSION}`, auth, requireAdmin);
+  mountApiRoutes(app, '/api', auth, requireAdmin);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
@@ -98,15 +127,8 @@ function createApp(options = {}) {
 
 function buildCorsOptions() {
   const raw = process.env.CORS_ORIGINS || '';
-  const origins = raw
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  if (origins.length === 0) {
-    return {};
-  }
-
+  const origins = raw.split(',').map((value) => value.trim()).filter(Boolean);
+  if (origins.length === 0) return {};
   return {
     origin(origin, callback) {
       if (!origin || origins.includes(origin)) {
@@ -118,4 +140,4 @@ function buildCorsOptions() {
   };
 }
 
-module.exports = { createApp, API_ROUTES };
+module.exports = { createApp, API_ROUTES, API_VERSION };

@@ -1,57 +1,59 @@
 const express = require('express');
 const { db } = require('../lib/firestore');
+const { paginateQuery, parseLimit } = require('../lib/pagination');
+const { asyncHandler } = require('../lib/asyncHandler');
+const { ApiError } = require('../lib/errors');
 const { mapInboxNotification } = require('../lib/serializers');
-const { sendError } = require('../lib/errors');
+const { validate, paginationQuerySchema } = require('../middleware/validate');
 
 const router = express.Router();
 
-/**
- * GET /api/inbox — Alerts tab (NotificationsRepository).
- */
-router.get('/', async (req, res) => {
-  try {
+router.get(
+  '/',
+  validate(paginationQuerySchema, 'query'),
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
-    const limit = Math.min(Number(req.query.limit) || 25, 50);
-    const snap = await db
-      .collection('inbox')
+    const limit = parseLimit(req.validated.limit, 25, 50);
+    const collectionRef = db.collection('inbox');
+
+    const query = collectionRef
       .where('recipientUserId', '==', uid)
-      .orderBy('createdAt', 'desc')
-      .limit(limit)
-      .get();
+      .orderBy('createdAt', 'desc');
 
-    const notifications = snap.docs.map(mapInboxNotification);
-    const unreadCount = notifications.filter((item) => !item.read).length;
-    res.json({ notifications, unreadCount, source: 'firestore' });
-  } catch (error) {
-    console.error('GET /api/inbox error:', error);
-    sendError(res, 500, 'Failed to load inbox.');
-  }
-});
+    const { docs, pagination } = await paginateQuery(query, {
+      limit,
+      cursor: req.validated.cursor,
+      collectionRef,
+    });
 
-/**
- * PATCH /api/inbox/:notificationId/read — markAsRead.
- */
-router.patch('/:notificationId/read', async (req, res) => {
-  try {
+    const notifications = docs.map(mapInboxNotification);
+    res.json({
+      notifications,
+      unreadCount: notifications.filter((item) => !item.read).length,
+      pagination,
+      source: 'firestore',
+    });
+  }),
+);
+
+router.patch(
+  '/:notificationId/read',
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const { notificationId } = req.params;
     const ref = db.collection('inbox').doc(notificationId);
     const snap = await ref.get();
 
     if (!snap.exists) {
-      return sendError(res, 404, 'Notification not found.', 'not_found');
+      throw new ApiError(404, 'not_found', 'Notification not found.');
     }
     if (snap.get('recipientUserId') !== uid) {
-      return sendError(res, 403, 'Not your notification.', 'forbidden');
+      throw new ApiError(403, 'forbidden', 'Not your notification.');
     }
 
     await ref.update({ read: true });
-    const updated = await ref.get();
-    res.json({ notification: mapInboxNotification(updated) });
-  } catch (error) {
-    console.error('PATCH inbox read error:', error);
-    sendError(res, 500, 'Failed to mark notification as read.');
-  }
-});
+    res.json({ notification: mapInboxNotification(await ref.get()) });
+  }),
+);
 
 module.exports = router;

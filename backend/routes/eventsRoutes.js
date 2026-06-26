@@ -5,15 +5,16 @@ const {
   FieldValue,
   mapEvent,
 } = require('../lib/serializers');
-const { sendError } = require('../lib/errors');
+const { asyncHandler } = require('../lib/asyncHandler');
+const { ApiError } = require('../lib/errors');
+const { writeLimiter } = require('../middleware/rateLimit');
+const { validate, eventRegistrationSchema } = require('../middleware/validate');
 
 const router = express.Router();
 
-/**
- * GET /api/events — curated events calendar (EventsRepository).
- */
-router.get('/', async (_req, res) => {
-  try {
+router.get(
+  '/',
+  asyncHandler(async (_req, res) => {
     const snap = await db.collection('events').limit(20).get();
     const events = snap.docs
       .map(mapEvent)
@@ -23,42 +24,34 @@ router.get('/', async (_req, res) => {
         return aTime - bTime;
       });
     res.json({ events, source: 'firestore' });
-  } catch (error) {
-    console.error('GET /api/events error:', error);
-    sendError(res, 500, 'Failed to load events.');
-  }
-});
+  }),
+);
 
-/**
- * GET /api/events/:eventId
- */
-router.get('/:eventId', async (req, res) => {
-  try {
+router.get(
+  '/:eventId',
+  asyncHandler(async (req, res) => {
     const snap = await db.collection('events').doc(req.params.eventId).get();
     if (!snap.exists) {
-      return sendError(res, 404, 'Event not found.', 'not_found');
+      throw new ApiError(404, 'not_found', 'Event not found.');
     }
     res.json({ event: mapEvent(snap) });
-  } catch (error) {
-    console.error('GET /api/events/:eventId error:', error);
-    sendError(res, 500, 'Failed to load event.');
-  }
-});
+  }),
+);
 
-/**
- * POST /api/events/:eventId/registrations/me — RSVP (EventsRepository.registerForEvent).
- */
-router.post('/:eventId/registrations/me', async (req, res) => {
-  try {
+router.post(
+  '/:eventId/registrations/me',
+  writeLimiter,
+  validate(eventRegistrationSchema),
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const { eventId } = req.params;
-    const status = req.body?.status === EventRegistrationStatus.WAITLIST
+    const status = req.validated.status === EventRegistrationStatus.WAITLIST
       ? EventRegistrationStatus.WAITLIST
       : EventRegistrationStatus.GOING;
 
     const eventSnap = await db.collection('events').doc(eventId).get();
     if (!eventSnap.exists) {
-      return sendError(res, 404, 'Event not found.', 'not_found');
+      throw new ApiError(404, 'not_found', 'Event not found.');
     }
 
     await db
@@ -74,30 +67,23 @@ router.post('/:eventId/registrations/me', async (req, res) => {
       });
 
     res.status(201).json({ eventId, userId: uid, status });
-  } catch (error) {
-    console.error('POST registration error:', error);
-    sendError(res, 500, 'Failed to register for event.');
-  }
-});
+  }),
+);
 
-/**
- * DELETE /api/events/:eventId/registrations/me — unregister.
- */
-router.delete('/:eventId/registrations/me', async (req, res) => {
-  try {
+router.delete(
+  '/:eventId/registrations/me',
+  writeLimiter,
+  asyncHandler(async (req, res) => {
     const uid = req.user.uid;
     const { eventId } = req.params;
     const ref = db.collection('events').doc(eventId).collection('registrations').doc(uid);
     const snap = await ref.get();
     if (!snap.exists) {
-      return sendError(res, 404, 'Registration not found.', 'not_found');
+      throw new ApiError(404, 'not_found', 'Registration not found.');
     }
     await ref.delete();
     res.status(204).send();
-  } catch (error) {
-    console.error('DELETE registration error:', error);
-    sendError(res, 500, 'Failed to unregister from event.');
-  }
-});
+  }),
+);
 
 module.exports = router;

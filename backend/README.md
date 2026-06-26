@@ -1,7 +1,6 @@
 # DevConnect REST API
 
-Node **BFF / analytics microservice** over the same Firestore database as the Android app.  
-Auth: **Firebase ID token** (`Authorization: Bearer …`) — works for every teammate.
+Node **BFF / analytics microservice** over Firestore. Auth: Firebase ID token (`Authorization: Bearer`).
 
 ## Quick start
 
@@ -13,50 +12,61 @@ npm install
 npm start
 ```
 
-Open http://localhost:5000/ for the route list.  
-Health: http://localhost:5000/health (includes Firestore connectivity check).
+| URL | Purpose |
+|-----|---------|
+| http://localhost:5000/docs | Swagger UI |
+| http://localhost:5000/openapi.yaml | Postman import |
+| http://localhost:5000/health | Deep health check |
 
 ## Tests
 
 ```powershell
-cd backend
 npm test
 ```
 
-Uses Jest + supertest with mocked Firestore — no service account required for CI.
+16 unit/integration tests — no service account required.
 
-## Production deploy
+## API version
 
-See [docs/PRODUCTION_DEPLOYMENT.md](../docs/PRODUCTION_DEPLOYMENT.md) for Render/Railway, Docker, and GitHub Actions.
+- **Primary:** `/api/v1/*`
+- **Legacy alias:** `/api/*` (Android app uses `GET /api/dashboard/stats`, `GET /api/projects`)
 
-## Authorization
+## Stack
 
-The Admin SDK **bypasses Firestore security rules**. REST handlers enforce the same policies in code via `lib/authorization.js` (mirrors `canReadProjectDoc` in `firestore.rules`).
+| Layer | Tech |
+|-------|------|
+| HTTP | Express 5 |
+| Auth | Firebase Admin `verifyIdToken` |
+| Data | Firestore Admin SDK |
+| Validation | Zod |
+| Docs | OpenAPI 3 + Swagger UI |
+| Tests | Jest + supertest |
 
-## Implemented endpoints (aligned with Android repositories)
+## Project layout
 
-| Method | Path | Frontend feature |
-|--------|------|------------------|
-| GET | `/api/me` | Profile |
-| PATCH | `/api/me` | Profile update |
-| GET | `/api/dashboard/stats` | Dashboard stats |
-| GET | `/api/projects` | Search / dashboard |
-| GET | `/api/projects/:id` | Project detail |
-| GET | `/api/projects/:id/tasks` | Tasks / Kanban |
-| GET | `/api/events` | Events feed |
-| POST/DELETE | `/api/events/:id/registrations/me` | Event RSVP |
-| GET | `/api/inbox` | Alerts |
-| PATCH | `/api/inbox/:id/read` | Mark notification read |
-| GET/POST | `/api/match-requests/*` | Match invites |
-| GET/POST | `/api/conversations/*` | Chat (BFF snapshot) |
-| POST | `/api/admin/inbox/broadcast` | Admin broadcast |
-
-**Not REST (by design):** register/login → Firebase Auth SDK on mobile.
-
-Legacy MongoDB routes were removed — Firestore is the only data store.
-
-## Test with curl
-
-```bash
-curl -H "Authorization: Bearer YOUR_FIREBASE_ID_TOKEN" http://localhost:5000/api/me
 ```
+backend/
+├── app.js              Express factory (testable)
+├── index.js            Server entry
+├── openapi.yaml        API contract
+├── lib/
+│   ├── authorization.js   Mirrors Firestore rules
+│   ├── asyncHandler.js    Async error forwarding
+│   ├── pagination.js      Cursor pagination
+│   ├── logger.js          Structured JSON logs
+│   └── mountApi.js        Versioned route mounting
+├── middleware/
+│   ├── firebaseAuth.js
+│   ├── requireAdmin.js
+│   ├── validate.js        Zod schemas
+│   ├── rateLimit.js
+│   └── errorHandler.js
+├── routes/             8 routers, 21 endpoints
+└── tests/
+```
+
+## Docs
+
+- [docs/BACKEND_REVIEW.md](../docs/BACKEND_REVIEW.md) — full audit
+- [docs/API_HYBRID_ARCHITECTURE.md](../docs/API_HYBRID_ARCHITECTURE.md)
+- [docs/PRODUCTION_DEPLOYMENT.md](../docs/PRODUCTION_DEPLOYMENT.md)
