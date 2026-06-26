@@ -1,4 +1,4 @@
-const { admin } = require('../lib/firestore');
+const { sendError } = require('../lib/errors');
 
 /**
  * Verifies Firebase ID tokens from the shared project (works for every teammate).
@@ -13,17 +13,18 @@ module.exports = async function firebaseAuth(req, res, next) {
   const token = bearer || legacy;
 
   if (!token) {
-    return res.status(401).json({ error: 'Missing Firebase ID token' });
+    return sendError(res, 401, 'Missing Firebase ID token.', 'unauthorized', req.requestId);
   }
 
   try {
+    const { admin } = require('../lib/firestore');
     const decoded = await admin.auth().verifyIdToken(token);
     req.user = {
       uid: decoded.uid,
       email: decoded.email || null,
     };
     next();
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid Firebase ID token' });
+  } catch {
+    return sendError(res, 401, 'Invalid Firebase ID token.', 'unauthorized', req.requestId);
   }
 };

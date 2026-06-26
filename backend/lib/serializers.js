@@ -57,6 +57,7 @@ function mapProject(doc) {
     openRoleLabels: Array.isArray(data.openRoleLabels) ? data.openRoleLabels : [],
     lifecycleStatus: data.lifecycleStatus || '',
     visibility: data.visibility || '',
+    updatedAt: timestampToIso(data.updatedAt),
   };
 }
 
