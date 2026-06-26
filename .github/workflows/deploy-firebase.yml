@@ -1,0 +1,56 @@
+name: Deploy Firebase
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'What to deploy'
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - functions
+          - firestore-rules
+          - firestore-indexes
+
+jobs:
+  deploy:
+    name: Deploy to Firebase
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Functions dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Build Functions
+        working-directory: functions
+        run: npm run build
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy Firestore rules
+        if: ${{ inputs.target == 'all' || inputs.target == 'firestore-rules' }}
+        run: firebase deploy --only firestore:rules --project developers-networking-app --non-interactive
+
+      - name: Deploy Firestore indexes
+        if: ${{ inputs.target == 'all' || inputs.target == 'firestore-indexes' }}
+        run: firebase deploy --only firestore:indexes --project developers-networking-app --non-interactive
+
+      - name: Deploy Cloud Functions
+        if: ${{ inputs.target == 'all' || inputs.target == 'functions' }}
+        run: firebase deploy --only functions --project developers-networking-app --non-interactive

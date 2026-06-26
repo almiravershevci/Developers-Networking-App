@@ -1,6 +1,7 @@
 package com.example.developernetworkingapp.data.local
 
 import android.content.Context
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,7 +27,7 @@ class ChatMuteStore(context: Context) {
         prefs.getStringSet(KEY_MUTED_TITLES, null)?.toSet() ?: emptySet()
 
     private fun persist(titles: Set<String>) {
-        prefs.edit().putStringSet(KEY_MUTED_TITLES, HashSet(titles)).apply()
+        prefs.edit { putStringSet(KEY_MUTED_TITLES, HashSet(titles)) }
     }
 
     companion object {

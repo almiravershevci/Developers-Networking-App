@@ -20,7 +20,7 @@ import com.example.developernetworkingapp.ui.screens.ConversationRoute
 import com.example.developernetworkingapp.ui.screens.EmailVerificationRoute
 import com.example.developernetworkingapp.ui.screens.CollaboratorProfileRoute
 import com.example.developernetworkingapp.ui.screens.GenericDetailScreen
-import com.example.developernetworkingapp.ui.screens.collectAuthNavEvents
+import com.example.developernetworkingapp.ui.screens.CollectAuthNavEvents
 
 @Composable
 fun AppRoot() {
@@ -51,7 +51,7 @@ fun AppRoot() {
         }
     }
 
-    collectAuthNavEvents(navController)
+    CollectAuthNavEvents(navController)
 
     NavHost(navController = navController, startDestination = AppRoutes.LOGIN) {
         composable(AppRoutes.LOGIN) { AdvancedLoginScreen() }

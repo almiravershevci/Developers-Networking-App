@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: devconnect-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FIREBASE_PROJECT_ID
+        value: developers-networking-app
+      - key: GOOGLE_APPLICATION_CREDENTIALS_JSON
+        sync: false
+    autoDeploy: true

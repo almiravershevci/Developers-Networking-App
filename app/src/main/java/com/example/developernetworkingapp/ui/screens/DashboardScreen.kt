@@ -227,7 +227,7 @@ fun DashboardScreen(
             )
         }
         if (state.isLoading && content == null) {
-            item { LoadingStateCard("Loading your command center…") }
+            item { LoadingStateCard(message = "Loading your command center…") }
         }
         state.errorMessage?.let { error ->
             item { ErrorStateCard(error, onRetry = onRefresh) }

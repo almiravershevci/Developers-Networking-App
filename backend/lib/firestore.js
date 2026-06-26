@@ -1,3 +1,4 @@
+require('./bootstrapCredentials');
 const admin = require('firebase-admin');
 
 const projectId =
