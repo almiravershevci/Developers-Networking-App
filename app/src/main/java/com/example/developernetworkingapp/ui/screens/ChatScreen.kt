@@ -176,12 +176,14 @@ fun ChatScreen(
             }
         }
 
-        state.content?.statusMessage?.let { message ->
-            item {
-                PremiumInfoCard(
-                    title = if (state.content?.isSignedIn == true) "Inbox status" else "Sign in required",
-                    subtitle = userFacingStatusMessage(message) ?: message,
-                )
+        state.content?.let { content ->
+            content.statusMessage?.let { message ->
+                item {
+                    PremiumInfoCard(
+                        title = if (content.isSignedIn) "Inbox status" else "Sign in required",
+                        subtitle = userFacingStatusMessage(message) ?: message,
+                    )
+                }
             }
         }
 

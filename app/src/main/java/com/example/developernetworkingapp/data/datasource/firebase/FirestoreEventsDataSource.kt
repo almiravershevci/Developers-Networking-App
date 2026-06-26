@@ -6,7 +6,6 @@ import com.example.developernetworkingapp.data.datasource.firebase.schema.EventR
 import com.example.developernetworkingapp.data.datasource.firebase.schema.FirestorePaths
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -19,8 +18,7 @@ class FirestoreEventsDataSource(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
     fun observeEvents(): Flow<List<EventDoc>> = callbackFlow {
-        var registration: ListenerRegistration? = null
-        registration = db.collection(FirestorePaths.EVENTS)
+        val registration = db.collection(FirestorePaths.EVENTS)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -36,7 +34,7 @@ class FirestoreEventsDataSource(
                     .sortedBy { it.startsAt?.toDate()?.time ?: Long.MAX_VALUE }
                 trySend(events)
             }
-        awaitClose { registration?.remove() }
+        awaitClose { registration.remove() }
     }
 
     suspend fun fetchEventsOnce(): List<EventDoc> {
@@ -52,8 +50,7 @@ class FirestoreEventsDataSource(
     }
 
     fun observeMyRegistrations(userId: String): Flow<List<String>> = callbackFlow {
-        var registration: ListenerRegistration? = null
-        registration = db.collectionGroup(FirestorePaths.REGISTRATIONS)
+        val registration = db.collectionGroup(FirestorePaths.REGISTRATIONS)
             .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -61,11 +58,11 @@ class FirestoreEventsDataSource(
                     return@addSnapshotListener
                 }
                 val eventIds = snapshot?.documents
-                    ?.mapNotNull { doc -> doc.reference.parent?.parent?.id }
+                    ?.mapNotNull { doc -> doc.reference.parent.parent?.id }
                     .orEmpty()
                 trySend(eventIds)
             }
-        awaitClose { registration?.remove() }
+        awaitClose { registration.remove() }
     }
 
     suspend fun registerForEvent(

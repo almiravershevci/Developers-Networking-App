@@ -5,7 +5,6 @@ import com.example.developernetworkingapp.data.datasource.firebase.schema.MatchR
 import com.example.developernetworkingapp.data.datasource.firebase.schema.MatchWorkflow
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -18,8 +17,7 @@ class FirestoreMatchRequestsDataSource(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
     fun observeIncomingPending(userId: String): Flow<List<MatchRequestDoc>> = callbackFlow {
-        var registration: ListenerRegistration? = null
-        registration = db.collection(FirestorePaths.MATCH_REQUESTS)
+        val registration = db.collection(FirestorePaths.MATCH_REQUESTS)
             .whereEqualTo("toUserId", userId)
             .whereEqualTo("workflowStatus", MatchWorkflow.PENDING)
             .addSnapshotListener { snapshot, error ->
@@ -39,12 +37,11 @@ class FirestoreMatchRequestsDataSource(
                     .orEmpty()
                 trySend(requests)
             }
-        awaitClose { registration?.remove() }
+        awaitClose { registration.remove() }
     }
 
     fun observeOutgoingPending(userId: String): Flow<List<MatchRequestDoc>> = callbackFlow {
-        var registration: ListenerRegistration? = null
-        registration = db.collection(FirestorePaths.MATCH_REQUESTS)
+        val registration = db.collection(FirestorePaths.MATCH_REQUESTS)
             .whereEqualTo("fromUserId", userId)
             .whereEqualTo("workflowStatus", MatchWorkflow.PENDING)
             .addSnapshotListener { snapshot, error ->
@@ -64,7 +61,7 @@ class FirestoreMatchRequestsDataSource(
                     .orEmpty()
                 trySend(requests)
             }
-        awaitClose { registration?.remove() }
+        awaitClose { registration.remove() }
     }
 
     suspend fun fetchMatchRequest(requestId: String): MatchRequestDoc? {

@@ -104,4 +104,19 @@ describe('DevConnect API', () => {
     expect(res.status).toBe(404);
     expect(res.body.error).toBe('not_found');
   });
+
+  test('GET /metrics exposes Prometheus text', async () => {
+    const res = await request(app).get('/metrics');
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('devconnect_http_requests_total');
+  });
+
+  test('legacy /api routes include deprecation headers', async () => {
+    const res = await request(app).get('/api/v1/me');
+    expect(res.headers.deprecation).toBeUndefined();
+
+    const legacy = await request(app).get('/api/me');
+    expect(legacy.headers.deprecation).toBe('true');
+    expect(legacy.headers.sunset).toBeTruthy();
+  });
 });
